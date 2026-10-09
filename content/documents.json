@@ -1,0 +1,138 @@
+[
+  {
+    "id": "ack-wave-3-v1",
+    "kind": "PRE_APPLICATION_ACK",
+    "version": "ACK-W3-1.0",
+    "waveId": "wave-3",
+    "approvalStatus": "DRAFT",
+    "draftNotice": "BORRADOR OPERACIONAL — sujeto a validación final de Product Lead.",
+    "title": "Antes de continuar, confirma lo que entiendes",
+    "descriptor": "Esta es una confirmación informada para postular. No es la Carta de Compromiso: esa solo se presenta si eres seleccionado/a.",
+    "sections": [],
+    "confirmations": [
+      { "id": "no-guarantee", "text": "Entiendo que esta invitación es una oportunidad para postular y no garantiza mi ingreso a AI Edge Talent." },
+      { "id": "milestones", "text": "Entiendo que, si soy seleccionado/a, deberé cumplir hitos y plazos definidos para cada etapa." },
+      { "id": "autonomy", "text": "Entiendo que el programa requiere estudio, práctica y avance autónomo además de los espacios coordinados dentro de la jornada laboral." },
+      { "id": "beyond-cert", "text": "Entiendo que AI Edge Talent no termina con la certificación y que incluye AI Lab, Showcase y Cierre." },
+      { "id": "two-attempts", "text": "Entiendo que Kibernum financia hasta dos intentos de la certificación AI CERTs bajo las reglas vigentes." },
+      { "id": "accompaniment", "text": "Entiendo que debo participar responsablemente de los acompañamientos, actividades y canales definidos para mi proceso." },
+      { "id": "client", "text": "Entiendo que debo coordinar mi participación responsablemente con las necesidades del cliente." }
+    ],
+    "cta": "Entiendo y quiero continuar con mi postulación"
+  },
+  {
+    "id": "commitment-wave-3-v0.1",
+    "kind": "COMMITMENT_LETTER",
+    "version": "CC-W3-0.1-BORRADOR",
+    "waveId": "wave-3",
+    "approvalStatus": "DRAFT",
+    "draftNotice": "BORRADOR OPERACIONAL — sujeto a validación final de Product Lead y, si corresponde, revisión Legal/People. No constituye contrato laboral ni documento jurídico.",
+    "title": "Tu compromiso con AI Edge Talent",
+    "descriptor": "Antes de comenzar Wave 3, queremos que tú, Kibernum y el cliente tengamos expectativas claras sobre el proceso.",
+    "sections": [
+      {
+        "heading": "Mi compromiso",
+        "body": "Al aceptar mi participación en AI Edge Talent, declaro comprender que el programa requiere un compromiso activo de mi parte.\n\nMe comprometo a:",
+        "bullets": [
+          "cumplir los hitos y plazos comunicados para cada etapa;",
+          "destinar el tiempo y esfuerzo necesarios para avanzar responsablemente;",
+          "mantener una actitud activa de estudio y aprendizaje autónomo;",
+          "participar de los acompañamientos, actividades y sesiones obligatorias que correspondan;",
+          "utilizar los espacios coordinados con mi cliente de manera responsable;",
+          "informar tempranamente bloqueos que puedan afectar mi continuidad;",
+          "entregar trabajos y evidencia propia;",
+          "cuidar la confidencialidad, información, herramientas y contexto de mi cliente;",
+          "participar responsablemente en AI First Mindset;",
+          "preparar y rendir seriamente mi certificación AI CERTs;",
+          "comprender que Kibernum financia hasta dos intentos de examen bajo las condiciones vigentes;",
+          "continuar el journey después de la certificación;",
+          "participar en AI Lab;",
+          "construir y presentar evidencia de aplicación real;",
+          "participar en Showcase cuando alcance las condiciones de readiness;",
+          "cerrar formalmente mi proceso AET."
+        ]
+      },
+      {
+        "heading": "Declaro haber comprendido",
+        "bullets": [
+          "el propósito de AI Edge Talent;",
+          "el journey completo: Assessment → AI First Mindset → AI CERTs → AI Lab → Showcase → Cierre;",
+          "la duración referencial (30–45 días);",
+          "que la dedicación dentro de jornada se coordina con el cliente según la etapa;",
+          "que se necesita dedicación personal adicional;",
+          "que conoceré los criterios relevantes antes de cada evaluación;",
+          "que debo entregar evidencia propia;",
+          "la importancia de comunicar bloqueos oportunamente;",
+          "las reglas de continuidad y los intentos disponibles;",
+          "que la certificación no es el final del journey;",
+          "que participaré en AI Lab y Showcase cuando corresponda."
+        ]
+      },
+      {
+        "heading": "Gates y continuidad",
+        "body": "Comprendo que AI Edge Talent tiene gates y condiciones de continuidad. El incumplimiento de un gate académico o de evaluación puede impedir el avance a la etapa siguiente según las reglas vigentes.\n\nLos bloqueos operacionales o incumplimientos de plazos deben analizarse de acuerdo con su causa y no deben transformarse automáticamente en una sanción no definida por Product HQ.",
+        "bullets": [
+          "AI First Mindset — segundo intento no aprobado: no avanzo a AI CERTs, salvo excepción explícita de Product Lead.",
+          "AI CERTs — segundo intento de examen no aprobado: Kibernum no financia otro intento y el proceso AET se cierra según la regla vigente, salvo excepción explícita.",
+          "AI Lab — no existe un máximo fijo de intentos vigente: hay ajustes/rediseños hasta alcanzar readiness o hasta una decisión explícita.",
+          "Plazos operacionales — un atraso activa alerta, recovery, revisión y posible escalamiento. No existe un gate de expulsión automática por atraso."
+        ]
+      },
+      {
+        "heading": "Nuestro compromiso contigo (Kibernum)",
+        "bullets": [
+          "diseño del journey, Assessment y experiencia AI First Mindset;",
+          "ruta AI CERTs alineada al rol y financiamiento de certificación bajo las condiciones vigentes;",
+          "acompañamiento docente, AI Lab y facilitación;",
+          "evaluación, feedback y Showcase;",
+          "seguimiento operacional, coordinación con cliente y soporte ante bloqueos;",
+          "claridad previa sobre criterios relevantes."
+        ]
+      }
+    ],
+    "confirmations": [
+      { "id": "accept", "text": "He leído y comprendo las condiciones de participación de AI Edge Talent Wave 3 y acepto asumir este compromiso si comienzo el programa." }
+    ],
+    "cta": "Aceptar compromiso e ingresar a Wave 3",
+    "requiresFullName": true
+  },
+  {
+    "id": "conditions-wave-3-v0.1",
+    "kind": "CONDITIONS",
+    "version": "COND-W3-0.1-BORRADOR",
+    "waveId": "wave-3",
+    "approvalStatus": "DRAFT",
+    "draftNotice": "BORRADOR — REQUIERE APROBACIÓN PRODUCT LEAD / LEGAL SI CORRESPONDE",
+    "title": "Antes de comenzar: condiciones del programa",
+    "descriptor": "Lo que necesitas saber, en simple, antes de aceptar tu compromiso.",
+    "sections": [
+      { "heading": "Duración", "body": "30–45 días como referencia total." },
+      { "heading": "Disponibilidad coordinada", "body": "Normalmente 2–3 horas por semana dentro de jornada según etapa, coordinadas entre Delivery y el cliente. No es una cantidad fija garantizada todas las semanas." },
+      { "heading": "Dedicación personal", "body": "Debes complementar con estudio, práctica y avance autónomo. La disponibilidad laboral no reemplaza ese compromiso personal." },
+      { "heading": "Assessment", "body": "La postulación no garantiza ingreso." },
+      {
+        "heading": "AI First Mindset",
+        "bullets": [
+          "Umbral de aprobación: ≥75/100 + hard gates.",
+          "Dos intentos.",
+          "REVISIÓN HUMANA no consume intento.",
+          "Segundo intento no aprobado: no avanzas a AI CERTs, salvo excepción explícita de Product Lead."
+        ]
+      },
+      {
+        "heading": "AI CERTs",
+        "bullets": [
+          "Aproximadamente 40 horas de dedicación, normalmente durante 3–4 semanas.",
+          "Autoestudio + acompañamiento docente.",
+          "Kibernum financia hasta dos intentos de examen.",
+          "Eres responsable de mantener el avance. Una semana completa sin acompañamiento es una señal de riesgo."
+        ]
+      },
+      { "heading": "AI Lab", "body": "La certificación aprobada es gate de entrada. Contempla dos sesiones obligatorias de 90 minutos y trabajo autónomo entre ellas." },
+      { "heading": "Showcase", "body": "El proceso incluye aplicación real y validación con el cliente cuando alcanzas READY FOR SHOWCASE." },
+      { "heading": "Cierre", "body": "El programa no termina simplemente con obtener la certificación." }
+    ],
+    "confirmations": [],
+    "cta": "Revisar mi compromiso"
+  }
+]
