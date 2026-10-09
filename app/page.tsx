@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store/StoreProvider";
 import { setRole } from "@/lib/store/state";
 import type { Role } from "@/lib/domain/types";
 import { LifecycleRail } from "@/components/journey";
+import { BrandHero } from "@/components/ui";
 
 const ENTRIES: { role: Role; title: string; body: string; href: string }[] = [
   { role: "KIBER", title: "Soy profesional / Kiber", body: "Postula, revisa tu estado, acepta tu compromiso y sigue tu journey.", href: "/kiber" },
@@ -31,12 +32,7 @@ export default function Home() {
   const router = useRouter();
   return (
     <div className="stack">
-      <section className="hero">
-        <div className="eyebrow">AI Edge Talent · Kibernum</div>
-        <h1>AET Platform</h1>
-        <p className="lead">
-          El ciclo completo de AI Edge Talent en un solo lugar: desde la preparación de la Wave y la nominación hasta el Showcase, el cierre y la adopción piloto.
-        </p>
+      <BrandHero image="equipo" eyebrow="Kibernum · Programa de habilitación" title={<>AI EDGE<br />TALENT</>} display lead="IA integrada al trabajo real. El ciclo completo del programa en un solo lugar: desde la preparación de la Wave hasta el Showcase y el cierre.">
         <div className="row">
           <Link className="btn" href="/wave-3/postular">
             Postular a Wave 3
@@ -45,14 +41,14 @@ export default function Home() {
             Conocer cómo funciona AI Edge Talent
           </Link>
         </div>
-      </section>
+      </BrandHero>
 
       <h2>Entrar según tu rol</h2>
       <div className="grid grid-2">
         {ENTRIES.map((e) => (
           <button
             key={e.role}
-            className="card"
+            className="card signal"
             style={{ textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}
             onClick={() => {
               run((s) => setRole(s, e.role));

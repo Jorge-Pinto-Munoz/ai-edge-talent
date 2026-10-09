@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCurrentApp } from "./useCurrentApp";
 import { NoApplication } from "./NoApplication";
 import { ExpectationCard, LifecycleRail } from "./journey";
-import { Badge, Callout, fmtDate, fmtDeadline } from "./ui";
+import { Badge, Callout, admissionTone, fmtDate, fmtDeadline } from "./ui";
 import { ADMISSION_LABEL } from "@/lib/domain/types";
 import { currentCommitment, setCurrentApplication } from "@/lib/store/state";
 import { useStore } from "@/lib/store/StoreProvider";
@@ -42,7 +42,7 @@ export function KiberHome() {
             {app.role} · {app.client} {app.deliveryOwner ? `· Delivery: ${app.deliveryOwner}` : ""}
           </span>
         </div>
-        <Badge tone="brand">{ADMISSION_LABEL[s]}</Badge>
+        <Badge tone={admissionTone(s)}>{ADMISSION_LABEL[s]}</Badge>
       </div>
 
       <NextStep />

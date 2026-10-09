@@ -4,7 +4,7 @@ import { StoreProvider } from "@/lib/store/StoreProvider";
 import { Header } from "@/components/Header";
 
 export const metadata: Metadata = {
-  title: "AET Platform",
+  title: "AI Edge Talent · Kibernum",
   description: "AI Edge Talent — ciclo completo: preparación de Wave, postulación, compromiso, journey y cierre.",
 };
 
@@ -19,8 +19,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
           <footer className="footer">
             <div className="container spread">
-              <span>AET Platform · AI Edge Talent · Kibernum</span>
-              <span>Demo funcional: datos locales en este navegador. Sincronización operacional (Monday) pendiente.</span>
+              <div className="row" style={{ gap: 16 }}>
+                <img src="/brand/kibernum-blanco.svg" alt="Kibernum" />
+                <span className="label">AI Edge Talent · AET Platform</span>
+              </div>
+              <span>Demo funcional: datos locales en este navegador. Imágenes ilustrativas, no participantes reales.</span>
             </div>
           </footer>
         </StoreProvider>

@@ -53,8 +53,9 @@ export function Header() {
   return (
     <header className="header">
       <div className="header-inner">
-        <Link href="/" className="brand">
-          AET <span>Platform</span>
+        <Link href="/" className="brand" aria-label="AI Edge Talent · Kibernum — inicio">
+          <img src="/brand/kibernum-blanco.svg" alt="Kibernum" />
+          <span className="program">AI Edge Talent</span>
         </Link>
         <nav className="nav" aria-label="Principal">
           {links.map((l) => (

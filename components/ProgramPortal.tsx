@@ -2,20 +2,22 @@ import Link from "next/link";
 import { PROGRAM_QA, FAQ_BY_ROLE } from "@/lib/data/program";
 import { ASSESSMENT_DIMENSIONS, LIFECYCLE, TRACK_LABEL } from "@/lib/data/journey";
 import { FaqList, LifecycleRail } from "./journey";
+import { BrandHero } from "./ui";
 
 /** Portal de información permanente. Reutilizado en /programa y /kiber/programa. */
 export function ProgramPortal({ intro }: { intro?: React.ReactNode }) {
   return (
     <div className="stack">
-      <section className="hero">
-        <div className="eyebrow">Portal del programa</div>
-        <h1>AI Edge Talent</h1>
-        <p className="lead">
-          Una experiencia de desarrollo para profesionales TI que quieren integrar inteligencia artificial de manera más profunda a su rol, desarrollar criterio y llevar ese
-          aprendizaje a desafíos reales de su trabajo.
-        </p>
+      <BrandHero
+        image="retrato-perfil"
+        photoLeft
+        eyebrow="Portal del programa"
+        title={<>AI EDGE<br />TALENT</>}
+        display
+        lead="Una experiencia de desarrollo para profesionales TI que quieren integrar inteligencia artificial de manera más profunda a su rol, desarrollar criterio y llevar ese aprendizaje a desafíos reales de su trabajo."
+      >
         {intro}
-      </section>
+      </BrandHero>
 
       <nav className="row" aria-label="Secciones">
         {PROGRAM_QA.map((s) => (

@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store/StoreProvider";
 import { getWave } from "@/lib/store/state";
 import { ApplicationFlow } from "./ApplicationFlow";
 import { LifecycleRail } from "./journey";
-import { Callout, fmtDeadline } from "./ui";
+import { BrandHero, Callout, fmtDeadline } from "./ui";
 
 /**
  * Ruta individual /apply/[token]. El token identifica la invitación (no contiene datos personales).
@@ -30,18 +30,17 @@ export function ApplyByInvitation({ token }: { token: string }) {
 
   const first = nomination.nomineeName.split(" ")[0];
   return (
-    <div className="stack narrow">
-      <section className="hero">
-        <div className="eyebrow">{wave.name} · Invitación personal</div>
-        <h1>{first}, te invitamos a postular a AI Edge Talent</h1>
-        <p className="lead">
-          Queremos invitarte a postular a {wave.name.replace("AI Edge Talent · ", "")} de AI Edge Talent, una experiencia de desarrollo diseñada para profesionales TI que
-          quieren integrar inteligencia artificial de manera más profunda a su rol, desarrollar criterio y llevar ese aprendizaje a desafíos reales de su trabajo.
-        </p>
+    <div className="stack">
+      <BrandHero
+        image="colaboracion"
+        eyebrow={`${wave.name} · Invitación personal`}
+        title={`${first}, te invitamos a postular a AI Edge Talent`}
+        lead={`Queremos invitarte a postular a ${wave.name.replace("AI Edge Talent · ", "")} de AI Edge Talent, una experiencia de desarrollo diseñada para profesionales TI que quieren integrar inteligencia artificial de manera más profunda a su rol, desarrollar criterio y llevar ese aprendizaje a desafíos reales de su trabajo.`}
+      >
         <Callout tone="warn" title="Esta invitación no significa que ya estés seleccionado/a.">
           Fuiste nominado/a porque tu cliente y Delivery ven una oportunidad real de aplicación. Postular es tu decisión.
         </Callout>
-      </section>
+      </BrandHero>
 
       <div className="card">
         <h3>¿Por qué fuiste invitado/a?</h3>

@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Health, VersionedDocument } from "@/lib/domain/types";
 import { PENDING_DEFINITION } from "@/lib/data/journey";
 
-export function Badge({ tone, children }: { tone?: "ok" | "warn" | "bad" | "brand"; children: ReactNode }) {
+export function Badge({ tone, children }: { tone?: "ok" | "warn" | "bad" | "brand" | "review"; children: ReactNode }) {
   return <span className={`badge ${tone ?? ""}`}>{children}</span>;
 }
 
@@ -112,4 +112,67 @@ export function DocumentView({ doc }: { doc: VersionedDocument }) {
       </p>
     </div>
   );
+}
+
+export type BrandImage = "equipo" | "colaboracion" | "trabajo-laptop" | "retrato-perfil" | "profesional-tablet";
+
+/**
+ * Hero expresivo AET: fotografía protagonista, texto en zona tranquila, desplazamiento cyan/magenta.
+ * Las fotografías son referencias generadas e ilustrativas: no representan participantes ni resultados.
+ */
+export function BrandHero({
+  image,
+  eyebrow,
+  title,
+  display,
+  lead,
+  children,
+  photoLeft,
+  photoPos,
+  showLogo = false,
+}: {
+  image: BrandImage;
+  eyebrow?: string;
+  title: ReactNode;
+  display?: boolean;
+  lead?: ReactNode;
+  children?: ReactNode;
+  photoLeft?: boolean;
+  photoPos?: string;
+  showLogo?: boolean;
+}) {
+  return (
+    <section className={`brand-hero ${photoLeft ? "photo-left" : ""}`}>
+      <div
+        className="photo"
+        role="img"
+        aria-label="Fotografía ilustrativa de profesionales TI"
+        style={{ backgroundImage: `url(/images/${image}.webp)`, ...(photoPos ? ({ "--photo-pos": photoPos } as CSSProperties) : {}) }}
+      />
+      <div className="stripes" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+        <i />
+      </div>
+      <div className="hero-body">
+        {showLogo && <img className="logo" src="/brand/kibernum-blanco.svg" alt="Kibernum" />}
+        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+        <h1 className={display ? "display" : undefined}>{title}</h1>
+        <div className="rule" />
+        {lead && <p className="lead">{lead}</p>}
+        {children}
+      </div>
+      <span className="photo-credit">Imagen ilustrativa</span>
+    </section>
+  );
+}
+
+/** Tono semántico de un estado de admisión (siempre acompañado de su etiqueta). */
+export function admissionTone(s: string): "ok" | "warn" | "bad" | "brand" | "review" | undefined {
+  if (["SELECTED", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(s)) return "ok";
+  if (["RESCUE_REQUIRED", "CONDITIONS_PENDING"].includes(s)) return "warn";
+  if (s === "HUMAN_REVIEW") return "review";
+  if (s === "NOT_SELECTED") return undefined;
+  return "brand";
 }

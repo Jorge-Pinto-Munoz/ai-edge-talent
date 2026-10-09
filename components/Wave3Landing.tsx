@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store/StoreProvider";
 import { getWave } from "@/lib/store/state";
 import { ApplicationFlow } from "./ApplicationFlow";
-import { Callout, fmtDay } from "./ui";
+import { BrandHero, Callout, fmtDay } from "./ui";
 
 export function Wave3Landing() {
   const { state, hydrated } = useStore();
@@ -17,21 +17,21 @@ export function Wave3Landing() {
 
   return (
     <div className="stack">
-      <section className="hero narrow">
-        <div className="eyebrow">{wave.name}</div>
-        <h1>Postula a Wave 3 de AI Edge Talent</h1>
-        <p className="lead">
-          Una experiencia para profesionales TI que quieren integrar inteligencia artificial de manera más profunda a su rol y llevar ese aprendizaje a desafíos reales de su
-          trabajo.
-        </p>
+      <BrandHero
+        image="trabajo-laptop"
+        photoLeft
+        eyebrow={wave.name}
+        title="Postula a Wave 3 de AI Edge Talent"
+        lead="Una experiencia para profesionales TI que quieren integrar inteligencia artificial de manera más profunda a su rol y llevar ese aprendizaje a desafíos reales de su trabajo."
+      >
         <Callout tone="warn" title="Postular no significa estar seleccionado/a.">
-          Esta invitación es una oportunidad para postular. Si eres seleccionado/a, antes de comenzar aceptarás formalmente tu compromiso.
+          Si eres seleccionado/a, antes de comenzar aceptarás formalmente tu compromiso.
         </Callout>
         {wave.applicationDeadline && (
-          <div className="card" style={{ marginTop: 14 }}>
-            <div className="eyebrow">Deadline</div>
-            <div className="kpi">Tienes hasta el {fmtDay(wave.applicationDeadline)} a las 12:00 hrs.</div>
-          </div>
+          <p className="kicker" style={{ marginTop: 16 }}>
+            <span className="eyebrow" style={{ display: "block", marginBottom: 2 }}>Deadline</span>
+            <strong style={{ color: "#fff", fontSize: "1.15rem" }}>Tienes hasta el {fmtDay(wave.applicationDeadline)} a las 12:00 hrs.</strong>
+          </p>
         )}
         <div className="row" style={{ marginTop: 16 }}>
           <button className="btn" onClick={() => setStarted(true)}>
@@ -41,17 +41,17 @@ export function Wave3Landing() {
             Conocer cómo funciona AI Edge Talent
           </Link>
         </div>
-      </section>
+      </BrandHero>
       <section className="grid grid-3">
-        <div className="card">
+        <div className="card signal">
           <strong>1. Te identificas</strong>
           <p className="muted">Nombre, correo corporativo, cliente y rol.</p>
         </div>
-        <div className="card">
+        <div className="card signal">
           <strong>2. Conoces el compromiso</strong>
           <p className="muted">Qué se espera de ti, qué pone Kibernum y qué pone el cliente.</p>
         </div>
-        <div className="card">
+        <div className="card signal">
           <strong>3. Respondes el Assessment</strong>
           <p className="muted">Dentro de la plataforma, con ejemplos reales.</p>
         </div>

@@ -17,7 +17,7 @@ import { dataQuality, predominantStage, readinessSummary, waveHealth, waveRisks 
 import { ADMISSION_LABEL, WAVE_STATUS_LABEL, WAVE_STATUS_ORDER, type AssessmentOutcome, type ReadinessItemStatus, type Wave } from "@/lib/domain/types";
 import { READINESS_CATEGORY_LABEL, READINESS_ITEMS } from "@/lib/data/readiness";
 import { ASSESSMENT_DIMENSIONS, stageLabel } from "@/lib/data/journey";
-import { Badge, Callout, HealthBadge, Progress, Val, fmtDate, fmtDay } from "./ui";
+import { Badge, Callout, HealthBadge, Progress, Val, admissionTone, fmtDate, fmtDay } from "./ui";
 
 const TYPE_LABEL: Record<Wave["type"], string> = { REGULAR: "Regular", SPECIAL_EDITION: "Special Edition", PILOT: "Piloto" };
 
@@ -322,7 +322,7 @@ function ParticipantsTable({ wave, canEvaluate }: { wave: Wave; canEvaluate: boo
               <tr key={a.id}>
                 <td><strong>{a.participantName}</strong><br /><small className="muted">{a.role} · {a.deliveryOwner ?? "Delivery sin asignar"}</small></td>
                 <td>{a.client}</td>
-                <td><Badge tone="brand">{ADMISSION_LABEL[a.applicationStatus]}</Badge></td>
+                <td><Badge tone={admissionTone(a.applicationStatus)}>{ADMISSION_LABEL[a.applicationStatus]}</Badge></td>
                 <td>{a.journeyStage ? stageLabel(a.journeyStage) : <span className="muted">—</span>}</td>
                 <td>{a.evaluation ? <small>{a.evaluation.outcome}{a.evaluation.total !== undefined ? ` · ${a.evaluation.total}/100` : ""}</small> : <span className="muted">—</span>}</td>
                 <td>

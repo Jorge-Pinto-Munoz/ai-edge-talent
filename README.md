@@ -41,6 +41,17 @@ El botón ↺ del encabezado restablece los datos demo.
 | `/delivery/onboarding` | Delivery | Readiness individual READY / INCOMPLETE |
 | `/admin/waves`, `/admin/waves/[id]` | Admin / PL | Crear Waves, cambiar estado, Wave Readiness Checklist, declarar WAVE READY |
 
+## Identidad visual
+
+Aplica el Sistema Visual AI Edge Talent (propuesta v0.2, oct 2026) y el Kit de Aplicaciones v1. Los tokens están en `app/globals.css`.
+
+- **Paleta:** Obsidian `#080B10` · Carbon `#141B23` · Fog `#CAD6DE` · Cyan `#3DC9D4` (foco) · Magenta `#C765C0` (solo en las franjas de apertura) · Deep Teal `#1E6E78` (texto de acento en modo claro: el cyan sobre blanco no alcanza 4,5:1).
+- **Modos:** expresivo (`BrandHero`, con fotografía y franjas) en Inicio, `/programa`, `/wave-3/postular`, `/apply/[token]` y bienvenida. Operativo, con superficies claras y sin efectos, en tablas, formularios y paneles.
+- **Componentes:** botón cyan con texto Obsidian; secundario con contorno; radio 12; eyebrow en mayúsculas; card editorial con línea de acento (`.card.signal`); estados con etiqueta y color (Información, Aprobado, Atención, Bloqueado, Revisión humana).
+- **Tipografía:** `Gilroy, "Liberation Sans", Arial`. Gilroy se carga solo si está instalada o licenciada: para servirla, agrega `@font-face` en `globals.css`.
+- **Activos:** `public/brand/kibernum-blanco.svg` (el original) y `kibernum-negro.svg` (el mismo trazado con relleno Obsidian; validar contra el logo negro oficial). Las fotografías de `public/images/` son referencias generadas e ilustrativas: no son participantes reales ni evidencia de resultados, y así se rotulan en pantalla.
+- **Movimiento:** franjas con desplazamiento breve (≤ 900 ms) solo en aperturas; transiciones de 150–250 ms; respeta `prefers-reduced-motion`.
+
 ## Arquitectura
 
 ```

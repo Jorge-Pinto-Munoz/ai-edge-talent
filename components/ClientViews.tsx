@@ -48,8 +48,11 @@ export function ClientJourney() {
 
   return (
     <div className="stack">
-      <h1>Client Journey</h1>
-      <p className="lead">Su recorrido como cliente, desde conocer AET hasta la adopción piloto. Comienza antes de que exista un profesional seleccionado.</p>
+      <div className="dark-band">
+        <div className="eyebrow">AI Edge Talent · Cliente</div>
+        <h1 style={{ color: "#fff" }}>Client Journey</h1>
+        <p className="muted" style={{ maxWidth: 720, margin: 0 }}>Su recorrido como cliente, desde conocer AET hasta la adopción piloto. Comienza antes de que exista un profesional seleccionado.</p>
+      </div>
       {picker}
       {!confirmed && (
         <Callout title="Complete su onboarding de cliente">

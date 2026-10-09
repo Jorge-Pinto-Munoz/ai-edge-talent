@@ -10,7 +10,7 @@ import { isEnrolled } from "@/lib/domain/admission";
 import { useCurrentApp } from "./useCurrentApp";
 import { NoApplication } from "./NoApplication";
 import { LifecycleRail } from "./journey";
-import { Badge, Callout, DocumentView, fmtDate, fmtDay } from "./ui";
+import { Badge, BrandHero, Callout, DocumentView, fmtDate, fmtDay } from "./ui";
 
 const CAN_REVIEW = ["SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
 
@@ -181,12 +181,17 @@ export function KiberWelcome() {
   }
   const short = wave.name.replace("AI Edge Talent · ", "");
   return (
-    <div className="stack narrow">
-      <section className="hero">
-        <div className="eyebrow">Inscripción confirmada</div>
-        <h1>Ya eres parte de {short}</h1>
-        <p className="lead">Bienvenido/a, {app.participantName.split(" ")[0]}. Tu journey AI Edge Talent comienza ahora.</p>
-      </section>
+    <div className="stack">
+      <BrandHero
+        image="profesional-tablet"
+        eyebrow="Inscripción confirmada"
+        title={`Ya eres parte de ${short}`}
+        lead={`Bienvenido/a, ${app.participantName.split(" ")[0]}. Tu journey AI Edge Talent comienza ahora.`}
+      >
+        <Link className="btn" href="/kiber/onboarding">
+          Comenzar mi journey
+        </Link>
+      </BrandHero>
       <div className="grid grid-3">
         <div className="card">
           <small className="muted">Cliente</small>
@@ -213,9 +218,6 @@ export function KiberWelcome() {
         </p>
         <p className="muted">Fecha del próximo hito: {wave.startDate ? fmtDay(wave.startDate) : "tu Delivery la confirmará en el calendario inicial."}</p>
       </div>
-      <Link className="btn" href="/kiber/onboarding">
-        Comenzar mi journey
-      </Link>
     </div>
   );
 }
