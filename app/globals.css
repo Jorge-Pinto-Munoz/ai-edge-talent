@@ -1,11 +1,21 @@
 /*
  * AET Platform · Sistema visual AI Edge Talent (propuesta v0.2, oct 2026)
- * Primitivos: Obsidian #080B10 · Carbon #141B23 · Graphite #282828 · White · Fog #CAD6DE
+ * Paleta corporativa Kibernum 2.0: Graphite #282828 · #CADCD8 · #01424C · Verde #B2D5AD · Lavanda #B9AAD4
+ * Primitivos AET: Obsidian #080B10 · Carbon #141B23 · Graphite #282828 · White · Fog #CAD6DE
  *             Cyan #3DC9D4 (foco) · Magenta #C765C0 (energía/transición) · Deep Teal #1E6E78 (texto en claro)
  * Reglas: máximo dos acentos por pieza; cyan nunca como texto sobre blanco (usar Deep Teal);
  *         botones cyan con texto Obsidian; radio base 12; unidad 8; transiciones 150–250 ms.
  * Modos: Expresivo (portadas con fotografía, oscuro) · Operativo (superficies limpias, claro).
  */
+
+/* Gilroy: familia de marca (licencia Kibernum). Fallback autorizado: Liberation Sans / Arial. */
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-Light.woff") format("woff"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-Regular.woff") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-RegularItalic.woff") format("woff"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-Medium.woff") format("woff"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-SemiBold.woff") format("woff"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-Bold.woff") format("woff"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Gilroy"; src: url("/fonts/Gilroy-ExtraBold.woff") format("woff"); font-weight: 800; font-style: normal; font-display: swap; }
 
 :root {
   /* primitivos */
@@ -20,10 +30,10 @@
 
   /* semánticos de estado (texto Obsidian, siempre con etiqueta) */
   --st-info: #3dc9d4;
-  --st-ok: #a8e3bf;
+  --st-ok: #b2d5ad;      /* verde corporativo Kibernum */
   --st-warn: #f7c46c;
   --st-bad: #ff9d96;
-  --st-review: #c9b8ff;
+  --st-review: #b9aad4;  /* lavanda corporativo Kibernum */
 
   /* roles — modo claro (cuerpo de documentos y operación) */
   --bg: #f3f6f8;
@@ -292,3 +302,8 @@ details.faq p { margin-top: 8px; color: var(--muted); }
 
 .brand-hero .btn.ghost { color: var(--white); border-color: #3a4652; background: rgba(20, 27, 35, 0.6); }
 .brand-hero .muted, .brand-hero small { color: var(--fog); }
+
+.doc-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.doc-head img { height: 18px; }
+.doc-head .label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .doc-head img { content: url("/brand/kibernum-blanco.svg"); } }

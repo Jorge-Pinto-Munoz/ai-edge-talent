@@ -91,6 +91,10 @@ export function Progress({ pct }: { pct: number }) {
 export function DocumentView({ doc }: { doc: VersionedDocument }) {
   return (
     <div className="stack">
+      <div className="doc-head">
+        <span className="label">AI Edge Talent</span>
+        <img src="/brand/kibernum-positivo.svg" alt="Kibernum" />
+      </div>
       {doc.approvalStatus === "DRAFT" && <DraftBanner text={doc.draftNotice} />}
       {doc.sections.map((s) => (
         <section key={s.heading}>
