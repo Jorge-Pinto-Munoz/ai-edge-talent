@@ -9,6 +9,10 @@ on:
         description: "Correo para probar el envío del enlace (recibirá un correo real)"
         required: false
         default: ""
+      publishable_key:
+        description: "Clave publicable (sb_publishable_…), es pública; si se deja vacía se busca en el sitio"
+        required: false
+        default: ""
 
 jobs:
   diagnostico:
@@ -18,16 +22,19 @@ jobs:
       DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       PGSSLMODE: require
       EMAIL: ${{ inputs.email }}
+      INPUT_KEY: ${{ inputs.publishable_key }}
     steps:
       - name: Configuración que tiene el sitio publicado
         run: |
           set +e
           echo "login → $(curl -s -o /tmp/login.html -w '%{http_code}' $SITE/login)"
+          echo "== /api/diagnostico"; curl -s $SITE/api/diagnostico; echo
           grep -o 'Mi espacio' /tmp/login.html | head -1
           : > /tmp/js
           for c in $(grep -o '/_next/static/[^"]*\.js' /tmp/login.html | sort -u); do curl -s "$SITE$c" >> /tmp/js; done
           echo "URLs de Supabase en el código publicado:"; grep -o 'https://[a-z0-9]*\.supabase\.co[^"]*' /tmp/js | sort -u
           K=$(grep -o 'sb_publishable_[A-Za-z0-9_-]*' /tmp/js | head -1)
+          [ -n "$INPUT_KEY" ] && K="$INPUT_KEY"
           [ -z "$K" ] && K=$(grep -o 'eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*' /tmp/js | head -1)
           echo "clave publicable encontrada: ${K:0:22}… (largo ${#K})"
           echo "K=$K" >> $GITHUB_ENV
