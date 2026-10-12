@@ -130,16 +130,52 @@ Capas del framework AET: **Assessment → AI Mindset → Role Enablement → AI 
 4. certificación → verificación → AI Lab;
 5. vista del cliente; el cliente es rechazado en el portal admin.
 
+## Fase 3 · Talento y alumni (Supabase)
+
+Una **ficha de talento por persona** (por correo) que la acompaña en todas sus Waves. Se crea sola cuando la persona entra como candidata (importación, nominación, autopostulación o carga histórica).
+
+**Rutas (solo admin y Delivery)**
+
+| Ruta | Para qué |
+|---|---|
+| `/admin/talento` | Pool de talento. Muestra indicadores: personas, en servicio, High Talent, completaron, % de retención y seguimientos vencidos. Tiene clusters por especialidad (Ingeniería, Calidad, Agilidad, Datos, Otro), filtros (Wave, estado de servicio, High Talent, completaron) y descarga en CSV. |
+| `/admin/talento/[id]` | Ficha de una persona: recorrido por Wave, historial de servicio, estado de servicio, High Talent, datos de la ficha y seguimiento post-habilitación. |
+| `/admin/talento/importar` | Solo admin. Carga participantes de Waves pasadas desde un CSV con estas columnas: `Nombre; Correo; Wave; Cliente; Rol; Especialidad; Resultado; Estado servicio`. La Wave 1 y la Wave 2 ya existen como Waves cerradas. |
+
+**Reglas**
+- **Estado de servicio:** *En servicio*, *Banca* o *Salió de Kibernum*.
+  - Marcar una salida exige el motivo.
+  - Cada cambio queda en un historial que no se puede editar ni borrar, con quién lo hizo y desde cuándo.
+- **High Talent:** solo un admin lo marca o lo quita, y debe dejar la evidencia. La base de datos lo bloquea aunque Delivery lo intente por la API.
+- **Seguimiento post-habilitación:**
+  - *Mes 1* (+30 días) mide percepción y adopción.
+  - *Mes 3* (+90 días) mide el impacto real.
+  - Se cuenta desde la fecha de cierre de la Wave o del Showcase.
+  - Se registra la adopción de IA (1–5), si la persona sigue usando IA, la evidencia de impacto, la percepción del cliente y el próximo paso.
+- **Retención:** % de quienes completaron el programa y siguen en servicio o en banca.
+- **Quién ve esta capa:** los clientes, los mentores y los Kibers **no** la ven, y el CSV no incluye puntajes.
+
+**Configurar:** ejecuta `supabase/migrations/20261014000000_talento.sql` en el SQL Editor, después de las migraciones anteriores. Pega el archivo completo, sin selección. El script:
+- se puede volver a ejecutar sin problema;
+- enlaza solo a los candidatos que ya existen.
+
+**Probado** contra el stack local (`tests/e2e/`), con este recorrido:
+1. Carga histórica (incluye a una persona que ya estaba en la Wave 3, que queda con 2 Waves en una sola ficha).
+2. Clusters y filtros, y descarga del CSV.
+3. High Talent y salida con motivo.
+4. Programar el Mes 1 y el Mes 3, y registrar el Mes 1.
+5. Delivery reactiva a la persona, pero no puede marcar High Talent ni importar.
+6. Vista móvil sin scroll horizontal.
+
 ## Próximas fases (acordadas)
 - **Fase 2 · Journey:** hecha (ver arriba). Quedan abiertos:
   - correos automáticos al cambiar de etapa o al recibir feedback de una entrega (hoy el Kiber lo ve en su portal);
   - carga del video de repechaje en la plataforma;
   - evaluación asistida por IA de las entregas de Mindset (hoy la revisión es humana);
   - copiar el contenido de una Wave a la siguiente.
-- **Fase 3 · Talento y alumni:**
-  - seguimiento de Waves pasadas;
-  - estado de servicio (sigue en servicio / salió);
-  - clusters por especialidad y high talent.
+- **Fase 3 · Talento y alumni:** hecha (ver arriba). Queda abierto:
+  - recordatorio por correo cuando vence un seguimiento;
+  - vista agregada de adopción e impacto por Wave y por cliente.
 
 ## Arquitectura
 

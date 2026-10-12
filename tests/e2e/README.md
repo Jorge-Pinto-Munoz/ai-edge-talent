@@ -12,6 +12,6 @@ Pasos (resumen):
 4. Aplicar `supabase/migrations/*.sql` en orden y `supabase/seed.sql`. Dar a `service_role` privilegios sobre el
    esquema `storage` (Supabase ya lo trae).
 5. `node stack/proxy.mjs` (puerto 54321) y compilar la app con `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321`.
-6. Ejecutar `01-postulacion.mjs`, `02-admision-admin.mjs` y `03-journey.mjs` (Playwright).
+6. Ejecutar `01-postulacion.mjs`, `02-admision-admin.mjs`, `03-journey.mjs` y `04-talento.mjs` (Playwright).
 
 Los scripts asumen rutas del ambiente donde se escribieron (sesiones en `../stack/session-*.json`); ajústalas al reutilizarlos.

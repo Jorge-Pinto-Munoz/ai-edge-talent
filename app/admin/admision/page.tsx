@@ -25,6 +25,7 @@ export default async function AdmisionHome() {
           <p className="muted" style={{ margin: "6px 0 0" }}>{viewer.email} · {viewer.role === "admin" ? "Admin" : "Delivery"}</p>
         </div>
         <div className="row">
+          <Link className="btn secondary" href="/admin/talento">Talento</Link>
           {viewer.role === "admin" && <Link className="btn secondary" href="/admin/accesos">Accesos</Link>}
           <SignOut />
         </div>
