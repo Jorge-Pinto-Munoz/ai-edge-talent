@@ -1,0 +1,55 @@
+# Diagnóstico del ingreso: revisa qué configuración tiene el sitio publicado y prueba Supabase Auth.
+# Se ejecuta a mano (Actions → Diagnóstico → Run workflow). No imprime secretos.
+name: Diagnóstico
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "Correo para probar el envío del enlace (recibirá un correo real)"
+        required: false
+        default: ""
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://ai-edge-talent.vercel.app
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGSSLMODE: require
+      EMAIL: ${{ inputs.email }}
+    steps:
+      - name: Configuración que tiene el sitio publicado
+        run: |
+          set +e
+          echo "login → $(curl -s -o /tmp/login.html -w '%{http_code}' $SITE/login)"
+          grep -o 'Mi espacio' /tmp/login.html | head -1
+          : > /tmp/js
+          for c in $(grep -o '/_next/static/[^"]*\.js' /tmp/login.html | sort -u); do curl -s "$SITE$c" >> /tmp/js; done
+          echo "URLs de Supabase en el código publicado:"; grep -o 'https://[a-z0-9]*\.supabase\.co[^"]*' /tmp/js | sort -u
+          K=$(grep -o 'sb_publishable_[A-Za-z0-9_-]*' /tmp/js | head -1)
+          [ -z "$K" ] && K=$(grep -o 'eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*' /tmp/js | head -1)
+          echo "clave publicable encontrada: ${K:0:22}… (largo ${#K})"
+          echo "K=$K" >> $GITHUB_ENV
+          U=$(grep -o 'https://[a-z0-9]*\.supabase\.co' /tmp/js | head -1)
+          echo "U=$U" >> $GITHUB_ENV
+
+      - name: Supabase Auth
+        run: |
+          set +e
+          U=${U:-https://byztuzyoaqbmgimgyfur.supabase.co}
+          echo "== settings"; curl -s "$U/auth/v1/settings" -H "apikey: $K" | head -c 600; echo
+          echo "== health"; curl -s "$U/auth/v1/health" -H "apikey: $K" | head -c 300; echo
+          if [ -n "$EMAIL" ]; then
+            echo "== envío de enlace a $EMAIL"
+            curl -s -w '\nHTTP %{http_code}\n' -X POST "$U/auth/v1/otp" -H "apikey: $K" -H "content-type: application/json" \
+              -d "{\"email\":\"$EMAIL\",\"create_user\":true,\"options\":{\"email_redirect_to\":\"$SITE/auth/callback\"}}"
+          fi
+
+      - name: Base de datos
+        if: ${{ env.DB_URL != '' }}
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null 2>&1
+          psql "$DB_URL" -c "select email, role from public.role_grants" \
+                         -c "select email, email_confirmed_at is not null as confirmado, last_sign_in_at from auth.users order by created_at desc limit 5" \
+                         -c "select created_at, payload->>'action' as accion, payload->>'actor_username' as quien from auth.audit_log_entries order by created_at desc limit 8"
