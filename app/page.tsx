@@ -5,6 +5,7 @@ import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
 import { Countdown } from "@/components/site/Countdown";
 import { StageCard } from "@/components/site/StageCard";
+import { IndexGrid } from "@/components/site/Blocks";
 
 /**
  * Home: de menos a más. Portada → índice de todo lo que hay → etapas (deslizables) →
@@ -50,19 +51,7 @@ export default function Home() {
               <h2>¿Qué estás buscando?</h2>
             </div>
           </Reveal>
-          <div className="idx">
-            {SITE_INDEX.map((t, i) => (
-              <Reveal key={t.href} delay={i * 60} className={`${t.span === 2 ? "span-2" : ""} ${t.mobileFull ? "m-full" : ""}`}>
-                <Link href={t.href} className={`idx-tile ${t.tone ?? ""}`} style={{ height: "100%" }}>
-                  {t.image && <span className="tile-photo" style={{ backgroundImage: `url(/images/${t.image}.webp)` }} aria-hidden="true" />}
-                  <span className="ico"><Icon name={t.icon} /></span>
-                  <span className="go"><Icon name="arrowRight" size={18} /></span>
-                  <h3>{t.title}</h3>
-                  <p>{t.body}</p>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
+          <IndexGrid tiles={SITE_INDEX} />
         </div>
       </section>
 

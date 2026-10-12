@@ -5,6 +5,8 @@ import { PUBLIC_STAGES, stageBySlug } from "@/lib/data/site";
 import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
+import { cookies } from "next/headers";
+import { AUDIENCE, AUDIENCES, AUDIENCE_COOKIE, isAudience, stageRoles, type Audience } from "@/lib/site/audience";
 
 export function generateStaticParams() {
   return PUBLIC_STAGES.map((s) => ({ etapa: s.slug }));
@@ -15,9 +17,20 @@ export async function generateMetadata({ params }: { params: Promise<{ etapa: st
   return { title: s ? `${s.name} · AI Edge Talent` : "Etapa · AI Edge Talent" };
 }
 
-export default async function EtapaPage({ params }: { params: Promise<{ etapa: string }> }) {
+export default async function EtapaPage({ params, searchParams }: { params: Promise<{ etapa: string }>; searchParams: Promise<{ para?: string }> }) {
   const stage = stageBySlug((await params).etapa);
   if (!stage) notFound();
+  const para = (await searchParams).para;
+  const saved = (await cookies()).get(AUDIENCE_COOKIE)?.value;
+  const aud: Audience = isAudience(para) ? para : isAudience(saved) ? saved : "profesional";
+  const roles = stageRoles(stage.slug);
+  const q = (a: Audience) => (a === "profesional" ? "" : `?para=${a}`);
+  const blocks: Record<Audience, { a: { title: string; items: string[]; icon: "check" }; b: { title: string; items: string[]; icon: "star" } }> = {
+    profesional: { a: { title: "Lo que haces tú", items: stage.youDo, icon: "check" }, b: { title: "Lo que obtienes", items: stage.youGet, icon: "star" } },
+    cliente: { a: { title: "Tu rol como cliente", items: roles.client, icon: "check" }, b: { title: "Lo que recibes", items: ["Avisos al inicio y en cada cambio relevante", "Riesgos y bloqueos, si los hay", "Resultados y evidencia, nunca puntajes ni ranking"], icon: "star" } },
+    equipo: { a: { title: "Qué hace Delivery", items: roles.delivery, icon: "check" }, b: { title: "Evidencia que se registra", items: roles.evidence, icon: "star" } },
+  };
+  const blk = blocks[aud];
   const i = PUBLIC_STAGES.indexOf(stage);
   const prev = PUBLIC_STAGES[i - 1];
   const next = PUBLIC_STAGES[i + 1];
@@ -52,7 +65,7 @@ export default async function EtapaPage({ params }: { params: Promise<{ etapa: s
       <nav className="stage-rail bleed" aria-label="Etapas">
         <div className="stage-rail-inner">
           {PUBLIC_STAGES.map((s) => (
-            <Link key={s.slug} href={`/programa/${s.slug}`} aria-current={s.slug === stage.slug ? "page" : undefined}>
+            <Link key={s.slug} href={`/programa/${s.slug}${q(aud)}`} aria-current={s.slug === stage.slug ? "page" : undefined}>
               <span className="n">{s.n}</span> {s.name}
             </Link>
           ))}
@@ -89,24 +102,39 @@ export default async function EtapaPage({ params }: { params: Promise<{ etapa: s
         </Reveal>
       </section>
 
-      <section className="sec" style={{ paddingTop: 0 }}>
-        <div className="sec-inner duo">
-          <Reveal className="list-card">
-            <h3>Lo que haces tú</h3>
-            <ul>
-              {stage.youDo.map((x) => (
-                <li key={x}><span className="tick"><Icon name="check" size={16} /></span>{x}</li>
+      <section className="sec" style={{ paddingTop: 0 }} id="roles">
+        <div className="sec-inner">
+          <Reveal className="sec-head" style={{ marginBottom: 24 }}>
+            <div>
+              <div className="eyebrow">Según quién eres</div>
+              <h2>{aud === "profesional" ? "Tu parte en esta etapa" : aud === "cliente" ? "La parte de tu empresa" : "La parte del equipo Kibernum"}</h2>
+            </div>
+            <nav className="tabs-x" aria-label="Ver esta etapa como" style={{ marginBottom: 0 }}>
+              {AUDIENCES.map((a) => (
+                <Link key={a} href={`/programa/${stage.slug}${q(a)}#roles`} aria-current={a === aud ? "true" : undefined} className={a === aud ? "on" : ""} scroll={false}>
+                  {AUDIENCE[a].short}
+                </Link>
               ))}
-            </ul>
+            </nav>
           </Reveal>
-          <Reveal delay={100} className="list-card dark">
-            <h3>Lo que obtienes</h3>
-            <ul>
-              {stage.youGet.map((x) => (
-                <li key={x}><span className="tick"><Icon name="star" size={16} /></span>{x}</li>
-              ))}
-            </ul>
-          </Reveal>
+          <div className="duo">
+            <Reveal key={`${aud}-a`} className="list-card">
+              <h3>{blk.a.title}</h3>
+              <ul>
+                {blk.a.items.map((x) => (
+                  <li key={x}><span className="tick"><Icon name="check" size={16} /></span>{x}</li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal key={`${aud}-b`} delay={100} className="list-card dark">
+              <h3>{blk.b.title}</h3>
+              <ul>
+                {blk.b.items.map((x) => (
+                  <li key={x}><span className="tick"><Icon name="star" size={16} /></span>{x}</li>
+                ))}
+              </ul>
+            </Reveal>
+          </div>
         </div>
       </section>
 
@@ -141,29 +169,29 @@ export default async function EtapaPage({ params }: { params: Promise<{ etapa: s
       <section className="sec-inner" style={{ paddingBottom: "var(--sp-section)" }}>
         <Reveal className="pager">
           {prev ? (
-            <Link href={`/programa/${prev.slug}`}>
+            <Link href={`/programa/${prev.slug}${q(aud)}`}>
               <span className="photo" style={{ backgroundImage: `url(/images/${prev.image}.webp)` }} />
               <small><Icon name="arrowLeft" size={14} /> Etapa anterior</small>
               <strong>{prev.name}</strong>
             </Link>
           ) : (
-            <Link href="/programa">
+            <Link href={AUDIENCE[aud].home === "/" ? "/programa" : AUDIENCE[aud].home}>
               <span className="photo" style={{ backgroundImage: "url(/images/equipo.webp)" }} />
               <small><Icon name="arrowLeft" size={14} /> Volver</small>
               <strong>El programa</strong>
             </Link>
           )}
           {next ? (
-            <Link href={`/programa/${next.slug}`} className="next">
+            <Link href={`/programa/${next.slug}${q(aud)}`} className="next">
               <span className="photo" style={{ backgroundImage: `url(/images/${next.image}.webp)` }} />
               <small>Siguiente etapa <Icon name="arrowRight" size={14} /></small>
               <strong>{next.name}</strong>
             </Link>
           ) : (
-            <Link href="/wave-3/postular" className="next">
+            <Link href={aud === "profesional" ? "/wave-3/postular" : AUDIENCE[aud].home} className="next">
               <span className="photo" style={{ backgroundImage: "url(/images/trabajo-laptop.webp)" }} />
-              <small>¿Te interesa? <Icon name="arrowRight" size={14} /></small>
-              <strong>Postular a Wave 3</strong>
+              <small>{aud === "profesional" ? "¿Te interesa?" : "Volver al inicio"} <Icon name="arrowRight" size={14} /></small>
+              <strong>{aud === "profesional" ? "Postular a Wave 3" : aud === "cliente" ? "AET para clientes" : "AET para el equipo"}</strong>
             </Link>
           )}
         </Reveal>

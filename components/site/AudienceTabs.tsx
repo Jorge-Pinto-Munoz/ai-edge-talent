@@ -33,7 +33,7 @@ const TABS: { key: Key; label: string; icon: IconName; title: string; lead: stri
       "Ayudas a validar el problema en AI Lab",
       "Decides en el Showcase si el caso continúa como piloto",
     ],
-    link: { href: "/ayuda?rol=CLIENT", label: "Preguntas de clientes" },
+    link: { href: "/clientes", label: "Ver AET para clientes" },
   },
   {
     key: "kibernum",
@@ -47,7 +47,7 @@ const TABS: { key: Key; label: string; icon: IconName; title: string; lead: stri
       "Comunicas resultados sin exponer puntajes",
       "Haces seguimiento de adopción a 1 y 3 meses",
     ],
-    link: { href: "/inicio", label: "Ir a mi espacio" },
+    link: { href: "/equipo", label: "Ver AET para el equipo" },
   },
 ];
 

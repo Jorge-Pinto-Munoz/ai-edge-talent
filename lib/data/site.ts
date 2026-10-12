@@ -160,10 +160,10 @@ export const SITE_INDEX: { href: string; title: string; body: string; icon: Icon
   { href: "/programa", title: "El programa", body: "Qué es AI Edge Talent, para quién es y cómo se evalúa.", icon: "compass", tone: "dark", span: 2, mobileFull: true, image: "colaboracion" },
   { href: "/wave-3/postular", title: "Postular a Wave 3", body: "Cierra el viernes 16 de octubre a las 12:00.", icon: "spark", tone: "accent", mobileFull: true },
   { href: "#etapas", title: "Las etapas", body: "Cinco pasos, de la postulación al cierre.", icon: "route" },
-  { href: "/programa#para-quien", title: "Para profesionales", body: "Qué se espera de ti y qué obtienes.", icon: "user" },
-  { href: "/programa#cliente", title: "Para clientes", body: "Tu rol en cada etapa y qué información recibes.", icon: "building" },
-  { href: "/ayuda", title: "Ayuda", body: "Preguntas frecuentes por rol.", icon: "help" },
-  { href: "/inicio", title: "Mi espacio", body: "Tu etapa, tus tareas, tu certificación y lo que viene.", icon: "target", span: 2, mobileFull: true },
+  { href: "/programa#para-quien", title: "Qué se espera de ti", body: "Tu compromiso y lo que obtienes.", icon: "user" },
+  { href: "/programa#evaluacion", title: "Cómo se evalúa", body: "Una rúbrica conocida, con cinco dimensiones.", icon: "target" },
+  { href: "/ayuda", title: "Preguntas", body: "Lo que más nos preguntan los profesionales.", icon: "help" },
+  { href: "/inicio", title: "Mi espacio", body: "Tu etapa, tus tareas, tu certificación y lo que viene.", icon: "grid", span: 2, mobileFull: true },
 ];
 
 export const BENEFITS: { title: string; body: string; icon: IconName; size?: "wide" | "full" }[] = [
@@ -189,3 +189,21 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   { q: "¿Postular significa quedar seleccionado/a?", a: "No. La selección depende de la evidencia de tu Assessment y de la capacidad de la Wave." },
   { q: "¿Quién me acompaña?", a: "Tu Delivery primero, un mentor con feedback semanal desde Role Enablement y el profesor de la certificación." },
 ];
+
+/** Una línea por etapa según quién mira (tarjetas de los homes de clientes y equipo). */
+export const AUDIENCE_LINES: Record<"cliente" | "equipo", Record<string, string>> = {
+  cliente: {
+    assessment: "Nominas junto a Delivery. Cada profesional decide postular y responde personalmente.",
+    mindset: "Habilitas tiempo: tu profesional rediseña una actividad real de su trabajo.",
+    "role-enablement": "Recibes el inicio, el avance relevante y el resultado de su certificación.",
+    "ai-lab-showcase": "Validas un problema real y decides en el Showcase si el caso continúa.",
+    cierre: "Recibes resultado, evidencia y próximos pasos. Decides la continuidad.",
+  },
+  equipo: {
+    assessment: "Alineas al cliente, coordinas invitaciones y acompañas la postulación.",
+    mindset: "Aseguras tiempo, detectas bloqueos y comunicas el inicio y el cierre.",
+    "role-enablement": "Revisas progreso, gestionas criticidades y activas recovery si hace falta.",
+    "ai-lab-showcase": "Verificas el gate, coordinas sesiones y aseguras al stakeholder del cliente.",
+    cierre: "Comunicas el cierre, aseguras acciones con responsable y coordinas seguimientos.",
+  },
+};
