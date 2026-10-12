@@ -53,6 +53,58 @@ Aplica el Sistema Visual AI Edge Talent (propuesta v0.2, oct 2026) y el Kit de A
 - **Paleta corporativa Kibernum 2.0:** verde `#B2D5AD` y lavanda `#B9AAD4` se usan en los estados Aprobado y Revisión humana, siempre con texto Obsidian.
 - **Movimiento:** franjas con desplazamiento breve (≤ 900 ms) solo en aperturas; transiciones de 150–250 ms; respeta `prefers-reduced-motion`.
 
+
+## Fase 1 · Admisión real (Supabase)
+
+Con Supabase configurado, la app deja de ser solo demo para la admisión:
+
+- **Login sin contraseña** (`/login`): enlace mágico al correo. El rol se asigna en `/admin/accesos` (admin · delivery · cliente · kiber). Quien ingresa sin rol asignado queda como Kiber.
+- **Portal de admisión** (`/admin/admision`):
+  - por cada Wave: candidatos, importación de la base (CSV de Excel o Monday) y filtros;
+  - selección múltiple y acciones masivas: **Evaluar con IA**, **Registrar decisión** y **Enviar correo**;
+  - detalle por candidato: respuestas, propuesta de la IA por dimensión, historial, decisiones, compromiso y correos.
+- **Postulación propia, sin Typeform** (`/postular/registro` y `/postular/[token]`):
+  - la persona se identifica y recibe su enlace personal por correo;
+  - ve qué se espera de ella, confirma cada punto y responde el Assessment, con borrador automático;
+  - al enviar, la IA la evalúa de inmediato.
+- **Selección y compromiso:** si es seleccionada, acepta la Carta de Compromiso en su mismo enlace y queda inscrita. Cada paso queda registrado.
+
+### Reglas que aplica la base de datos (RLS)
+- **Evaluación IA y decisiones:** solo **admin** las ve. Delivery ve el estado del candidato, no puntajes. El cliente ve solo la vista agregada de su propio cliente. El Kiber ve solo su registro.
+- **La IA propone, una persona decide:** `decisions` guarda quién decidió, si coincidió con la IA y la nota. Es append-only (sin UPDATE ni DELETE).
+- **Historial y compromiso:** `admission_events` registra cada cambio de estado. En `commitment_acceptances` la versión es inmutable, `accepted_at` lo pone la base (sin aceptación retroactiva) y una versión nueva marca la anterior como `SUPERSEDED`.
+- **Rúbrica:** la del skill AET (1–5 por dimensión; total = Σ(puntaje × peso)/5×100; niveles A/B/C/D). Corte en 50: bajo el corte, la propuesta es repechaje por video, no descarte. Con evidencia insuficiente, la propuesta es revisión humana. El total lo calcula el código, no el modelo.
+- **Correos:** nunca incluyen puntajes ni ranking. Todo envío queda registrado en `email_messages`.
+
+### Configurar (una vez)
+1. **Base de datos:** en Supabase → SQL Editor, ejecuta `supabase/migrations/20261012000000_admision.sql` y luego `supabase/seed.sql`. Con la CLI, `supabase db push` hace lo mismo.
+2. **Auth:** en Authentication → URL Configuration, define la Site URL con la URL pública de la app y agrega `https://TU-APP/auth/callback` en Redirect URLs.
+3. **Primer admin:** ejecuta en SQL: `insert into role_grants (email, role) values ('tu.correo@kibernum.com', 'admin');`. Luego ingresa por `/login`.
+4. **Variables de entorno** (ver `.env.example`): configúralas en el hosting (Vercel u otro) o en `.env.local`, nunca en el repositorio. Sin `ANTHROPIC_API_KEY` no hay evaluación IA. Sin `RESEND_*` los correos quedan registrados como fallidos.
+5. **Preguntas del formulario:** el seed carga las 9 preguntas del formulario AET estándar. Product Lead debe validarlas antes de abrir la postulación.
+
+### Pruebas
+- `npm test`: reglas de dominio, rúbrica (incluye los ejemplos de calibración del skill), importación CSV, correos y caminos de estado.
+- `npm run test:db`: aplica la migración en un Postgres local y verifica RLS por rol, append-only y compromiso.
+- **Prueba de punta a punta:** el flujo completo se probó contra una base local con GoTrue + PostgREST, los mismos componentes de Supabase. Cubre autoinscripción → confirmación → Assessment → envío → decisión del admin → correo → aceptación de compromiso → inscrito. La evaluación IA y Resend no se probaron con servicios reales: este ambiente no tiene claves.
+
+### Pendiente de esta fase
+- **Video de repechaje:** hoy el candidato lo envía a su Delivery. La carga del video en la plataforma llega con el almacenamiento de la Fase 2.
+- **Borrado de candidatos:** el historial es append-only, así que borrar un candidato también falla. Si se necesita un procedimiento de eliminación de datos personales, hay que definirlo explícitamente.
+
+## Próximas fases (acordadas)
+- **Fase 2 · Journey** (capas Assessment → AI Mindset → Role Enablement → AI Lab & Showcase):
+  - portal del Kiber con su etapa, qué pasó y qué viene;
+  - **video explicativo por etapa**;
+  - **AI Mindset en micro-cápsulas grabadas**, con material descargable y **entrega de tareas** (estilo Crehana/Domestika);
+  - carga de la certificación AI CERT;
+  - **grupos de candidatos con uno o más profesionales/mentores asignados por Wave**, con **feedback semanal** desde Role Enablement;
+  - vista general para clientes del avance de cada Wave.
+- **Fase 3 · Talento y alumni:**
+  - seguimiento de Waves pasadas;
+  - estado de servicio (sigue en servicio / salió);
+  - clusters por especialidad y high talent.
+
 ## Arquitectura
 
 ```

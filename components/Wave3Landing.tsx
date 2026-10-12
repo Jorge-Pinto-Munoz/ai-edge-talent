@@ -7,13 +7,16 @@ import { getWave } from "@/lib/store/state";
 import { ApplicationFlow } from "./ApplicationFlow";
 import { BrandHero, Callout, fmtDay } from "./ui";
 
+/** Con Supabase configurado, la postulación es real (formulario propio + base de datos); si no, demo local. */
+const LIVE = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+
 export function Wave3Landing() {
   const { state, hydrated } = useStore();
   const wave = getWave(state, "wave-3");
   const resuming = hydrated && state.applications.some((a) => a.id === state.session.currentApplicationId && a.waveId === wave.id);
   const [started, setStarted] = useState(false);
 
-  if (started || resuming) return <ApplicationFlow waveId={wave.id} />;
+  if (!LIVE && (started || resuming)) return <ApplicationFlow waveId={wave.id} />;
 
   return (
     <div className="stack">
@@ -34,9 +37,15 @@ export function Wave3Landing() {
           </p>
         )}
         <div className="row" style={{ marginTop: 16 }}>
-          <button className="btn" onClick={() => setStarted(true)}>
-            Comenzar mi postulación
-          </button>
+          {LIVE ? (
+            <Link className="btn" href={`/postular/registro?wave=${wave.id}`}>
+              Comenzar mi postulación
+            </Link>
+          ) : (
+            <button className="btn" onClick={() => setStarted(true)}>
+              Comenzar mi postulación
+            </button>
+          )}
           <Link className="btn secondary" href="/programa">
             Conocer cómo funciona AI Edge Talent
           </Link>

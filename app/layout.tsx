@@ -27,7 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <img src="/brand/kibernum-blanco.svg" alt="Kibernum" />
                 <span className="label">AI Edge Talent · AET Platform</span>
               </div>
-              <span>Demo funcional: datos locales en este navegador. Imágenes ilustrativas, no participantes reales.</span>
+              <span>
+                {process.env.NEXT_PUBLIC_SUPABASE_URL
+                  ? "Imágenes ilustrativas, no participantes reales."
+                  : "Demo funcional: datos locales en este navegador. Imágenes ilustrativas, no participantes reales."}
+              </span>
             </div>
           </footer>
         </StoreProvider>

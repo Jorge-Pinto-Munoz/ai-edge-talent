@@ -64,6 +64,11 @@ export function Header() {
             </Link>
           ))}
         </nav>
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <Link href="/admin/admision" className="btn small" style={{ padding: "6px 12px" }}>
+            Ingresar
+          </Link>
+        )}
         <div className="role-switch">
           <label htmlFor="role" style={{ margin: 0, fontWeight: 400 }}>
             Vista demo:
