@@ -6,7 +6,12 @@ export const dynamic = "force-dynamic";
 /** Muestra qué configuración tiene el hosting, sin revelar claves (solo prefijos y largos) y si Supabase las acepta. */
 export async function GET() {
   const secret = serverEnv().serviceRoleKey;
-  const mask = (k: string) => (k ? `${k.slice(0, k.startsWith("sb_") ? k.indexOf("_", 3) + 1 : 4)}… (${k.length} caracteres)` : "FALTA");
+  // Solo el tipo de clave y su largo: nunca caracteres de la clave.
+  const mask = (k: string) => {
+    if (!k) return "FALTA";
+    const tipo = k.startsWith("sb_publishable_") ? "sb_publishable_ (publicable)" : k.startsWith("sb_secret_") ? "sb_secret_ (SECRETA)" : k.startsWith("eyJ") ? "JWT legada" : "formato no reconocido";
+    return `${tipo} · ${k.length} caracteres`;
+  };
   const check = async (path: string, key: string) => {
     if (!env.supabaseUrl || !key) return "sin probar";
     try {
