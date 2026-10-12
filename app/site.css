@@ -364,3 +364,8 @@ html, body { overflow-x: clip; }
 
 /* Secciones que ya viven dentro del contenedor del layout: sin doble margen lateral. */
 .site-main > .sec:not(.bleed) > .sec-inner, .site-main > .sec-inner { padding-left: 0; padding-right: 0; }
+
+/* Preguntas del video de rescate */
+.rescue-qs { counter-reset: q; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.rescue-qs li { counter-increment: q; position: relative; padding: 14px 16px 14px 56px; border-radius: 14px; background: var(--surface-2); margin: 0; }
+.rescue-qs li::before { content: counter(q); position: absolute; left: 14px; top: 12px; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: var(--obsidian); color: var(--cyan); font-weight: 800; font-size: 0.9rem; }

@@ -19,6 +19,7 @@ const SECTIONS: Section[] = [
   { key: "admision", label: "Admisión", icon: "users", href: (w) => `/admin/admision/${w}`, match: /^\/admin\/admision/, perWave: true },
   { key: "journey", label: "Journey", icon: "route", href: (w) => `/admin/journey/${w}`, match: /^\/admin\/journey/, perWave: true },
   { key: "contenido", label: "Contenido", icon: "book", href: (w) => `/admin/contenido/${w}`, match: /^\/admin\/contenido/, adminOnly: true, perWave: true },
+  { key: "evaluacion", label: "Cómo evaluamos", icon: "target", href: () => "/admin/evaluacion", match: /^\/admin\/evaluacion/, adminOnly: true },
   { key: "talento", label: "Talento", icon: "star", href: () => "/admin/talento", match: /^\/admin\/talento/ },
   { key: "accesos", label: "Accesos", icon: "key", href: () => "/admin/accesos", match: /^\/admin\/accesos/, adminOnly: true },
 ];

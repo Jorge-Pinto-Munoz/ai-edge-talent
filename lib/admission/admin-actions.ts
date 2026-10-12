@@ -162,3 +162,21 @@ export async function grantRole(email: string, role: "admin" | "delivery" | "cli
     return fail(e);
   }
 }
+
+/** Reevaluación del video de rescate por el Product Lead (admin). La decisión final se registra aparte, en decisiones. */
+export async function reviewRescue(waveId: string, candidateId: string, input: { commitment: number; interest: number; ai_affinity: number; note: string }): Promise<ActionResult> {
+  try {
+    const viewer = await requireRole(["admin"]);
+    for (const v of [input.commitment, input.interest, input.ai_affinity]) if (!Number.isInteger(v) || v < 1 || v > 5) throw new Error("Cada criterio va de 1 a 5.");
+    const db = await supabaseUser();
+    const { error } = await db
+      .from("rescue_videos")
+      .update({ commitment: input.commitment, interest: input.interest, ai_affinity: input.ai_affinity, review_note: input.note.trim() || null, reviewed_by: viewer.id, reviewed_at: new Date().toISOString() })
+      .eq("candidate_id", candidateId);
+    if (error) throw error;
+    revalidatePath(`/admin/admision/${waveId}/c/${candidateId}`);
+    return { ok: true, message: "Revisión del video guardada. Registra ahora la decisión en la lista de candidatos." };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  }
+}

@@ -44,6 +44,8 @@ jobs:
             echo "→ $f"
             psql "$DB_URL" -q -v ON_ERROR_STOP=1 --single-transaction -f "$f"
           done
+          # La API (PostgREST) recarga su caché de tablas para ver las nuevas de inmediato.
+          psql "$DB_URL" -q -c "notify pgrst, 'reload schema'"
 
       - name: Primer admin
         if: ${{ inputs.admin_email != '' }}

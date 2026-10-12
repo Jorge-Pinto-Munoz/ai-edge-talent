@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { EvaluationError, EvaluationSchema, SYSTEM_PROMPT, buildUserMessage, scoreEvaluation, type Evaluation } from "./rubric";
+import { EvaluationError, EvaluationSchema, SYSTEM_PROMPT, buildUserMessage, normalizeEvaluation, scoreEvaluation, type Evaluation } from "./rubric";
 
 export const EVALUATION_MODEL = "claude-opus-5-5";
 
@@ -36,8 +36,9 @@ export async function evaluateApplication(input: Parameters<typeof buildUserMess
   if (response.stop_reason === "max_tokens") {
     throw new EvaluationError("La evaluación quedó incompleta. Intenta nuevamente.");
   }
-  const parsed = response.parsed_output as Evaluation | null;
-  if (!parsed) throw new EvaluationError("La respuesta del modelo no tuvo el formato esperado.");
+  const raw = response.parsed_output as Evaluation | null;
+  if (!raw) throw new EvaluationError("La respuesta del modelo no tuvo el formato esperado.");
+  const parsed = normalizeEvaluation(raw);
   const scored = scoreEvaluation(parsed);
   return { evaluation: parsed, ...scored, model: response.model };
 }

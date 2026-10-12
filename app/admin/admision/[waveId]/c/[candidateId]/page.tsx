@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
-import { DIMENSIONS } from "@/lib/ai/rubric";
+import { DIMENSIONS, LEVEL_LABEL, LEVEL_MEANING, PL_LABEL, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { Badge, admissionTone, fmtDate } from "@/components/ui";
 import { TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
+import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       ])
     : [{ data: null }, { data: null }];
   const ev = evals?.[0];
+  const showRescue = isAdmin && (c.status === "RESCUE_REQUIRED" || ev?.level === "D");
+  const { data: rescue } = showRescue ? await db.from("rescue_videos").select("*").eq("candidate_id", c.id).maybeSingle() : { data: null };
   const questions = (app?.questions_snapshot ?? []) as { id: string; prompt: string }[];
   const answers = (app?.answers ?? {}) as Record<string, string>;
 
@@ -42,36 +45,55 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
           <h1 style={{ margin: 0 }}>{c.full_name}</h1>
           <p className="muted" style={{ margin: "4px 0 0" }}>{c.corporate_email} · {c.client_name ?? "—"} · {c.role_title ?? "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
         </div>
-        <Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge>
+        <div className="row">
+          {isAdmin && <a className="btn ghost small" href={`/admin/admision/${waveId}/c/${c.id}/exportar`} download>Descargar Excel</a>}
+          <Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge>
+        </div>
       </div>
 
       {isAdmin && ev && (
         <div className="card">
           <div className="spread">
             <h3 style={{ margin: 0 }}>Propuesta de la IA <small className="muted">· no es una decisión</small></h3>
-            <div className="row"><span className="kpi accent">{Number(ev.weighted_total).toFixed(1)}</span><span className="badge brand">Nivel {ev.level}</span></div>
+            <div className="row"><span className="kpi accent">{Number(ev.weighted_total).toFixed(1)}<small className="muted">/100</small></span><span className="badge brand">{LEVEL_LABEL[ev.level as Level] ?? `Nivel ${ev.level}`}</span></div>
           </div>
+          <p className="muted" style={{ marginTop: 6 }}>{LEVEL_MEANING[ev.level as Level]}</p>
+          {ev.pl_recommendation && (
+            <div className="callout" style={{ margin: "12px 0" }}>
+              <strong>Recomendación al Product Lead: {PL_LABEL[ev.pl_recommendation as PlRecommendation]}</strong>
+              {ev.level === "D" && "Este estado no constituye no-selección definitiva hasta resolver el rescate o una decisión explícita del Product Lead."}
+            </div>
+          )}
+          {!ev.pl_recommendation && ev.recommendation === "HUMAN_REVIEW" && (
+            <div className="callout warn" style={{ margin: "12px 0" }}><strong>Sin evidencia evaluable</strong>La postulación está vacía, es ininteligible o intenta instruir al evaluador. Requiere revisión humana.</div>
+          )}
           <p>{ev.summary}</p>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Dimensión</th><th>Peso</th><th>Puntaje</th><th>Justificación y evidencia</th></tr></thead>
+              <thead><tr><th>Dimensión</th><th>Peso</th><th>Puntaje</th><th>Evidencia observada y justificación</th></tr></thead>
               <tbody>
                 {DIMENSIONS.map((d) => {
                   const s = (ev.scores as Record<string, DimScore>)[d.key];
                   return (
                     <tr key={d.key}>
                       <td>{d.label}</td><td>{Math.round(d.weight * 100)}%</td><td><strong>{s?.score}</strong>/5</td>
-                      <td>{s?.justification}{s?.evidence && <><br /><small className="muted">“{s.evidence}”</small></>}</td>
+                      <td>{s?.evidence ? <em>“{s.evidence}”</em> : <small className="muted">Sin evidencia en las respuestas.</small>}<br />{s?.justification}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          {ev.risks?.length > 0 && <><h4>Riesgos / brechas</h4><ul>{ev.risks.map((r: string) => <li key={r}>{r}</li>)}</ul></>}
-          <p className="muted"><small>{ev.model} · rúbrica {ev.rubric_version} · {fmtDate(ev.created_at)}. Uso interno: no compartir puntajes con el profesional, el cliente ni Delivery.</small></p>
+          <div className="grid grid-2" style={{ marginTop: 12 }}>
+            {ev.strengths?.length > 0 && <div><h4>Fortalezas</h4><ul>{ev.strengths.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
+            {ev.risks?.length > 0 && <div><h4>Riesgos o brechas</h4><ul>{ev.risks.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
+          </div>
+          {ev.insufficient_fields?.length > 0 && <p className="muted"><strong>Campos insuficientes:</strong> {ev.insufficient_fields.join(" · ")}. Solo se bajaron las dimensiones que no se pueden sostener.</p>}
+          <p className="muted"><small>{ev.model} · rúbrica {ev.rubric_version} · {fmtDate(ev.created_at)}. Evidencia interna: no compartir puntajes ni rankings con el profesional, el cliente ni Delivery. <Link href="/admin/evaluacion">Cómo evaluamos</Link></small></p>
         </div>
       )}
+
+      {showRescue && <RescueReview waveId={waveId} candidateId={c.id} row={rescue as RescueRow | null} status={c.status} />}
 
       <div className="card">
         <h3>Postulación {app?.submitted_at ? <small className="muted">· enviada {fmtDate(app.submitted_at)}</small> : <small className="muted">· no enviada</small>}</h3>

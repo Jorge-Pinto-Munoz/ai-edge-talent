@@ -11,6 +11,7 @@ import { renderEmail } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
 import type { AdmissionStatus } from "@/lib/domain/types";
 import { fmtDeadline } from "@/components/ui";
+import { isAcceptableVideoUrl } from "./rescue";
 
 /**
  * Acciones del postulante. No requieren cuenta: se identifican con el enlace personal (token aleatorio
@@ -163,5 +164,46 @@ export async function acceptCommitmentByToken(token: string, fullName: string, c
     return { ok: true, message: "enrolled" };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/* ───────── Video de rescate (bajo el corte) ───────── */
+const RESCUE_MAX_MB = 50;
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : String(e));
+
+/** URL firmada para subir el video directo a Storage (privado). Solo si la persona está en rescate. */
+export async function requestRescueUpload(token: string, fileName: string, sizeBytes: number): Promise<CandidateResult & { path?: string; uploadToken?: string }> {
+  try {
+    const { svc, c } = await byToken(token);
+    if (c.status !== "RESCUE_REQUIRED") throw new Error("Tu postulación no tiene un rescate pendiente.");
+    if (sizeBytes > RESCUE_MAX_MB * 1024 * 1024) throw new Error(`El archivo supera ${RESCUE_MAX_MB} MB. Usa un enlace (YouTube no listado, Drive u OneDrive).`);
+    const safe = fileName.normalize("NFD").replace(/[^\w.\-]+/g, "_").slice(-80);
+    const path = `${c.id}/rescate-${Date.now()}-${safe}`;
+    const { data, error } = await svc.storage.from("submissions").createSignedUploadUrl(path);
+    if (error || !data) throw new Error("No se pudo preparar la subida. Intenta con un enlace.");
+    return { ok: true, message: "ok", path, uploadToken: data.token };
+  } catch (e) {
+    return { ok: false, message: errMsg(e) };
+  }
+}
+
+/** Registra el video (archivo subido o enlace). Se puede reemplazar mientras no haya sido revisado. */
+export async function submitRescue(token: string, input: { path?: string; url?: string; note?: string }): Promise<CandidateResult> {
+  try {
+    const { svc, c } = await byToken(token);
+    if (c.status !== "RESCUE_REQUIRED") throw new Error("Tu postulación no tiene un rescate pendiente.");
+    const url = input.url?.trim() || null;
+    const path = input.path && input.path.startsWith(`${c.id}/rescate-`) ? input.path : null;
+    if (!path && !url) throw new Error("Sube tu video o pega un enlace.");
+    if (url && !isAcceptableVideoUrl(url)) throw new Error("Usa un enlace https de YouTube, Vimeo, Loom, Google Drive, OneDrive o Dropbox.");
+    const { data: prev } = await svc.from("rescue_videos").select("reviewed_at").eq("candidate_id", c.id).maybeSingle();
+    if (prev?.reviewed_at) throw new Error("Tu video ya fue revisado.");
+    const { error } = await svc.from("rescue_videos").upsert({ candidate_id: c.id, video_path: path, video_url: url, candidate_note: input.note?.trim() || null, submitted_at: new Date().toISOString() });
+    if (error) throw error;
+    await svc.from("admission_events").insert({ candidate_id: c.id, from_status: "RESCUE_REQUIRED", to_status: "RESCUE_REQUIRED", actor_label: "postulante", note: "Envió video de rescate" });
+    return { ok: true, message: "Recibimos tu video. El equipo AI Edge Talent lo revisará y te escribirá con el resultado." };
+  } catch (e) {
+    console.error("[rescate]", e);
+    return { ok: false, message: errMsg(e) };
   }
 }

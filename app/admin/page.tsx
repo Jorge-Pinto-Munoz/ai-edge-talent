@@ -10,6 +10,8 @@ import { Callout, fmtDate, fmtDeadline } from "@/components/ui";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { Countdown } from "@/components/site/Countdown";
 import { Reveal } from "@/components/site/Reveal";
+import { ApplyLink } from "@/components/admin/ApplyLink";
+import { env } from "@/lib/supabase/env";
 
 export const metadata = { title: "Resumen · Portal AET" };
 export const dynamic = "force-dynamic";
@@ -49,6 +51,8 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
           </div>
         )}
       </header>
+
+      {d.wave.application_deadline && deadlineFuture && <ApplyLink url={`${env.appUrl}/postular/registro?wave=${waveId}`} />}
 
       <section className="adm-kpis">
         {[
@@ -96,8 +100,7 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
           {d.total === 0 ? (
             <div className="empty">
               <Icon name="users" size={32} />
-              <p>Todavía no hay candidatos en esta Wave.</p>
-              {isAdmin && <Link className="pill accent" href={`/admin/admision/${waveId}/importar`}>Importar base de candidatos</Link>}
+              <p>Todavía nadie postula en esta Wave. Comparte el link de postulación: cada persona que postule aparecerá aquí.</p>
             </div>
           ) : (
             <Reveal className="funnel">

@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { scoreEvaluation, buildUserMessage, type Evaluation } from "@/lib/ai/rubric";
+import { scoreEvaluation, buildUserMessage, normalizeEvaluation, SYSTEM_PROMPT, type Evaluation } from "@/lib/ai/rubric";
 import { parseCandidatesCsv } from "@/lib/import/candidates";
 import { renderEmail } from "@/lib/email/templates";
 
-const ev = (s: [number, number, number, number, number], insufficient = false): Evaluation => {
+const ev = (s: [number, number, number, number, number], noEvidence = false, followUp = false): Evaluation => {
   const d = (score: number) => ({ score, justification: "j", evidence: "" });
-  return { real_use: d(s[0]), depth: d(s[1]), reframe: d(s[2]), autonomy: d(s[3]), disposition: d(s[4]), insufficient_evidence: insufficient, summary: "", risks: [] };
+  return {
+    real_use: d(s[0]), depth: d(s[1]), reframe: d(s[2]), autonomy: d(s[3]), disposition: d(s[4]),
+    strengths: [], risks: [], insufficient_fields: [], no_evaluable_evidence: noEvidence, selection_follow_up: followUp, summary: "",
+  };
 };
 
-describe("scoring AET (rúbrica del skill)", () => {
+describe("scoring AET (Assessment Evaluator Spec v1)", () => {
   it("reproduce los ejemplos de calibración", () => {
     expect(scoreEvaluation(ev([5, 5, 5, 5, 4])).total).toBe(98.4);
     expect(scoreEvaluation(ev([5, 5, 3, 4, 4])).total).toBe(86);
@@ -20,8 +23,30 @@ describe("scoring AET (rúbrica del skill)", () => {
     expect(scoreEvaluation(ev([3, 3, 3, 3, 3]))).toMatchObject({ total: 60, level: "C", recommendation: "SELECTED" });
     expect(scoreEvaluation(ev([2, 2, 1, 1, 1]))).toMatchObject({ level: "D", recommendation: "RESCUE_REQUIRED" });
   });
-  it("evidencia insuficiente → revisión humana", () => {
-    expect(scoreEvaluation(ev([1, 1, 1, 1, 1], true)).recommendation).toBe("HUMAN_REVIEW");
+  it("recomendación al Product Lead según nivel (sección 10)", () => {
+    expect(scoreEvaluation(ev([5, 5, 5, 5, 4])).plRecommendation).toBe("SELECCIONAR");
+    expect(scoreEvaluation(ev([5, 5, 5, 5, 4], false, true)).plRecommendation).toBe("SELECCIONAR_CON_SEGUIMIENTO");
+    expect(scoreEvaluation(ev([4, 4, 3, 3, 3]))).toMatchObject({ level: "B", plRecommendation: "SELECCIONAR" });
+    expect(scoreEvaluation(ev([3, 3, 3, 3, 3])).plRecommendation).toBe("EVALUAR_CUPO_Y_SEGUIMIENTO");
+    // D nunca es no-selección definitiva: activa rescate aunque el modelo pida seguimiento
+    expect(scoreEvaluation(ev([2, 2, 1, 1, 1], false, true)).plRecommendation).toBe("ACTIVAR_RESCATE");
+  });
+  it("límites de niveles: 80 = A, 65 = B, 50 = C, 49.x = D", () => {
+    expect(scoreEvaluation(ev([4, 4, 4, 4, 4])).level).toBe("A"); // 80
+    expect(scoreEvaluation(ev([3, 4, 3, 3, 4]))).toMatchObject({ total: 67.6, level: "B" });
+    expect(scoreEvaluation(ev([2, 3, 2, 3, 3]))).toMatchObject({ total: 50, level: "C" });
+    expect(scoreEvaluation(ev([3, 2, 2, 3, 3]))).toMatchObject({ total: 49, level: "D" });
+  });
+  it("postulación sin evidencia evaluable → revisión humana, sin recomendación", () => {
+    expect(scoreEvaluation(ev([1, 1, 1, 1, 1], true))).toMatchObject({ recommendation: "HUMAN_REVIEW", plRecommendation: null });
+  });
+  it("máximo 3 fortalezas y 3 riesgos", () => {
+    const n = normalizeEvaluation({ ...ev([3, 3, 3, 3, 3]), strengths: ["a", "b", "c", "d"], risks: [" x ", "", "y", "z", "w"] });
+    expect(n.strengths).toEqual(["a", "b", "c"]);
+    expect(n.risks).toEqual(["x", "y", "z"]);
+  });
+  it("el prompt incluye las reglas de la especificación", () => {
+    for (const rule of ["No confundas frecuencia con profundidad", "No confundas dependencia con madurez", "NO exijas celebridades", "NO inventes evidencia"]) expect(SYSTEM_PROMPT).toContain(rule);
   });
   it("rechaza puntajes fuera de rango", () => {
     expect(() => scoreEvaluation(ev([6, 5, 5, 5, 5]))).toThrow();

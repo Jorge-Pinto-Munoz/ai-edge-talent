@@ -17,6 +17,9 @@ export function TalentPool({ rows }: { rows: TalentRow[] }) {
   const [service, setService] = useState("");
   const [onlyHT, setOnlyHT] = useState(false);
   const [onlyGrad, setOnlyGrad] = useState(false);
+  // Banca: personas que no quedaron en alguna Wave (o quedaron en rescate) y no han entrado después. Se pueden invitar a la próxima.
+  const [onlyBench, setOnlyBench] = useState(false);
+  const onBench = (r: TalentRow) => r.participations.some((p) => p.status === "NOT_SELECTED") && !r.participations.some((p) => ["ENROLLED", "MINDSET_READY"].includes(p.status));
   const waves = [...new Map(rows.flatMap((r) => r.participations.map((p) => [p.wave_id, p.wave_name] as const))).entries()].sort();
 
   const shown = useMemo(
@@ -27,8 +30,9 @@ export function TalentPool({ rows }: { rows: TalentRow[] }) {
         .filter((r) => !wave || r.participations.some((p) => p.wave_id === wave))
         .filter((r) => !service || r.service_status === service)
         .filter((r) => !onlyHT || r.high_talent)
-        .filter((r) => !onlyGrad || completed(r)),
-    [rows, q, family, wave, service, onlyHT, onlyGrad],
+        .filter((r) => !onlyGrad || completed(r))
+        .filter((r) => !onlyBench || onBench(r)),
+    [rows, q, family, wave, service, onlyHT, onlyGrad, onlyBench],
   );
   const ret = retention(rows.map((r) => ({ completed: completed(r), service: r.service_status })));
   const today = new Date().toISOString().slice(0, 10);
@@ -82,6 +86,7 @@ export function TalentPool({ rows }: { rows: TalentRow[] }) {
           </select>
           <label className="check" style={{ marginBottom: 0 }}><input type="checkbox" checked={onlyHT} onChange={(e) => setOnlyHT(e.target.checked)} /><span>Solo High Talent</span></label>
           <label className="check" style={{ marginBottom: 0 }}><input type="checkbox" checked={onlyGrad} onChange={(e) => setOnlyGrad(e.target.checked)} /><span>Completaron</span></label>
+          <label className="check" style={{ marginBottom: 0 }}><input type="checkbox" checked={onlyBench} onChange={(e) => setOnlyBench(e.target.checked)} /><span>No quedaron · invitar a la próxima ({rows.filter(onBench).length})</span></label>
           <button className="btn ghost small" onClick={download}>Descargar CSV ({shown.length})</button>
         </div>
       </div>

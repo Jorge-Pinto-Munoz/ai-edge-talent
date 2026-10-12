@@ -26,8 +26,11 @@ export async function evaluateOne(svc: ReturnType<typeof supabaseService>, candi
       weighted_total: r.total,
       level: r.level,
       recommendation: r.recommendation,
+      pl_recommendation: r.plRecommendation,
       summary: r.evaluation.summary,
       risks: r.evaluation.risks,
+      strengths: r.evaluation.strengths,
+      insufficient_fields: r.evaluation.insufficient_fields,
       created_by: createdBy,
     });
     if (error) throw error;

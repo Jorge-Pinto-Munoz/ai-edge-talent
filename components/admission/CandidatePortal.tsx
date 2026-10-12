@@ -8,6 +8,7 @@ import { getDocument } from "@/lib/content";
 import { ASSESSMENT_DIMENSIONS } from "@/lib/data/journey";
 import { CommitmentSummaryCard, LifecycleRail } from "@/components/journey";
 import { BrandHero, Callout, DocumentView, fmtDay, fmtDeadline } from "@/components/ui";
+import { RescueForm } from "./RescueForm";
 
 export interface PortalData {
   token: string;
@@ -22,6 +23,7 @@ export interface PortalData {
   };
   questions: { id: string; position: number; prompt: string; help: string | null; kind: string; options: string[] | null; required: boolean }[];
   answers: Record<string, string>;
+  rescue: { at: string; reviewed: boolean } | null;
 }
 
 export function CandidatePortal({ data }: { data: PortalData }) {
@@ -39,9 +41,9 @@ export function CandidatePortal({ data }: { data: PortalData }) {
   if (s === "RESCUE_REQUIRED")
     return (
       <Message eyebrow="Complementa tu postulación" title="Queremos complementar tu postulación">
-        <p>El formulario escrito no nos permitió observar suficientemente parte de tu experiencia. Te pedimos un video breve (máximo 2 minutos) contándonos por qué te interesa participar, qué te motiva y qué compromiso estás dispuesto/a a asumir.</p>
-        <p>No es un castigo y no garantiza selección: complementa tu Assessment.</p>
-        <Callout title="Cómo enviarlo">Envía tu video a tu Delivery{data.candidate.deliveryOwner ? ` (${data.candidate.deliveryOwner})` : ""} dentro del plazo indicado en el correo.</Callout>
+        <p>El formulario escrito puede no reflejar todo lo que traes. Queremos conocerte mejor con un video breve que responda estas preguntas.</p>
+        <p className="muted">No es un castigo y no garantiza selección: complementa tu Assessment, y una persona del equipo lo revisa.</p>
+        <RescueForm token={data.token} sent={data.rescue} />
       </Message>
     );
   if (s === "NOT_SELECTED")

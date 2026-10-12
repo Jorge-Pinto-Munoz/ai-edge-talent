@@ -178,6 +178,15 @@ Una **ficha de talento por persona** (por correo) que la acompaña en todas sus 
   - vista agregada de adopción e impacto por Wave y por cliente.
 
 
+
+## Evaluación del Assessment (especificación operativa v1)
+- **Automática:** al enviar la postulación, la IA la evalúa sola (requiere `ANTHROPIC_API_KEY` en el hosting). Si falla, el admin puede reevaluar desde Admisión.
+- **Lógica:** `lib/ai/rubric.ts` (versión `AET-EVAL-SPEC-v1`) y la página **/admin/evaluacion** ("Cómo evaluamos"). Niveles A IDEAL ≥80 · B APTO 65–79 · C APTO CON SEGUIMIENTO 50–64 · D BAJO CORTE <50. El total, el nivel y la recomendación por nivel se calculan en código.
+- **Salida por postulación:** puntaje 1–5 con evidencia y justificación por dimensión, hasta 3 fortalezas y 3 riesgos, campos insuficientes y recomendación al Product Lead (seleccionar / con seguimiento / evaluar cupo / activar rescate).
+- **Rescate por video (nivel D):** la persona ve 4 preguntas guía (compromiso, afinidad con IA, interés concreto, aprendizaje autónomo) en su enlace personal y sube el video (hasta 50 MB) o pega un enlace. El Product Lead lo califica (compromiso, interés, afinidad 1–5) y decide desde la ficha.
+- **Descargas (solo admin):** Excel de toda la Wave en Admisión y de cada candidato en su ficha: Ranking, Justificación por candidato (análisis ejecutivo), Respuestas y Metodología.
+- **Postulación por link:** el link de la Wave aparece en Admisión y en el Resumen para copiarlo. Quienes no quedan aparecen en Talento con el filtro "No quedaron · invitar a la próxima".
+
 ## Diagnóstico en producción
 - `GET /api/diagnostico` muestra la configuración que tiene el hosting sin revelar claves: URL de Supabase, prefijo y largo de cada clave, y si Supabase las acepta.
 - **GitHub → Actions → Diagnóstico** revisa el sitio publicado, prueba Supabase Auth (opcional: envía un enlace real a un correo) y lista accesos y últimos eventos de ingreso.

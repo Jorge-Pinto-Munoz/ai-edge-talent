@@ -7,6 +7,7 @@ import { decideCandidates, evaluateCandidates, sendCandidateEmails, type ActionR
 import { TEMPLATE_FOR_STATUS, TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { Badge, Callout, admissionTone } from "@/components/ui";
+import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
 
 const REC_LABEL: Record<string, string> = { SELECTED: "Avanza", RESCUE_REQUIRED: "Repechaje", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No continúa" };
 const OUTCOMES = [
@@ -69,7 +70,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
           <div className="row" style={{ marginTop: 10 }}>
             <small className="muted">Seleccionar:</small>
             <button className="btn ghost small" onClick={() => pick((c) => c.status === "APPLICATION_SUBMITTED" && !c.eval)}>Enviados sin evaluar</button>
-            <button className="btn ghost small" onClick={() => pick((c) => c.eval?.recommendation === "SELECTED" && !c.decision)}>IA propone avanzar</button>
+            <button className="btn ghost small" onClick={() => pick((c) => (c.eval?.pl ? c.eval.pl === "SELECCIONAR" || c.eval.pl === "SELECCIONAR_CON_SEGUIMIENTO" : c.eval?.recommendation === "SELECTED") && !c.decision)}>IA propone avanzar</button>
             <button className="btn ghost small" onClick={() => pick((c) => c.eval?.recommendation === "RESCUE_REQUIRED" && !c.decision)}>IA propone repechaje</button>
             <button className="btn ghost small" onClick={() => pick((c) => ["INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(c.status))}>Sin postulación enviada</button>
             <button className="btn ghost small" onClick={() => setSel([])}>Ninguno</button>
@@ -158,7 +159,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
                     {c.eval ? (
                       <>
                         <strong>{c.eval.total.toFixed(0)}</strong> <span className="badge">{c.eval.level}</span>
-                        <br /><small className="muted">{REC_LABEL[c.eval.recommendation]}</small>
+                        <br /><small className="muted">{c.eval.pl ? PL_LABEL[c.eval.pl as PlRecommendation] : REC_LABEL[c.eval.recommendation]}</small>
                       </>
                     ) : <span className="muted">—</span>}
                   </td>

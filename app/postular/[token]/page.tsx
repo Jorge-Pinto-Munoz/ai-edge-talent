@@ -20,12 +20,14 @@ export default async function PostularTokenPage({ params }: { params: Promise<{ 
   if (!c) notFound();
   const { data: app } = await svc.from("applications").select("answers, questions_snapshot, submitted_at").eq("candidate_id", c.id).maybeSingle();
   const wave = c.waves as unknown as PortalData["wave"];
+  const { data: rv } = c.status === "RESCUE_REQUIRED" ? await svc.from("rescue_videos").select("submitted_at, reviewed_at").eq("candidate_id", c.id).maybeSingle() : { data: null };
   const data: PortalData = {
     token,
     candidate: { fullName: c.full_name, clientName: c.client_name, roleTitle: c.role_title, status: c.status, deliveryOwner: c.delivery_owner },
     wave,
     questions: (app?.questions_snapshot ?? []) as PortalData["questions"],
     answers: (app?.answers ?? {}) as Record<string, string>,
+    rescue: rv ? { at: rv.submitted_at, reviewed: Boolean(rv.reviewed_at) } : null,
   };
   return <CandidatePortal data={data} />;
 }

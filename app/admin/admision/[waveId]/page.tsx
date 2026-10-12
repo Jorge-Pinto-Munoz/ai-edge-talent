@@ -7,6 +7,8 @@ import { CandidateTable } from "@/components/admission/CandidateTable";
 import { CandidateBoard } from "@/components/admission/CandidateBoard";
 import { fmtDeadline } from "@/components/ui";
 import { Icon } from "@/components/site/Icon";
+import { ApplyLink } from "@/components/admin/ApplyLink";
+import { env } from "@/lib/supabase/env";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +34,10 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
             <Link href={`/admin/admision/${waveId}`} aria-current={!board}><Icon name="list" size={16} /> Lista</Link>
             <Link href={`/admin/admision/${waveId}?vista=columnas`} aria-current={board}><Icon name="kanban" size={16} /> Columnas</Link>
           </nav>
-          {viewer.role === "admin" && <Link className="btn secondary small" href={`/admin/admision/${waveId}/importar`}>Importar base</Link>}
+          {viewer.role === "admin" && <a className="btn small" href={`/admin/admision/${waveId}/exportar`} download>Descargar Excel</a>}
         </div>
       </div>
+      <ApplyLink url={`${env.appUrl}/postular/registro?wave=${waveId}`} />
       {board ? (
         <CandidateBoard waveId={waveId} candidates={candidates} isAdmin={viewer.role === "admin"} />
       ) : (

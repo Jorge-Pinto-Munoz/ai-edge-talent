@@ -118,3 +118,10 @@
 .board-card .meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .board-card .score { margin-left: auto; font-weight: 800; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .board-empty { color: var(--muted); font-size: 0.85rem; padding: 16px 8px; text-align: center; border: 1.5px dashed var(--border); border-radius: 14px; }
+
+/* Link de postulación */
+.apply-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--e1); min-width: 0; }
+.apply-link .ico { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--obsidian); color: var(--cyan); }
+.apply-link .txt { min-width: 0; flex: 1; display: grid; }
+.apply-link small { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.apply-link code { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
