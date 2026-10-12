@@ -1,0 +1,64 @@
+# Aplica la base de datos en Supabase sin copiar y pegar en el SQL Editor.
+# Requiere el secreto SUPABASE_DB_URL (Settings → Secrets and variables → Actions):
+# la cadena "Session pooler" de Supabase (botón Connect), con la contraseña de la base.
+# Las migraciones son re-ejecutables: correrlo de nuevo no rompe nada.
+name: Supabase · aplicar base de datos
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_email:
+        description: "Correo del primer admin (opcional)"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths: ["supabase/**"]
+
+concurrency: supabase-migrar
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGSSLMODE: require
+      ADMIN_EMAIL: ${{ inputs.admin_email }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Revisar secreto
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::Falta el secreto SUPABASE_DB_URL (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Instalar psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+
+      - name: Aplicar migraciones y datos iniciales
+        run: |
+          set -e
+          for f in $(ls supabase/migrations/*.sql | sort) supabase/seed.sql; do
+            echo "→ $f"
+            psql "$DB_URL" -q -v ON_ERROR_STOP=1 --single-transaction -f "$f"
+          done
+
+      - name: Primer admin
+        if: ${{ inputs.admin_email != '' }}
+        run: |
+          psql "$DB_URL" -q -v ON_ERROR_STOP=1 -v email="$ADMIN_EMAIL" <<'SQL'
+          insert into public.role_grants (email, role) values (lower(:'email'), 'admin')
+          on conflict (email) do update set role = 'admin';
+          update public.profiles set role = 'admin' where email = lower(:'email');
+          SQL
+
+      - name: Verificar
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          select 'waves (wave-1, wave-2, wave-3)' as chequeo, count(*) = 3 as ok from public.waves where id in ('wave-1','wave-2','wave-3')
+          union all select 'preguntas del formulario (9)', count(*) = 9 from public.application_questions
+          union all select 'buckets de archivos (3)', count(*) = 3 from storage.buckets where id in ('content','submissions','certificates')
+          union all select 'admins', count(*) > 0 from public.role_grants where role = 'admin';
+          SQL
