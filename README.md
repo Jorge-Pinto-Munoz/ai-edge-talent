@@ -200,6 +200,16 @@ Dos roles por Wave (tabla `wave_staff`, por correo). Se asignan en **Accesos** o
 - **Profesional**: en `/mi-journey`, durante AI Lab & Showcase, ve su proyecto y sube su presentación (PPT/PDF, bucket privado `lab`, descarga con URL firmada de 10 minutos).
 - RLS: `tests/db/profesor_hub_rls_test.sql`. Migraciones `20261016000000_roles_profesor_hub.sql`, `20261016000100_profesor_hub.sql` y `20261017000000_profesor_clases.sql` (registro de clase y asistencia; reemplaza el cierre semanal por persona).
 
+## Mi journey (portal del profesional)
+
+`/mi-journey` es un camino tipo Duolingo: cada etapa es una unidad con su color y sus hitos son nodos
+(logrado, lo que toca ahora, disponible, en revisión, bloqueado). El modelo es una función pura
+(`lib/journey/path.ts`, con tests) que decide el estado de cada nodo y **tu siguiente paso**, que va arriba en grande.
+Al tocar un nodo se abre una hoja (abajo en móvil, al costado en escritorio) con lo que corresponde: cápsula y material,
+certificación AI CERT, clases del Lab, subida de la presentación o resultado del Showcase. Barra inferior al alcance del
+pulgar con **Camino · Materiales** (todo lo descargable de las etapas abiertas) **· Entregas** (tareas, certificado y
+presentación con su estado). Atajos por etapa y botón "Ir a mi paso actual" para no perderse en el camino.
+
 ## Auditoría UX/UI automática
 
 `npm run audit:ux` recorre las pantallas de `qa/pages.json` por rol y ancho (320, 390 y 1366 px) y detecta:

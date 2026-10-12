@@ -26,7 +26,7 @@ export function CertificationForm() {
         </div>
         <div className="field">
           <label htmlFor="cd">Fecha</label>
-          <input id="cd" type="text" placeholder="AAAA-MM-DD" value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
+          <input id="cd" type="date" max={new Date().toISOString().slice(0, 10)} value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
         </div>
         <div className="field">
           <label htmlFor="cu">Enlace de la credencial (opcional)</label>

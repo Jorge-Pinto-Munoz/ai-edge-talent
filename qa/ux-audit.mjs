@@ -10,6 +10,7 @@
  *        BASE_URL=https://… node qa/ux-audit.mjs
  * Roles: AUDIT_SESSION_<ROL>=ruta/a/sesion.json (sesión de Supabase: access_token, refresh_token…)
  *        y AUDIT_COOKIE=sb-<ref>-auth-token (nombre de la cookie de sesión de tu proyecto).
+ * Superposiciones intencionales (p. ej. un número dentro de un anillo de progreso): marca el contenedor con data-allow-overlap.
  * Opciones: WIDTHS="[320,390,1366]"  ZOOM=120 (texto agrandado, como el ajuste de iPhone)  DARK=1
  */
 import fs from "node:fs";
@@ -50,7 +51,7 @@ function inspect() {
     const cs = getComputedStyle(n);
     return r.width > 2 && r.height > 2 && cs.visibility !== "hidden" && cs.opacity !== "0" && !n.closest(".sheet:not(.open), .mega:not(.open)") ? r : null;
   };
-  const icons = [...document.querySelectorAll("svg, .stage-icon")].filter((n) => !n.closest("button, .btn, .pill, .badge, select, label")).map((n) => [n, box(n)]).filter(([, r]) => r);
+  const icons = [...document.querySelectorAll("svg, .stage-icon")].filter((n) => !n.closest("button, .btn, .pill, .badge, select, label, [data-allow-overlap]")).map((n) => [n, box(n)]).filter(([, r]) => r);
   const texts = [...document.querySelectorAll("h1,h2,h3,h4,p,strong,small,li")].map((n) => [n, box(n)]).filter(([, r]) => r);
   const overlaps = [];
   for (const [i, ri] of icons)
