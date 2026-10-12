@@ -125,3 +125,60 @@
 .apply-link .txt { min-width: 0; flex: 1; display: grid; }
 .apply-link small { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
 .apply-link code { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ───── Profesor: cierre semanal ───── */
+.week-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin-bottom: 8px; }
+.week-nav strong { text-align: center; }
+.teacher-list { display: grid; gap: 10px; }
+.teacher-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 10px 16px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--bg); border: 1px solid var(--border); border-left: 4px solid transparent; transition: border-color 180ms ease; }
+.teacher-row.flag-concern { border-left-color: var(--st-bad); }
+.teacher-row.flag-highlight { border-left-color: var(--cyan); }
+.teacher-row .who { display: grid; gap: 2px; min-width: 0; }
+.teacher-row .ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: flex-end; }
+.teacher-row .note { grid-column: 1 / -1; }
+.teacher-row select { width: auto; }
+.mini { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin: 0; }
+.mini input[type="number"] { width: 76px; }
+.mini.check input { width: auto; margin: 0; }
+.seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 999px; background: var(--surface-2); }
+.seg-btn { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 0.85rem; font-weight: 700; color: var(--muted); cursor: pointer; transition: background 160ms ease, color 160ms ease; }
+.seg-btn:disabled { cursor: default; }
+.seg-btn.on { background: var(--surface); color: var(--text); box-shadow: var(--e1); }
+.seg-btn.on.ok { background: var(--ok-soft); }
+.seg-btn.on.warn { background: var(--warn-soft); color: var(--warn-text); }
+.seg-btn.on.bad { background: var(--bad-soft); color: var(--bad-text); }
+.quote-box { padding: 14px 16px; border-radius: 14px; background: var(--surface-2); display: grid; gap: 4px; }
+.pending.follow .ico { background: var(--bad-soft); color: var(--bad-text); }
+.pending.follow.done { opacity: 1; }
+.pending.follow.done .ico { background: var(--brand-soft); color: var(--brand); }
+@media (max-width: 760px) {
+  .teacher-row { grid-template-columns: 1fr; }
+  .teacher-row .ctrl { justify-content: flex-start; }
+  .week-nav { grid-template-columns: 1fr 1fr; }
+  .week-nav strong { grid-column: 1 / -1; grid-row: 1; }
+}
+
+/* ───── Equipo de la Wave ───── */
+.staff-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.staff-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+
+/* ───── AI Lab & Showcase ───── */
+.lab-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x proximity; }
+.lab-card { display: grid; gap: 8px; }
+.lab-edit summary { cursor: pointer; font-weight: 700; color: var(--brand); font-size: 0.9rem; }
+.lab-edit[open] summary { margin-bottom: 10px; }
+.member-pick { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.member-pick legend { font-weight: 700; font-size: 0.9rem; padding: 0 4px; }
+.chip-check { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); font-size: 0.88rem; font-weight: 600; cursor: pointer; margin: 0; }
+.chip-check input { width: auto; margin: 0; }
+.chip-check:has(input:checked) { background: var(--brand-soft); color: var(--brand); }
+.chip-check.off { opacity: 0.45; cursor: not-allowed; }
+.showcase-list { display: grid; gap: 12px; }
+.showcase-item { padding: 16px; border-radius: 16px; background: var(--bg); border: 1px solid var(--border); display: grid; gap: 12px; }
+.showcase-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .showcase-grid { grid-template-columns: 1fr; } }
+.adm .label { display: block; font-weight: 600; margin-bottom: 6px; }
+.adm-grid.even { grid-template-columns: 1fr 1fr; }
+@media (max-width: 1100px) { .adm-grid.even { grid-template-columns: 1fr; } }
+.mini input[type="number"] { width: 84px; padding: 7px 9px; }
+.pending.follow .txt small { display: block; }

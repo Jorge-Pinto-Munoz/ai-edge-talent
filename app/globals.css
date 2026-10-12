@@ -223,7 +223,7 @@ main { padding: 32px 0 72px; }
 
 /* ───── Formularios ───── */
 label { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
-input[type="text"], input[type="email"], textarea, select {
+input[type="text"], input[type="email"], input[type="date"], input[type="number"], input[type="url"], textarea, select {
   width: 100%; padding: 11px 13px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: inherit; transition: border-color 160ms ease;
 }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(61, 201, 212, 0.25); }
@@ -307,3 +307,11 @@ details.faq p { margin-top: 8px; color: var(--muted); }
 .doc-head img { height: 18px; }
 .doc-head .label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .doc-head img { content: url("/brand/kibernum-blanco.svg"); } }
+
+/* ───── Archivos del AI Lab (Hub y portal del profesional) ───── */
+.lab-files ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lab-files li { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); min-width: 0; }
+.file-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--text); text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.file-link:hover { color: var(--brand); }
+.icon-btn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { background: var(--bad-soft); color: var(--bad-text); }

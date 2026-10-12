@@ -7,6 +7,8 @@ import { LAYERS, certificationAttemptNote, layerIndex, layerName } from "@/lib/j
 import { VideoPlayer } from "@/components/journey/SignedLink";
 import { CertificationForm } from "@/components/journey/CertificationForm";
 import { Badge, Callout, fmtDate } from "@/components/ui";
+import { LabFiles } from "@/components/hub/LabFiles";
+import { LAB_CLASSES, LAB_STATUS, labDecisionLabel } from "@/lib/hub/rules";
 
 export const metadata = { title: "Mi journey · AI Edge Talent" };
 export const dynamic = "force-dynamic";
@@ -128,6 +130,40 @@ export default async function MiJourney() {
             </ul>
           )}
           {!j.certifications.some((c) => c.status === "PENDING_REVIEW") && !j.certifications.some((c) => c.result === "PASSED" && c.status === "VERIFIED") && <CertificationForm />}
+        </section>
+      )}
+
+      {current === "AI_LAB_SHOWCASE" && (
+        <section className="card">
+          <div className="eyebrow">AI Lab & Showcase · con el Hub AI</div>
+          <h2 style={{ marginTop: 0 }}>{j.lab ? j.lab.title : "Tu desafío del Lab"}</h2>
+          <div className="grid grid-2">
+            {LAB_CLASSES.map((c) => (
+              <div key={c.n}>
+                <strong>{c.title}</strong>
+                <p style={{ margin: "4px 0" }}>{c.brings}</p>
+                <small className="muted">{c.does}</small>
+              </div>
+            ))}
+          </div>
+          {j.lab ? (
+            <div className="stack" style={{ gap: 10, marginTop: 16 }}>
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                <Badge tone="brand">{j.lab.mode === "GROUP" ? `Grupal · ${j.lab.teammates} personas` : "Individual"}</Badge>
+                <Badge>{LAB_STATUS.find((s) => s.id === j.lab!.status)?.label}</Badge>
+                {j.lab.showcase_date && <Badge>Showcase: {j.lab.showcase_date}</Badge>}
+                {j.lab.showcase_decision && <Badge tone="ok">{labDecisionLabel(j.lab.showcase_decision)}</Badge>}
+              </div>
+              {j.lab.problem && <p style={{ margin: 0 }}><strong>Desafío:</strong> {j.lab.problem}</p>}
+              {j.lab.showcase_notes && <p style={{ margin: 0 }}><strong>Feedback del Showcase:</strong> {j.lab.showcase_notes}</p>}
+              <div>
+                <div className="eyebrow">Tu presentación para el Showcase</div>
+                <LabFiles projectId={j.lab.id} files={j.lab.lab_project_files} canUpload myId={viewer.id} />
+              </div>
+            </div>
+          ) : (
+            <p className="muted" style={{ marginTop: 16, marginBottom: 0 }}>El Hub AI registrará tu proyecto después de la Clase 1. Ahí podrás subir tu presentación (PPT o PDF) para el Showcase.</p>
+          )}
         </section>
       )}
 

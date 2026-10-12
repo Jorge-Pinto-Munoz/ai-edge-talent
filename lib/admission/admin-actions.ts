@@ -148,7 +148,7 @@ export async function sendCandidateEmails(waveId: string, candidateIds: string[]
 }
 
 /* ───────── Accesos ───────── */
-export async function grantRole(email: string, role: "admin" | "delivery" | "client" | "kiber", clientName: string): Promise<ActionResult> {
+export async function grantRole(email: string, role: "admin" | "delivery" | "client" | "kiber" | "profesor" | "hub", clientName: string, waveId?: string): Promise<ActionResult> {
   try {
     const viewer = await requireRole(["admin"]);
     const db = await supabaseUser();
@@ -156,8 +156,52 @@ export async function grantRole(email: string, role: "admin" | "delivery" | "cli
     const { error } = await db.from("role_grants").upsert({ email: e, role, client_name: clientName || null, granted_by: viewer.id });
     if (error) throw error;
     await db.from("profiles").update({ role, client_name: clientName || null }).eq("email", e);
+    if ((role === "profesor" || role === "hub") && waveId) {
+      const { error: e2 } = await db.from("wave_staff").upsert({ wave_id: waveId, email: e, role, added_by: viewer.id });
+      if (e2) throw e2;
+    }
     revalidatePath("/admin/accesos");
-    return { ok: true, message: `${e} tendrá rol ${role}.` };
+    return { ok: true, message: `${e} tendrá rol ${ROLE_NAME[role]}${waveId && (role === "profesor" || role === "hub") ? ` en ${waveId}` : ""}.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+const ROLE_NAME: Record<string, string> = { admin: "Admin", delivery: "Delivery", client: "Cliente", kiber: "Kiber", mentor: "Mentor", profesor: "Profesor", hub: "Líder Hub AI" };
+
+/* ───────── Equipo por Wave: profesor/a y líder del Hub AI ───────── */
+export async function addWaveStaff(waveId: string, email: string, role: "profesor" | "hub"): Promise<ActionResult> {
+  try {
+    const viewer = await requireRole(["admin"]);
+    const e = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error("Correo no válido.");
+    const db = await supabaseUser();
+    const { data: profile } = await db.from("profiles").select("role").eq("email", e).maybeSingle();
+    // Un rol por persona: no se pisa el de alguien del equipo interno o un mentor.
+    if (profile && !["kiber", role].includes(profile.role)) {
+      if (profile.role !== "admin") throw new Error(`${e} ya tiene rol ${ROLE_NAME[profile.role] ?? profile.role}. Cámbialo primero en Accesos.`);
+    } else {
+      const { error } = await db.from("role_grants").upsert({ email: e, role, granted_by: viewer.id });
+      if (error) throw error;
+      if (profile) await db.from("profiles").update({ role }).eq("email", e);
+    }
+    const { error } = await db.from("wave_staff").upsert({ wave_id: waveId, email: e, role, added_by: viewer.id });
+    if (error) throw error;
+    revalidatePath("/admin", "layout");
+    return { ok: true, message: `${e} quedó como ${ROLE_NAME[role]} de la Wave. Entra con su correo en /login.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function removeWaveStaff(waveId: string, email: string, role: "profesor" | "hub"): Promise<ActionResult> {
+  try {
+    await requireRole(["admin"]);
+    const db = await supabaseUser();
+    const { error } = await db.from("wave_staff").delete().eq("wave_id", waveId).eq("email", email).eq("role", role);
+    if (error) throw error;
+    revalidatePath("/admin", "layout");
+    return { ok: true, message: "Quitado/a de la Wave." };
   } catch (e) {
     return fail(e);
   }

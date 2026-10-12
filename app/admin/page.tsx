@@ -16,7 +16,7 @@ import { env } from "@/lib/supabase/env";
 export const metadata = { title: "Resumen · Portal AET" };
 export const dynamic = "force-dynamic";
 
-const PENDING_ICON: Record<string, IconName> = { evaluate: "spark", decide: "users", conditions: "check", submissions: "book", certs: "badge", followups: "clock" };
+const PENDING_ICON: Record<string, IconName> = { evaluate: "spark", decide: "users", conditions: "check", submissions: "book", certs: "badge", followups: "clock", concerns: "alert", showcase: "presentation" };
 
 export default async function AdminResumen({ searchParams }: { searchParams: Promise<{ wave?: string }> }) {
   if (!isSupabaseConfigured()) redirect("/admin/waves");

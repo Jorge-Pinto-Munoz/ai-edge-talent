@@ -4,10 +4,11 @@ import { supabaseUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export type StaffRole = "admin" | "delivery";
+export type AppRole = "admin" | "delivery" | "kiber" | "client" | "mentor" | "profesor" | "hub";
 export interface Viewer {
   id: string;
   email: string;
-  role: "admin" | "delivery" | "kiber" | "client" | "mentor";
+  role: AppRole;
   fullName: string | null;
 }
 
@@ -36,4 +37,20 @@ export async function requireRole(roles: StaffRole[]): Promise<Viewer> {
   const v = await getViewer();
   if (!v || !roles.includes(v.role as StaffRole)) throw new Error("No tienes permiso para esta acción.");
   return v;
+}
+
+/** Páginas compartidas entre el equipo interno y un rol de Wave (profesor u Hub). */
+export async function requireAnyRolePage(next: string, roles: AppRole[]): Promise<Viewer> {
+  const v = await getViewer();
+  if (!v) redirect(`/login?next=${encodeURIComponent(next)}`);
+  if (!roles.includes(v.role)) redirect("/sin-acceso");
+  return v;
+}
+
+/** Waves en las que un profesor o líder del Hub trabaja (por correo, tabla wave_staff). */
+export async function myStaffWaves(v: Viewer): Promise<string[]> {
+  if (v.role !== "profesor" && v.role !== "hub") return [];
+  const db = await supabaseUser();
+  const { data } = await db.from("wave_staff").select("wave_id").eq("email", v.email.toLowerCase()).eq("role", v.role);
+  return (data ?? []).map((r) => r.wave_id);
 }

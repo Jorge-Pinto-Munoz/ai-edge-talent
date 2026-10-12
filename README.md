@@ -187,6 +187,19 @@ Una **ficha de talento por persona** (por correo) que la acompaña en todas sus 
 - **Descargas (solo admin):** Excel de toda la Wave en Admisión y de cada candidato en su ficha: Ranking, Justificación por candidato (análisis ejecutivo), Respuestas y Metodología.
 - **Postulación por link:** el link de la Wave aparece en Admisión y en el Resumen para copiarlo. Quienes no quedan aparecen en Talento con el filtro "No quedaron · invitar a la próxima".
 
+## Profesor y Líder Hub AI
+
+Dos roles por Wave (tabla `wave_staff`, por correo). Se asignan en **Accesos** o desde cada sección (solo admin). Al ingresar, cada rol cae en el mismo portal lateral, con solo sus secciones y sus Waves.
+
+- **Profesor · Cierre semanal** (`/admin/profesor/<wave>`): por participante deja estado (al día / en riesgo / atrasado), avance %, asistencia, marca (preocupante / destacado) y nota; más el feedback general de la clase. *Cerrar semana* exige feedback general y nota en cada caso marcado, y bloquea la edición (se puede reabrir). Delivery y admin ven la misma sección en modo lectura, con la lista **Para seguimiento de Delivery** (casos marcados y atrasos de las últimas 4 semanas cerradas). Los casos preocupantes aparecen también en el Resumen.
+- **Líder Hub AI · AI Lab & Showcase** (`/admin/lab/<wave>`):
+  - *Pase al Lab*: solo con AI CERT aprobada y verificada; las excepciones siguen siendo del Product Lead en Journey.
+  - *Clases*: Clase 1 (llegan con la idea del desafío) y Clase 2 (llegan con lo construido), con asistencia y nota por proyecto.
+  - *Proyectos*: individuales o grupales; una persona, un proyecto; tablero Idea → Construyendo → Listo → Presentado.
+  - *Showcase*: presentaciones descargables, fecha, resultado (continúa, piloto, ajustar, no continúa) y feedback.
+- **Profesional**: en `/mi-journey`, durante AI Lab & Showcase, ve su proyecto y sube su presentación (PPT/PDF, bucket privado `lab`, descarga con URL firmada de 10 minutos).
+- RLS: `tests/db/profesor_hub_rls_test.sql`. Migraciones `20261016000000_roles_profesor_hub.sql` y `20261016000100_profesor_hub.sql`.
+
 ## Diagnóstico en producción
 - `GET /api/diagnostico` muestra la configuración que tiene el hosting sin revelar claves: URL de Supabase, prefijo y largo de cada clave, y si Supabase las acepta.
 - **GitHub → Actions → Diagnóstico** revisa el sitio publicado, prueba Supabase Auth (opcional: envía un enlace real a un correo) y lista accesos y últimos eventos de ingreso.

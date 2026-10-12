@@ -30,6 +30,20 @@ export interface StageGuide {
   video_path: string | null;
 }
 
+export interface LabProjectView {
+  id: string;
+  title: string;
+  problem: string | null;
+  client_name: string | null;
+  mode: "INDIVIDUAL" | "GROUP";
+  status: "IDEA" | "BUILDING" | "READY" | "PRESENTED";
+  showcase_date: string | null;
+  showcase_decision: string | null;
+  showcase_notes: string | null;
+  teammates: number;
+  lab_project_files: { id: string; name: string; size_bytes: number | null; kind: string; created_at: string; uploaded_by: string | null }[];
+}
+
 /** Todo lo que el Kiber necesita para su portal (RLS limita a lo suyo y a lo publicado). */
 export async function myJourney(userId: string) {
   const db = await supabaseUser();
@@ -51,7 +65,22 @@ export async function myJourney(userId: string) {
     db.from("certifications").select("*").eq("candidate_id", cand.id).order("created_at"),
     db.from("journey_events").select("from_layer, to_layer, at").eq("candidate_id", cand.id).order("at"),
   ]);
+  // Proyecto del AI Lab (RLS: el integrante ve su proyecto, sus compañeros y sus archivos).
+  let lab: LabProjectView | null = null;
+  if (cand.journey_layer === "AI_LAB_SHOWCASE" || cand.journey_layer === "CLOSURE") {
+    const { data: m } = await db.from("lab_project_members").select("project_id").eq("candidate_id", cand.id).maybeSingle();
+    if (m) {
+      const { data: p } = await db
+        .from("lab_projects")
+        .select("id, title, problem, client_name, mode, status, showcase_date, showcase_decision, showcase_notes, lab_project_files(id, name, size_bytes, kind, created_at, uploaded_by)")
+        .eq("id", m.project_id)
+        .maybeSingle();
+      const { data: mates } = await db.from("lab_project_members").select("candidate_id").eq("project_id", m.project_id);
+      lab = p ? ({ ...p, teammates: (mates ?? []).length } as unknown as LabProjectView) : null;
+    }
+  }
   return {
+    lab,
     candidate: cand as typeof cand & { journey_layer: Layer | null },
     wave: wave.data,
     guides: (guides.data ?? []) as StageGuide[],
