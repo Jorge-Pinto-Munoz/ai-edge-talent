@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./site.css";
 import { StoreProvider } from "@/lib/store/StoreProvider";
 import { Header } from "@/components/Header";
 

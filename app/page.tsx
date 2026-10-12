@@ -1,91 +1,176 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useStore } from "@/lib/store/StoreProvider";
-import { setRole } from "@/lib/store/state";
-import type { Role } from "@/lib/domain/types";
-import { LifecycleRail } from "@/components/journey";
-import { BrandHero } from "@/components/ui";
+import { BENEFITS, HOME_FAQ, PUBLIC_STAGES, SITE_INDEX, WAVE3_DEADLINE, WAVE3_TIMELINE } from "@/lib/data/site";
+import { Icon } from "@/components/site/Icon";
+import { Reveal } from "@/components/site/Reveal";
+import { Carousel } from "@/components/site/Carousel";
+import { Countdown } from "@/components/site/Countdown";
+import { StageCard } from "@/components/site/StageCard";
 
-const ENTRIES: { role: Role; title: string; body: string; href: string }[] = [
-  { role: "KIBER", title: "Soy profesional / Kiber", body: "Postula, revisa tu estado, acepta tu compromiso y sigue tu journey.", href: "/kiber" },
-  { role: "CLIENT", title: "Soy cliente", body: "Conoce tu rol en cada fase, nomina profesionales y revisa su avance.", href: "/client/journey" },
-  { role: "DELIVERY", title: "Soy Delivery", body: "Opera Waves, revisa nominaciones y consulta qué hacer en cada etapa.", href: "/delivery/waves" },
-  { role: "PRODUCT_LEAD", title: "Soy Product Lead", body: "Prepara Waves, verifica readiness y declara WAVE READY.", href: "/admin/waves" },
-];
-
-const PRINCIPLE: [string, string, string][] = [
-  ["Qué es AET", "/programa", "Portal del programa"],
-  ["Dónde estamos", "/delivery/waves", "Wave Portfolio · /kiber · /client/journey"],
-  ["Qué ocurrió", "/delivery/waves/wave-3", "Historial de eventos por participante"],
-  ["Qué toca ahora", "/kiber", "Siguiente paso por rol"],
-  ["Quién es responsable", "/responsabilidades", "Matriz RACI"],
-  ["Qué evidencia necesitamos", "/delivery/playbook", "Evidencia por etapa"],
-  ["Qué regla aplica", "/kiber/conditions", "Condiciones versionadas"],
-  ["Qué puede pasar después", "/programa", "¿Qué pasa si no apruebo?"],
-  ["Dónde pedir ayuda", "/ayuda", "FAQ por rol"],
-];
-
+/**
+ * Home: de menos a más. Portada → índice de todo lo que hay → etapas (deslizables) →
+ * por qué AET → Wave 3 → preguntas → cierre. Cada bloque resume y lleva a su página de detalle.
+ */
 export default function Home() {
-  const { run } = useStore();
-  const router = useRouter();
   return (
-    <div className="stack">
-      <BrandHero image="equipo" eyebrow="Kibernum · Programa de habilitación" title={<>AI EDGE<br />TALENT</>} display lead="IA integrada al trabajo real. El ciclo completo del programa en un solo lugar: desde la preparación de la Wave hasta el Showcase y el cierre.">
-        <div className="row">
-          <Link className="btn" href="/wave-3/postular">
-            Postular a Wave 3
-          </Link>
-          <Link className="btn secondary" href="/programa">
-            Conocer cómo funciona AI Edge Talent
-          </Link>
+    <div className="site-main">
+      {/* Portada */}
+      <section className="hero-x bleed">
+        <div className="photo" role="img" aria-label="Profesionales TI trabajando en equipo (imagen ilustrativa)" style={{ backgroundImage: "url(/images/equipo.webp)" }} />
+        <span className="glow c" aria-hidden="true" />
+        <span className="glow m" aria-hidden="true" />
+        <div className="hero-x-body">
+          <Reveal>
+            <Link href="/wave-3/postular" className="hero-chip">
+              <span className="dot">Wave 3</span>
+              Postulación abierta · <Countdown to={WAVE3_DEADLINE} compact />
+            </Link>
+          </Reveal>
+          <Reveal delay={80}>
+            <div className="eyebrow">Kibernum · Programa de habilitación</div>
+            <h1>
+              AI Edge <span className="grad">Talent</span>
+            </h1>
+          </Reveal>
+          <Reveal delay={160}>
+            <p className="lead">IA integrada a tu trabajo real. Un recorrido de cinco etapas para desarrollar criterio, certificarte y llevar lo aprendido a un desafío concreto con tu cliente.</p>
+            <div className="actions">
+              <Link className="pill accent lg" href="/wave-3/postular">Postular a Wave 3 <Icon name="arrowRight" size={18} /></Link>
+              <Link className="pill ghost lg" href="/programa">Conocer el programa</Link>
+            </div>
+          </Reveal>
         </div>
-      </BrandHero>
+      </section>
 
-      <h2>Entrar según tu rol</h2>
-      <div className="grid grid-2">
-        {ENTRIES.map((e) => (
-          <button
-            key={e.role}
-            className="card signal"
-            style={{ textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}
-            onClick={() => {
-              run((s) => setRole(s, e.role));
-              router.push(e.href);
-            }}
-          >
-            <h3>{e.title}</h3>
-            <p className="muted" style={{ margin: 0 }}>{e.body}</p>
-          </button>
-        ))}
-      </div>
-
-      <h2>Ciclo completo AET</h2>
-      <p className="muted">Las etapas de preparación, comerciales y de admisión se distinguen del journey pedagógico oficial.</p>
-      <LifecycleRail />
-
-      <h2>Sin preguntar por fuera del sistema</h2>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Pregunta</th>
-              <th>Dónde se responde</th>
-            </tr>
-          </thead>
-          <tbody>
-            {PRINCIPLE.map(([q, href, where]) => (
-              <tr key={q}>
-                <td>{q}</td>
-                <td>
-                  <Link href={href}>{where}</Link>
-                </td>
-              </tr>
+      {/* Índice: todo lo que encuentras aquí */}
+      <section className="sec tight">
+        <div className="sec-inner">
+          <Reveal className="sec-head">
+            <div>
+              <div className="eyebrow">Todo en un lugar</div>
+              <h2>¿Qué estás buscando?</h2>
+            </div>
+          </Reveal>
+          <div className="idx">
+            {SITE_INDEX.map((t, i) => (
+              <Reveal key={t.href} delay={i * 60} className={`${t.span === 2 ? "span-2" : ""} ${t.mobileFull ? "m-full" : ""}`}>
+                <Link href={t.href} className={`idx-tile ${t.tone ?? ""}`} style={{ height: "100%" }}>
+                  {t.image && <span className="tile-photo" style={{ backgroundImage: `url(/images/${t.image}.webp)` }} aria-hidden="true" />}
+                  <span className="ico"><Icon name={t.icon} /></span>
+                  <span className="go"><Icon name="arrowRight" size={18} /></span>
+                  <h3>{t.title}</h3>
+                  <p>{t.body}</p>
+                </Link>
+              </Reveal>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Etapas: deslizables */}
+      <section className="sec dark bleed" id="etapas">
+        <div className="sec-inner">
+          <Reveal className="sec-head">
+            <div>
+              <div className="eyebrow">El recorrido</div>
+              <h2>Cinco etapas. Un caso real al final.</h2>
+              <p>Desliza para ver cada etapa. Toca una para conocer qué pasa, qué haces tú y cómo avanzas.</p>
+            </div>
+            <Link href="/programa" className="more-link">Ver el programa <Icon name="arrowRight" size={16} /></Link>
+          </Reveal>
+        </div>
+        <Reveal delay={120}>
+          <Carousel label="Etapas del programa" dark>
+            {PUBLIC_STAGES.map((s) => (
+              <StageCard key={s.slug} stage={s} />
+            ))}
+          </Carousel>
+        </Reveal>
+      </section>
+
+      {/* Por qué AET */}
+      <section className="sec">
+        <div className="sec-inner">
+          <Reveal className="sec-head">
+            <div>
+              <div className="eyebrow">Por qué AET</div>
+              <h2>Aprendes haciendo, con acompañamiento y un resultado que se ve.</h2>
+            </div>
+          </Reveal>
+          <div className="bento">
+            {BENEFITS.map((b, i) => (
+              <Reveal key={b.title} delay={i * 70} className={`bento-tile ${b.size ?? ""}`}>
+                <span className="orb" aria-hidden="true" />
+                <span className="ico"><Icon name={b.icon} size={28} /></span>
+                <h3>{b.title}</h3>
+                <p>{b.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Wave 3 */}
+      <section className="sec dark bleed">
+        <div className="sec-inner w3-grid">
+          <Reveal>
+            <div className="eyebrow">Wave 3 · Postulación abierta</div>
+            <h2 style={{ fontSize: "var(--fs-h2)", color: "#fff", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Tienes hasta el viernes 16 de octubre a las 12:00.</h2>
+            <p className="muted" style={{ fontSize: "var(--fs-lead)", marginBottom: 28 }}>Postular no significa quedar seleccionado/a. Si te seleccionan, antes de comenzar aceptas formalmente tu compromiso.</p>
+            <Countdown to={WAVE3_DEADLINE} />
+            <div className="actions" style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link className="pill accent lg" href="/wave-3/postular">Postular ahora <Icon name="arrowRight" size={18} /></Link>
+              <Link className="pill ghost lg" href="/programa/assessment">Cómo se evalúa</Link>
+            </div>
+          </Reveal>
+          <Reveal delay={120}>
+            <ol className="timeline vertical">
+              {WAVE3_TIMELINE.map((t) => (
+                <li key={t.title}>
+                  <div className="when">{t.when}</div>
+                  <h3>{t.title}</h3>
+                  <p>{t.body}</p>
+                </li>
+              ))}
+            </ol>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Preguntas */}
+      <section className="sec">
+        <div className="sec-inner faq-grid">
+          <Reveal>
+            <div className="eyebrow">Preguntas frecuentes</div>
+            <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Lo que más nos preguntan.</h2>
+            <Link href="/ayuda" className="more-link">Ver todas las preguntas <Icon name="arrowRight" size={16} /></Link>
+          </Reveal>
+          <Reveal delay={100} className="faq-x">
+            {HOME_FAQ.map((f) => (
+              <details key={f.q}>
+                <summary>
+                  {f.q}
+                  <span className="plus"><Icon name="plus" size={18} /></span>
+                </summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Cierre */}
+      <section className="sec-inner" style={{ paddingBottom: "var(--sp-section)" }}>
+        <Reveal className="cta-band">
+          <div>
+            <h2>¿Listo/a para llevar la IA a tu trabajo real?</h2>
+            <p>Postula a Wave 3 o recorre el programa con calma antes de decidir.</p>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Link className="pill accent lg" href="/wave-3/postular">Postular a Wave 3</Link>
+            <Link className="pill ghost lg" href="/programa">Ver el programa</Link>
+          </div>
+        </Reveal>
+      </section>
     </div>
   );
 }

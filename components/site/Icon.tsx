@@ -1,0 +1,48 @@
+/** Set de íconos de línea (24×24, trazo 1.75) para el sitio público. Sin dependencias externas. */
+const PATHS = {
+  spark: "M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5",
+  brain: "M9.5 4a2.5 2.5 0 0 0-2.5 2.5v.2A3 3 0 0 0 5 9.5a3 3 0 0 0 .6 1.8A3 3 0 0 0 5 13a3 3 0 0 0 2 2.8v.7A2.5 2.5 0 0 0 9.5 19H12V4H9.5zM14.5 4A2.5 2.5 0 0 1 17 6.5v.2a3 3 0 0 1 2 2.8 3 3 0 0 1-.6 1.8A3 3 0 0 1 19 13a3 3 0 0 1-2 2.8v.7a2.5 2.5 0 0 1-2.5 2.5H12",
+  badge: "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14l-1.5 7 5-3 5 3-1.5-7",
+  flask: "M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3M7.5 15h9",
+  flag: "M5 21V4M5 4h11l-2 4 2 4H5",
+  compass: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5 5-2z",
+  route: "M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6.5a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7H16",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0",
+  building: "M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M3 21h18M8 7h4M8 11h4M8 15h4",
+  help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01",
+  target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01",
+  chat: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
+  presentation: "M3 4h18M5 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4M12 15v3M8 21l4-3 4 3",
+  star: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5z",
+  arrowRight: "M5 12h14M13 6l6 6-6 6",
+  arrowLeft: "M19 12H5M11 6l-6 6 6 6",
+  chevronDown: "M6 9l6 6 6-6",
+  menu: "M4 7h16M4 12h16M4 17h16",
+  close: "M6 6l12 12M18 6L6 18",
+  plus: "M12 5v14M5 12h14",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  check: "M5 12.5l4.5 4.5L19 7.5",
+  play: "M8 5.5v13l10-6.5-10-6.5z",
+} as const;
+
+export type IconName = keyof typeof PATHS;
+
+export function Icon({ name, size = 24, className }: { name: IconName; size?: number; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={PATHS[name]} />
+    </svg>
+  );
+}
