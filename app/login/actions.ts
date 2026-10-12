@@ -35,5 +35,5 @@ function loginErrorMessage(code: string | undefined, status: number | undefined)
   if (code === "email_provider_disabled" || code === "otp_disabled" || code === "signup_disabled")
     return "El ingreso por correo está desactivado en la configuración. Avísale al equipo AET.";
   if (status === 401 || status === 403) return "La plataforma no está bien conectada a la base de datos (clave). Avísale al equipo AET.";
-  return `No pudimos enviar el enlace. Intenta nuevamente en unos minutos.${code ? ` (código: ${code})` : ""}`;
+  return `No pudimos enviar el enlace. Intenta nuevamente en unos minutos. (código: ${code ?? "sin código"} · ${status ?? "sin respuesta"})`;
 }
