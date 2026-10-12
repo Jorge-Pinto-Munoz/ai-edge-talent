@@ -1,7 +1,4 @@
 \set ON_ERROR_STOP 1
--- Supabase da estos privilegios por defecto; RLS filtra.
-grant select, insert, update, delete on all tables in schema public to authenticated;
-grant usage on all sequences in schema public to authenticated;
 insert into role_grants (email, role) values ('admin@kibernum.cl', 'admin');
 insert into role_grants (email, role, client_name) values ('sponsor@alfa.cl', 'client', 'Cliente Alfa');
 insert into auth.users (id, email) values

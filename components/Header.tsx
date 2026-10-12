@@ -48,7 +48,11 @@ export function Header() {
   const { state, run, reset } = useStore();
   const path = usePathname();
   const role = state.session.role;
-  const links = [{ href: "/programa", label: "Programa" }, ...NAV[role]];
+  // Con base de datos real, el menú no depende del selector demo: cada persona entra a su espacio según su rol.
+  const live = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const links = live
+    ? [{ href: "/programa", label: "Programa" }, { href: "/wave-3/postular", label: "Postular" }, { href: "/ayuda", label: "Ayuda" }]
+    : [{ href: "/programa", label: "Programa" }, ...NAV[role]];
 
   return (
     <header className="header">
@@ -64,12 +68,12 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
-          <Link href="/admin/admision" className="btn small" style={{ padding: "6px 12px" }}>
-            Ingresar
+        {live && (
+          <Link href="/inicio" className="btn small" style={{ padding: "6px 12px" }}>
+            Mi espacio
           </Link>
         )}
-        <div className="role-switch">
+        {!live && <div className="role-switch">
           <label htmlFor="role" style={{ margin: 0, fontWeight: 400 }}>
             Vista demo:
           </label>
@@ -83,7 +87,7 @@ export function Header() {
           <button className="btn ghost small" onClick={() => confirm("¿Restablecer datos demo?") && reset()} title="Restablecer datos demo">
             ↺
           </button>
-        </div>
+        </div>}
       </div>
     </header>
   );

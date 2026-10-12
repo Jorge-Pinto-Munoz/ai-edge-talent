@@ -23,7 +23,10 @@ export default async function WaveAdmission({ params }: { params: Promise<{ wave
           <h1 style={{ margin: 0 }}>Candidatos</h1>
           {wave.application_deadline && <p className="muted" style={{ margin: "4px 0 0" }}>Deadline: {fmtDeadline(wave.application_deadline)}</p>}
         </div>
-        <Link className="btn secondary" href={`/admin/admision/${waveId}/importar`}>Importar base</Link>
+        <div className="row">
+          <Link className="btn secondary" href={`/admin/journey/${waveId}`}>Journey</Link>
+          <Link className="btn secondary" href={`/admin/admision/${waveId}/importar`}>Importar base</Link>
+        </div>
       </div>
       <CandidateTable waveId={waveId} candidates={candidates} isAdmin={viewer.role === "admin"} />
     </div>

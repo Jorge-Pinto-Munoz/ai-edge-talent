@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       ) : (
         <>
           {error && <Callout tone="bad" title="El enlace expiró o no es válido">Solicita uno nuevo.</Callout>}
-          <LoginForm next={next ?? "/admin/admision"} />
+          <LoginForm next={next ?? "/inicio"} />
         </>
       )}
     </div>

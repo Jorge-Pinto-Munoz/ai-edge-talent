@@ -92,14 +92,51 @@ Con Supabase configurado, la app deja de ser solo demo para la admisión:
 - **Video de repechaje:** hoy el candidato lo envía a su Delivery. La carga del video en la plataforma llega con el almacenamiento de la Fase 2.
 - **Borrado de candidatos:** el historial es append-only, así que borrar un candidato también falla. Si se necesita un procedimiento de eliminación de datos personales, hay que definirlo explícitamente.
 
+
+## Fase 2 · Journey (Supabase)
+
+Capas del framework AET: **Assessment → AI Mindset → Role Enablement → AI Lab & Showcase → Cierre**.
+
+| Ruta | Para | Qué hace |
+|---|---|---|
+| `/inicio` | Todos | Tras el login, cada rol llega a su espacio |
+| `/mi-journey` | Kiber | Dónde estoy, qué pasó, qué viene; video de cada etapa; cápsulas de la etapa actual; registro de la certificación AI CERT |
+| `/mi-journey/capsula/[id]` | Kiber | Video, material descargable, “Vi esta cápsula” y entrega de la tarea (texto + archivos) con intentos y feedback |
+| `/admin/contenido/[waveId]` | Admin | Video explicativo por etapa (enlace o archivo) y micro-cápsulas: video, materiales, tarea, obligatoriedad, máximo de intentos, plazo, publicación |
+| `/admin/journey/[waveId]` | Admin / Delivery | Participantes por etapa y avance con gates · revisión de entregas · verificación de certificaciones · grupos y mentores · feedback semanal por semana |
+| `/mentor` | Mentor | Feedback semanal de cada persona de sus grupos (asistencia, avance, riesgo, comentario) y del curso/acompañamiento |
+| `/cliente` | Cliente | Vista general por Wave: cuántos de sus profesionales hay en cada etapa y en qué va cada uno (sin puntajes) |
+
+**Reglas que aplica el sistema**
+- **Gates:**
+  - para AI Mindset se requiere inscripción;
+  - para Role Enablement, todas las tareas **obligatorias** de Mindset aprobadas;
+  - para AI Lab, la certificación AI CERT **aprobada y verificada**.
+  - Sin cumplir un gate, solo se avanza con una **nota de excepción**, que queda en `journey_events` (append-only).
+- **Intentos de tarea:** se configuran por cápsula (por defecto 2 en Mindset). “Revisión humana” no consume intento. Con una entrega en revisión no se puede reenviar. AI Lab no tiene máximo.
+- **AI CERT:** Kibernum financia hasta dos intentos. La plataforma lo explica y registra cada intento.
+- **Feedback semanal:** semana de lunes a domingo (hora de Chile), editable durante la semana. El mentor solo puede escribir sobre personas de **sus** grupos (la base lo bloquea aunque se intente con el id de otra persona). El Kiber y el cliente no lo ven.
+- **Archivos:** quedan en buckets **privados** (`content`, `submissions`, `certificates`). El servidor valida permisos y entrega URLs firmadas de 10 minutos para subir o ver.
+- **Enlace personal de postulación (`invite_token`):** ningún usuario autenticado puede leerlo por la API (permiso de columna), ni siquiera el admin desde el navegador.
+
+**Configurar (además de la Fase 1)**
+1. Ejecuta en orden `supabase/migrations/20261013000000_mentor_role.sql` y luego `20261013000100_journey.sql`. Van en archivos separados porque el rol `mentor` debe existir antes de usarse.
+2. **Tamaño de archivos:** el límite de Storage depende del plan de Supabase (en el plan gratuito, 50 MB por archivo). Para videos largos conviene un enlace (YouTube no listado, Vimeo o Stream). La plataforma acepta ambos.
+3. **Mentores:** asígnalos por correo desde *Grupos y mentores*. Si aún no han ingresado, quedan habilitados con rol mentor y luego se asignan al grupo.
+
+**Probado** contra un stack local con GoTrue + PostgREST + Storage (ver `tests/e2e/`). El recorrido completo pasa:
+1. contenido → inicio de Mindset → el gate bloquea sin aprobación;
+2. entrega con archivo → revisión → Role Enablement;
+3. grupo y mentor → feedback semanal;
+4. certificación → verificación → AI Lab;
+5. vista del cliente; el cliente es rechazado en el portal admin.
+
 ## Próximas fases (acordadas)
-- **Fase 2 · Journey** (capas Assessment → AI Mindset → Role Enablement → AI Lab & Showcase):
-  - portal del Kiber con su etapa, qué pasó y qué viene;
-  - **video explicativo por etapa**;
-  - **AI Mindset en micro-cápsulas grabadas**, con material descargable y **entrega de tareas** (estilo Crehana/Domestika);
-  - carga de la certificación AI CERT;
-  - **grupos de candidatos con uno o más profesionales/mentores asignados por Wave**, con **feedback semanal** desde Role Enablement;
-  - vista general para clientes del avance de cada Wave.
+- **Fase 2 · Journey:** hecha (ver arriba). Quedan abiertos:
+  - correos automáticos al cambiar de etapa o al recibir feedback de una entrega (hoy el Kiber lo ve en su portal);
+  - carga del video de repechaje en la plataforma;
+  - evaluación asistida por IA de las entregas de Mindset (hoy la revisión es humana);
+  - copiar el contenido de una Wave a la siguiente.
 - **Fase 3 · Talento y alumni:**
   - seguimiento de Waves pasadas;
   - estado de servicio (sigue en servicio / salió);

@@ -5,7 +5,7 @@ import { env } from "@/lib/supabase/env";
 
 export async function sendMagicLink(_: unknown, form: FormData): Promise<{ ok: boolean; message: string }> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
-  const next = String(form.get("next") ?? "/admin/admision");
+  const next = String(form.get("next") ?? "/inicio");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, message: "Ingresa un correo válido." };
   const supabase = await supabaseUser();
   const { error } = await supabase.auth.signInWithOtp({

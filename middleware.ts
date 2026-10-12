@@ -22,7 +22,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const protectedPath = request.nextUrl.pathname.startsWith("/admin/admision") || request.nextUrl.pathname.startsWith("/admin/accesos") || request.nextUrl.pathname.startsWith("/mi-journey");
+  const PROTECTED = ["/admin/admision", "/admin/accesos", "/admin/journey", "/admin/contenido", "/mi-journey", "/mentor", "/cliente", "/inicio"];
+  const protectedPath = PROTECTED.some((p) => request.nextUrl.pathname.startsWith(p));
   if (protectedPath && !user) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
@@ -33,5 +34,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/admision/:path*", "/admin/accesos/:path*", "/mi-journey/:path*", "/auth/:path*", "/login"],
+  matcher: [
+    "/admin/admision/:path*", "/admin/accesos/:path*", "/admin/journey/:path*", "/admin/contenido/:path*",
+    "/mi-journey/:path*", "/mentor/:path*", "/cliente/:path*", "/inicio", "/auth/:path*", "/login",
+  ],
 };

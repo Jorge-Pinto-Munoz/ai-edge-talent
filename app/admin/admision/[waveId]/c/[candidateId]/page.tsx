@@ -15,7 +15,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
   const { waveId, candidateId } = await params;
   const viewer = await requireStaffPage(`/admin/admision/${waveId}/c/${candidateId}`);
   const db = await supabaseUser();
-  const { data: c } = await db.from("candidates").select("*").eq("id", candidateId).eq("wave_id", waveId).single();
+  const { data: c } = await db.from("candidates").select("id, wave_id, full_name, corporate_email, client_name, role_title, specialty, status").eq("id", candidateId).eq("wave_id", waveId).single();
   if (!c) notFound();
   const [{ data: app }, { data: events }, { data: emails }, { data: commitments }] = await Promise.all([
     db.from("applications").select("id, answers, questions_snapshot, submitted_at").eq("candidate_id", c.id).maybeSingle(),

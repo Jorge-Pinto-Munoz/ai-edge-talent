@@ -7,7 +7,7 @@ export type StaffRole = "admin" | "delivery";
 export interface Viewer {
   id: string;
   email: string;
-  role: "admin" | "delivery" | "kiber" | "client";
+  role: "admin" | "delivery" | "kiber" | "client" | "mentor";
   fullName: string | null;
 }
 
