@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Icon } from "@/components/site/Icon";
 
 /**
@@ -9,6 +9,7 @@ import { Icon } from "@/components/site/Icon";
  */
 export function Sheet({ open, onClose, title, eyebrow, accent, children }: { open: boolean; onClose: () => void; title: string; eyebrow?: string; accent?: string; children: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null);
+  const titleId = useId();
   const opener = useRef<Element | null>(null);
 
   useEffect(() => {
@@ -38,12 +39,12 @@ export function Sheet({ open, onClose, title, eyebrow, accent, children }: { ope
   return (
     <div className={`jsheet ${open ? "open" : ""}`} aria-hidden={!open} inert={!open}>
       <div className="jsheet-backdrop" onClick={onClose} />
-      <div ref={panel} className="jsheet-panel" role="dialog" aria-modal="true" aria-labelledby="jsheet-title" style={accent ? ({ "--stage": accent } as React.CSSProperties) : undefined}>
+      <div ref={panel} className="jsheet-panel" role="dialog" aria-modal="true" aria-labelledby={titleId} style={accent ? ({ "--stage": accent } as React.CSSProperties) : undefined}>
         <div className="jsheet-grip" aria-hidden="true" />
         <header className="jsheet-head">
           <div>
             {eyebrow && <div className="jsheet-eyebrow">{eyebrow}</div>}
-            <h2 id="jsheet-title">{title}</h2>
+            <h2 id={titleId}>{title}</h2>
           </div>
           <button type="button" className="jsheet-close" onClick={onClose} aria-label="Cerrar">
             <Icon name="close" size={20} />

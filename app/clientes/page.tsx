@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { AiCertSection } from "@/components/site/AiCertSection";
+import { certifiedRate } from "@/lib/aicert/stats";
 import type { CSSProperties } from "react";
 import { FAQ_BY_ROLE } from "@/lib/data/program";
 import { AUDIENCE_LINES, PUBLIC_STAGES } from "@/lib/data/site";
@@ -33,7 +35,9 @@ const NOMINATE = [
   { when: "Paso 4", title: "Se selecciona por evidencia", body: "Nominar no significa seleccionar: depende del Assessment y de la capacidad de la Wave." },
 ];
 
-export default function ClientesPage() {
+export const revalidate = 600;
+
+export default async function ClientesPage() {
   return (
     <div className="site-main">
       <section className="hero-x bleed" style={{ minHeight: "min(700px, 88vh)" }}>
@@ -87,6 +91,12 @@ export default function ClientesPage() {
               <ul>{NOT_RECEIVE.map((x) => <li key={x}><span className="tick"><Icon name="close" size={16} /></span>{x}</li>)}</ul>
             </Reveal>
           </div>
+        </div>
+      </section>
+
+      <section className="sec" id="certificacion">
+        <div className="sec-inner">
+          <AiCertSection id="aic-clientes" audience="cliente" stat={await certifiedRate()} />
         </div>
       </section>
 

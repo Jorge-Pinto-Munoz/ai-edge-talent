@@ -189,3 +189,20 @@
 .adm-grid.even { grid-template-columns: 1fr 1fr; }
 @media (max-width: 1100px) { .adm-grid.even { grid-template-columns: 1fr; } }
 .pending.follow .txt small { display: block; }
+
+/* ───── Soporte ───── */
+.support-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.support-list li { display: grid; gap: 10px; padding: 18px 0; border-bottom: 1px solid var(--border); }
+.support-list li:first-child { padding-top: 0; }
+.support-list li:last-child { border-bottom: 0; }
+.support-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.support-msg { margin: 0; white-space: pre-wrap; padding: 12px 14px; border-radius: 14px; background: var(--bg); }
+
+/* ───── Ver como ───── */
+.vc-card { display: grid; gap: 16px; align-content: start; }
+.vc-head { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
+.vc-head h2 { margin: 0; font-size: 1.1rem; }
+.vc-head p { margin: 4px 0 0; }
+.vc-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.vc-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+@media (max-width: 560px) { .vc-form { grid-template-columns: 1fr; } }

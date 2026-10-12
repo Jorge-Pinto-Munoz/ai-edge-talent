@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
@@ -65,7 +65,7 @@ export async function signedFileUrl(bucket: Bucket, path: string): Promise<Resul
       const { count: g } = await db.from("stage_guides").select("layer", { count: "exact", head: true }).eq("wave_id", owner);
       allowed = (count ?? 0) + (g ?? 0) > 0;
     } else {
-      // RLS: el propio Kiber y los mentores de su grupo pueden leer al candidato.
+      // RLS: el propio Kiber y los AI Coaches de su grupo pueden leer al candidato.
       const { data } = await db.from("candidates").select("id").eq("id", owner).maybeSingle();
       allowed = Boolean(data);
     }
@@ -239,6 +239,7 @@ export async function reviewCertification(id: string, status: "VERIFIED" | "REJE
     const { error } = await db.from("certifications").update({ status, review_note: note || null, reviewed_by: viewer.id, reviewed_at: new Date().toISOString() }).eq("id", id);
     if (error) throw error;
     revalidatePath("/admin/journey", "layout");
+    revalidateTag("aicert-rate");
     return { ok: true, message: status === "VERIFIED" ? "Certificación verificada." : "Registro rechazado." };
   } catch (e) {
     return fail(e);
@@ -286,7 +287,7 @@ export async function advanceLayer(waveId: string, candidateIds: string[], to: L
   }
 }
 
-/* ───────── Admin: grupos y mentores ───────── */
+/* ───────── Admin: grupos y AI Coaches ───────── */
 export async function createGroup(waveId: string, name: string): Promise<Result> {
   try {
     await requireRole(["admin"]);
@@ -324,7 +325,7 @@ export async function addGroupMentor(waveId: string, groupId: string, email: str
     const { data: profile } = await db.from("profiles").select("id, role").eq("email", e).maybeSingle();
     if (!profile) {
       await db.from("role_grants").upsert({ email: e, role: "mentor", granted_by: viewer.id });
-      return { ok: false, message: `${e} quedó habilitado/a como mentor/a. Pídele que ingrese una vez en /login y luego asígnalo/a al grupo.` };
+      return { ok: false, message: `${e} quedó habilitado/a como AI Coach. Pídele que ingrese una vez en /login y luego asígnalo/a al grupo.` };
     }
     if (profile.role !== "mentor") await db.from("profiles").update({ role: "mentor" }).eq("id", profile.id);
     const { error } = await db.from("group_mentors").upsert({ group_id: groupId, mentor_id: profile.id });
@@ -342,13 +343,13 @@ export async function removeGroupMentor(waveId: string, groupId: string, mentorI
     const db = await supabaseUser();
     await db.from("group_mentors").delete().eq("group_id", groupId).eq("mentor_id", mentorId);
     revalidatePath(`/admin/journey/${waveId}`);
-    return { ok: true, message: "Mentor/a quitado/a del grupo." };
+    return { ok: true, message: "AI Coach quitado/a del grupo." };
   } catch (e) {
     return fail(e);
   }
 }
 
-/* ───────── Mentor: feedback semanal ───────── */
+/* ───────── AI Coach: feedback semanal ───────── */
 export interface FeedbackEntry {
   candidateId: string;
   attendance: "FULL" | "PARTIAL" | "NONE";

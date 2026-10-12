@@ -1,5 +1,5 @@
 import "server-only";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import type { Layer } from "./rules";
 
 export interface Capsule {
@@ -44,18 +44,27 @@ export interface LabProjectView {
   lab_project_files: { id: string; name: string; size_bytes: number | null; kind: string; created_at: string; uploaded_by: string | null }[];
 }
 
+const CANDIDATE_COLS = "id, wave_id, full_name, client_name, role_title, delivery_owner, status, journey_layer, journey_layer_since";
+const ACTIVE = ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
+type Db = Awaited<ReturnType<typeof supabaseUser>> | ReturnType<typeof supabaseService>;
+
 /** Todo lo que el Kiber necesita para su portal (RLS limita a lo suyo y a lo publicado). */
 export async function myJourney(userId: string) {
   const db = await supabaseUser();
-  const { data: cand } = await db
-    .from("candidates")
-    .select("id, wave_id, full_name, client_name, role_title, delivery_owner, status, journey_layer, journey_layer_since")
-    .eq("user_id", userId)
-    .in("status", ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!cand) return null;
+  const { data: cand } = await db.from("candidates").select(CANDIDATE_COLS).eq("user_id", userId).in("status", ACTIVE).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  return cand ? loadJourney(db, cand as Cand) : null;
+}
+
+/** Vista previa del admin: el journey de un participante tal como lo ve él (lectura con la llave de servicio; quien llama verifica que sea admin). */
+export async function journeyForCandidate(candidateId: string) {
+  const db = supabaseService();
+  const { data: cand } = await db.from("candidates").select(CANDIDATE_COLS).eq("id", candidateId).in("status", ACTIVE).maybeSingle();
+  return cand ? loadJourney(db, cand as Cand) : null;
+}
+
+type Cand = { id: string; wave_id: string; full_name: string; client_name: string | null; role_title: string | null; delivery_owner: string | null; status: string; journey_layer: string | null; journey_layer_since: string | null };
+
+async function loadJourney(db: Db, cand: Cand) {
   const [wave, guides, capsules, progress, subs, certs, events] = await Promise.all([
     db.from("waves").select("id, name, start_date, estimated_close_date").eq("id", cand.wave_id).single(),
     db.from("stage_guides").select("*").eq("wave_id", cand.wave_id),

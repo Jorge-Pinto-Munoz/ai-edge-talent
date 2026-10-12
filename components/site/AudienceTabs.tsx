@@ -17,7 +17,7 @@ const TABS: { key: Key; label: string; icon: IconName; title: string; lead: stri
       "Integras IA a tu rol con método y criterio",
       "Te certificas con financiamiento de Kibernum",
       "Construyes un caso real y lo presentas al cliente",
-      "Tienes un mentor que te da feedback cada semana",
+      "Tienes un AI Coach que te da feedback cada semana",
     ],
     link: { href: "/wave-3/postular", label: "Postular a Wave 3" },
   },
@@ -39,7 +39,7 @@ const TABS: { key: Key; label: string; icon: IconName; title: string; lead: stri
     key: "kibernum",
     label: "Equipo Kibernum",
     icon: "compass",
-    title: "Para Delivery, mentores y equipo AET",
+    title: "Para Delivery, AI Coaches y equipo AET",
     lead: "Coordinas cada etapa, acompañas el avance y registras la evidencia en un solo lugar.",
     points: [
       "Ves el estado de cada participante por Wave",

@@ -23,14 +23,14 @@
 .jr-ring small { font-size: 0.68rem; color: var(--fog); }
 
 /* ── Navegación: barra inferior en móvil (zona del pulgar), píldora fija arriba en escritorio ── */
-.jr-tabs { position: fixed; z-index: 60; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px; border-radius: 22px; background: rgba(20, 27, 35, 0.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 32px rgba(8, 11, 16, 0.28); }
+.jr-tabs { position: fixed; z-index: 60; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; border-radius: 22px; background: rgba(20, 27, 35, 0.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 32px rgba(8, 11, 16, 0.28); }
 .jr-tabs button { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 6px; border: 0; border-radius: 16px; background: transparent; color: var(--fog); font: inherit; font-size: 0.76rem; font-weight: 700; cursor: pointer; transition: background 160ms ease, color 160ms ease; }
 .jr-tabs button.on { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .jr-tabs button.on svg { color: var(--cyan); }
 .jr-tabs button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 @media (min-width: 900px) {
   .jr { padding-bottom: 48px; }
-  .jr-tabs { position: sticky; top: 68px; left: auto; right: auto; bottom: auto; width: max-content; margin: 16px auto 0; grid-template-columns: repeat(3, auto); border-radius: 999px; }
+  .jr-tabs { position: sticky; top: 68px; left: auto; right: auto; bottom: auto; width: max-content; margin: 16px auto 0; grid-template-columns: repeat(4, auto); border-radius: 999px; }
   .jr-tabs button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 999px; font-size: 0.9rem; }
 }
 
@@ -101,26 +101,6 @@
 .jr-back svg.up { transform: rotate(-90deg); }
 .jr-back svg.down { transform: rotate(90deg); }
 @media (min-width: 900px) { .jr-back { bottom: 24px; } }
-
-/* ── Hoja (bottom sheet / panel lateral) ── */
-.jsheet { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
-.jsheet.open { pointer-events: auto; }
-.jsheet-backdrop { position: absolute; inset: 0; background: rgba(8, 11, 16, 0.55); opacity: 0; transition: opacity 220ms ease; }
-.jsheet.open .jsheet-backdrop { opacity: 1; }
-.jsheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 90vh; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); color: var(--text); border-radius: 28px 28px 0 0; border-top: 6px solid var(--stage, var(--cyan)); padding: 0 20px calc(24px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform 300ms var(--jr-ease, ease-out); box-shadow: 0 -20px 60px rgba(8, 11, 16, 0.3); }
-.jsheet.open .jsheet-panel { transform: none; visibility: visible; transition: transform 300ms var(--jr-ease, ease-out), visibility 0s; }
-.jsheet:not(.open) .jsheet-panel { visibility: hidden; transition: transform 300ms var(--jr-ease, ease-out), visibility 0s 300ms; }
-.jsheet-grip { width: 44px; height: 5px; border-radius: 999px; background: var(--border); margin: 10px auto 0; }
-.jsheet-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 0 12px; background: var(--surface); }
-.jsheet-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.jsheet-eyebrow::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--stage, var(--cyan)); }
-.jsheet-head h2 { margin: 4px 0 0; font-size: 1.35rem; line-height: 1.25; }
-.jsheet-close { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--surface-2); color: var(--text); cursor: pointer; }
-.jsheet-close:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
-@media (min-width: 900px) {
-  .jsheet-panel { left: auto; top: 0; width: 480px; max-height: none; border-radius: 28px 0 0 28px; border-top: 0; border-left: 6px solid var(--stage, var(--cyan)); padding: 8px 28px 28px; transform: translateX(105%); }
-  .jsheet-grip { display: none; }
-}
 
 /* Contenido de la hoja */
 .jr-sheet-stack { display: grid; gap: 14px; padding-bottom: 8px; }

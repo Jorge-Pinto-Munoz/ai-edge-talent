@@ -32,7 +32,7 @@ export interface ImportResult {
 }
 
 export function parseCandidatesCsv(text: string): ImportResult {
-  const parsed = Papa.parse<Record<string, string>>(text.trim(), { header: true, skipEmptyLines: true, delimiter: "" });
+  const parsed = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, "").trim(), { header: true, skipEmptyLines: true, delimiter: "" });
   const headers = parsed.meta.fields ?? [];
   const mapping: ImportResult["mapping"] = {};
   for (const key of Object.keys(ALIASES) as (keyof CandidateRow)[]) {

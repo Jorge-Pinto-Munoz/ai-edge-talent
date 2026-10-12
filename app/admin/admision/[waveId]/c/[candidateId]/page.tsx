@@ -46,6 +46,8 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
           <p className="muted" style={{ margin: "4px 0 0" }}>{c.corporate_email} · {c.client_name ?? "—"} · {c.role_title ?? "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
         </div>
         <div className="row">
+          {isAdmin && <a className="btn ghost small" href={`/admin/vista/candidato?id=${c.id}`}>Ver su postulación</a>}
+          {isAdmin && ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(c.status) && <a className="btn ghost small" href={`/admin/vista/profesional?id=${c.id}`}>Ver su journey</a>}
           {isAdmin && <a className="btn ghost small" href={`/admin/admision/${waveId}/c/${c.id}/exportar`} download>Descargar Excel</a>}
           <Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge>
         </div>

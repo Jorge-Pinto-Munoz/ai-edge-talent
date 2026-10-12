@@ -52,7 +52,9 @@ function inspect() {
     return r.width > 2 && r.height > 2 && cs.visibility !== "hidden" && cs.opacity !== "0" && !n.closest(".sheet:not(.open), .mega:not(.open)") ? r : null;
   };
   const icons = [...document.querySelectorAll("svg, .stage-icon")].filter((n) => !n.closest("button, .btn, .pill, .badge, select, label, [data-allow-overlap]")).map((n) => [n, box(n)]).filter(([, r]) => r);
-  const texts = [...document.querySelectorAll("h1,h2,h3,h4,p,strong,small,li")].map((n) => [n, box(n)]).filter(([, r]) => r);
+  // El contenido de un <details> cerrado no se ve aunque tenga caja: no cuenta.
+  const hiddenInDetails = (n) => { const d = n.closest("details:not([open])"); return d && !n.closest("summary"); };
+  const texts = [...document.querySelectorAll("h1,h2,h3,h4,p,strong,small,li")].filter((n) => !hiddenInDetails(n)).map((n) => [n, box(n)]).filter(([, r]) => r);
   const overlaps = [];
   for (const [i, ri] of icons)
     for (const [t] of texts) {

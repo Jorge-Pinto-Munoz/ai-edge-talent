@@ -6,7 +6,7 @@ import { Callout } from "@/components/ui";
 
 export function AccessForm({ waves }: { waves: { id: string; name: string }[] }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "delivery" | "client" | "kiber" | "profesor" | "hub">("delivery");
+  const [role, setRole] = useState<"admin" | "delivery" | "client" | "kiber" | "profesor" | "hub" | "mentor">("delivery");
   const [wave, setWave] = useState(waves[0]?.id ?? "");
   const [client, setClient] = useState("");
   const [r, setR] = useState<ActionResult | null>(null);
@@ -18,7 +18,7 @@ export function AccessForm({ waves }: { waves: { id: string; name: string }[] })
         <div className="field">
           <label htmlFor="ar">Rol</label>
           <select id="ar" value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
-            <option value="admin">Admin (liderazgo)</option><option value="delivery">Delivery</option><option value="profesor">Profesor</option><option value="hub">Líder Hub AI</option><option value="client">Cliente</option><option value="kiber">Kiber</option>
+            <option value="admin">Admin (liderazgo)</option><option value="delivery">Delivery</option><option value="profesor">Profesor</option><option value="hub">Líder Hub AI</option><option value="mentor">AI Coach</option><option value="client">Cliente</option><option value="kiber">Kiber</option>
           </select>
         </div>
         {(role === "profesor" || role === "hub") && (

@@ -210,6 +210,14 @@ certificación AI CERT, clases del Lab, subida de la presentación o resultado d
 pulgar con **Camino · Materiales** (todo lo descargable de las etapas abiertas) **· Entregas** (tareas, certificado y
 presentación con su estado). Atajos por etapa y botón "Ir a mi paso actual" para no perderse en el camino.
 
+## AI CERT, Ayuda y vistas del admin
+
+- **AI CERT por rol** (`components/site/AiCertSection.tsx`, contenido en `lib/data/aicert.ts`): qué es AI CERTs, ruta por familia de rol, certificado oficial y badge, acompañamiento después (mes 1, mes 3, Coursera, banca de talento) e impacto buscado. Aparece en la etapa Role Enablement (vista profesional o cliente), en `/clientes`, en el portal del cliente y en el hito de certificación de Mi journey. El **% de ingresados que se certificó** se calcula solo con datos reales de Waves cerradas (`lib/aicert/stats.ts`, mínimo 5 personas); mientras no haya datos, no se muestra un número.
+- **Carga histórica** (Talento → Cargar Waves pasadas): acepta la columna `Certificación AI CERT` (Sí/No) y archivos guardados desde Excel.
+- **Ayuda en un clic**: botón flotante en todo el sitio y pestaña en Mi journey. FAQ con búsqueda (incluye el video de rescate y el segundo intento de AI CERT) y formulario de contacto. Cada pregunta se guarda en **Soporte** (`/admin/soporte`, solo admin) y se envía por correo a `SUPPORT_EMAIL` (o a los admin) con respuesta directa a quien preguntó. Requiere `RESEND_API_KEY` y `RESEND_FROM` para el correo; sin ellos, las preguntas igual quedan en la bandeja.
+- **Ver como** (`/admin/vista`, solo admin): abre la vista exacta de un profesional (su journey), un candidato (su postulación), un cliente o un AI Coach, en solo lectura. Delivery, Hub AI y AI Coach no tienen esta opción.
+- El rol `mentor` se muestra como **AI Coach** en toda la plataforma.
+
 ## Auditoría UX/UI automática
 
 `npm run audit:ux` recorre las pantallas de `qa/pages.json` por rol y ancho (320, 390 y 1366 px) y detecta:

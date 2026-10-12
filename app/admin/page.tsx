@@ -144,7 +144,7 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
           <div className="shortcuts">
             {[
               isAdmin && { href: `/admin/admision/${waveId}/importar`, label: "Importar candidatos", icon: "users" as IconName },
-              { href: `/admin/journey/${waveId}?tab=grupos`, label: "Grupos y mentores", icon: "route" as IconName },
+              { href: `/admin/journey/${waveId}?tab=grupos`, label: "Grupos y AI Coaches", icon: "route" as IconName },
               isAdmin && { href: `/admin/contenido/${waveId}`, label: "Videos y cápsulas", icon: "play" as IconName },
               isAdmin && { href: "/admin/talento/importar", label: "Cargar Waves pasadas", icon: "layers" as IconName },
               { href: "/admin/talento", label: "Pool de talento", icon: "star" as IconName },

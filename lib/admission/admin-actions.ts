@@ -148,7 +148,7 @@ export async function sendCandidateEmails(waveId: string, candidateIds: string[]
 }
 
 /* ───────── Accesos ───────── */
-export async function grantRole(email: string, role: "admin" | "delivery" | "client" | "kiber" | "profesor" | "hub", clientName: string, waveId?: string): Promise<ActionResult> {
+export async function grantRole(email: string, role: "admin" | "delivery" | "client" | "kiber" | "profesor" | "hub" | "mentor", clientName: string, waveId?: string): Promise<ActionResult> {
   try {
     const viewer = await requireRole(["admin"]);
     const db = await supabaseUser();
@@ -167,7 +167,7 @@ export async function grantRole(email: string, role: "admin" | "delivery" | "cli
   }
 }
 
-const ROLE_NAME: Record<string, string> = { admin: "Admin", delivery: "Delivery", client: "Cliente", kiber: "Kiber", mentor: "Mentor", profesor: "Profesor", hub: "Líder Hub AI" };
+const ROLE_NAME: Record<string, string> = { admin: "Admin", delivery: "Delivery", client: "Cliente", kiber: "Kiber", mentor: "AI Coach", profesor: "Profesor", hub: "Líder Hub AI" };
 
 /* ───────── Equipo por Wave: profesor/a y líder del Hub AI ───────── */
 export async function addWaveStaff(waveId: string, email: string, role: "profesor" | "hub"): Promise<ActionResult> {
@@ -177,7 +177,7 @@ export async function addWaveStaff(waveId: string, email: string, role: "profeso
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error("Correo no válido.");
     const db = await supabaseUser();
     const { data: profile } = await db.from("profiles").select("role").eq("email", e).maybeSingle();
-    // Un rol por persona: no se pisa el de alguien del equipo interno o un mentor.
+    // Un rol por persona: no se pisa el de alguien del equipo interno o un AI Coach.
     if (profile && !["kiber", role].includes(profile.role)) {
       if (profile.role !== "admin") throw new Error(`${e} ya tiene rol ${ROLE_NAME[profile.role] ?? profile.role}. Cámbialo primero en Accesos.`);
     } else {

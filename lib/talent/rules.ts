@@ -44,6 +44,8 @@ export interface HistoricalRow {
   role_title: string | null;
   specialty: string | null;
   completed: boolean;
+  /** Certificación AI CERT: true aprobada, false no aprobada, null sin dato. */
+  certified: boolean | null;
   service_status: ServiceStatus;
 }
 
@@ -57,6 +59,7 @@ const H: Record<string, string[]> = {
   specialty: ["especialidad", "familia", "cluster"],
   result: ["resultado", "completo", "termino", "estado programa"],
   service: ["estado servicio", "servicio", "situacion", "estado"],
+  certified: ["certificacion", "certificado", "ai cert", "aicert", "certificacion ai cert", "ai certs", "certifico"],
 };
 
 export function waveIdFrom(v: string): string | null {
@@ -65,7 +68,7 @@ export function waveIdFrom(v: string): string | null {
 }
 
 export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; errors: string[] } {
-  const p = Papa.parse<Record<string, string>>(text.trim(), { header: true, skipEmptyLines: true, delimiter: "" });
+  const p = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, "").trim(), { header: true, skipEmptyLines: true, delimiter: "" });
   const fields = p.meta.fields ?? [];
   const col = (k: string) => fields.find((f) => H[k].includes(norm(f)));
   const c = Object.fromEntries(Object.keys(H).map((k) => [k, col(k)])) as Record<string, string | undefined>;
@@ -81,6 +84,7 @@ export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; error
     if (!wave) return errors.push(`Línea ${line}: no se reconoce la Wave "${get("wave")}".`);
     const res = norm(get("result"));
     const svc = norm(get("service"));
+    const cert = norm(get("certified"));
     rows.push({
       full_name: get("full_name"),
       corporate_email: email,
@@ -89,6 +93,7 @@ export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; error
       role_title: get("role_title") || null,
       specialty: get("specialty") || null,
       completed: /^(si|sí|completo|completó|completado|certificado|aprobado|termino|terminó)/.test(res),
+      certified: /^(si|aprob|certific|yes|ok)/.test(cert) ? true : /^(no|reprob|pendiente no)/.test(cert) ? false : null,
       service_status: /(sali|retir|renunc|desvincul|left)/.test(svc) ? "LEFT" : /(banca|bench)/.test(svc) ? "BENCH" : "IN_SERVICE",
     });
   });

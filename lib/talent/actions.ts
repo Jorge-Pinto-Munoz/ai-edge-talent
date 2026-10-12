@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { supabaseUser } from "@/lib/supabase/server";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admission/auth";
 import { followUpDates, parseHistoricalCsv, specialtyFamily, type ServiceStatus } from "./rules";
 
@@ -127,8 +127,9 @@ export async function importHistorical(csvText: string): Promise<TalentResult> {
         continue;
       }
       const { data: exists } = await db.from("candidates").select("id").eq("wave_id", r.wave_id).ilike("corporate_email", r.corporate_email).maybeSingle();
+      let candidateId = exists?.id as string | undefined;
       if (!exists) {
-        const { error } = await db.from("candidates").insert({
+        const { data: ins, error } = await db.from("candidates").insert({
           wave_id: r.wave_id,
           full_name: r.full_name,
           corporate_email: r.corporate_email,
@@ -138,16 +139,26 @@ export async function importHistorical(csvText: string): Promise<TalentResult> {
           source: "historical",
           status: "ENROLLED",
           journey_layer: r.completed ? "CLOSURE" : null,
-        });
+        }).select("id").single();
         if (error) {
           details.push(`${r.corporate_email}: ${error.message}`);
           continue;
         }
         created++;
+        candidateId = ins.id;
+      }
+      // Resultado AI CERT histórico: alimenta el % de ingresados que se certificó.
+      if (candidateId && r.certified !== null) {
+        const { count } = await db.from("certifications").select("id", { count: "exact", head: true }).eq("candidate_id", candidateId).eq("status", "VERIFIED");
+        if (!count) {
+          const { error: ce } = await supabaseService().from("certifications").insert({ candidate_id: candidateId, attempt: 1, result: r.certified ? "PASSED" : "FAILED", status: "VERIFIED", review_note: "Carga histórica" });
+          if (ce) details.push(`${r.corporate_email}: no se pudo registrar la certificación (${ce.message}).`);
+        }
       }
       await db.from("talent").update({ service_status: r.service_status }).eq("email", r.corporate_email);
     }
     revalidatePath("/admin/talento", "layout");
+    revalidateTag("aicert-rate");
     return { ok: true, message: `${created} participante(s) histórico(s) cargado(s).`, details };
   } catch (e) {
     return fail(e);

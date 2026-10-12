@@ -36,6 +36,9 @@ export function CandidatePortal({ data }: { data: PortalData }) {
       <Message eyebrow="Postulación enviada" title="Recibimos tu postulación">
         <p>El equipo AI Edge Talent revisará la evidencia y te comunicará el resultado y el próximo paso por correo.</p>
         <Callout tone="warn" title="Postular no significa estar seleccionado/a." />
+        <Callout title="Si quedas bajo el corte, tienes una segunda oportunidad">
+          Te pediremos un video breve (máximo 3 minutos) respondiendo cuatro preguntas sobre tu compromiso, tu uso de IA y tu interés. Una persona del equipo lo revisa y decide.
+        </Callout>
       </Message>
     );
   if (s === "RESCUE_REQUIRED")

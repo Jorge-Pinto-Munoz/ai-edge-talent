@@ -17,7 +17,7 @@ export function HistoricalImport() {
         <label htmlFor="hf">Archivo CSV</label>
         <input id="hf" type="file" accept=".csv,text/csv" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setText(await f.text()); }} />
         <label htmlFor="ht" style={{ marginTop: 12 }}>…o pega el contenido</label>
-        <textarea id="ht" rows={7} value={text} onChange={(e) => setText(e.target.value)} placeholder={"Nombre;Correo;Wave;Cliente;Rol;Especialidad;Resultado;Estado servicio\nAna Pérez;ana@kibernum.com;Wave 1;Cliente Alfa;QA;Calidad;Completó;En servicio"} />
+        <textarea id="ht" rows={7} value={text} onChange={(e) => setText(e.target.value)} placeholder={"Nombre;Correo;Wave;Cliente;Rol;Especialidad;Resultado;Certificación AI CERT;Estado servicio\nAna Pérez;ana@kibernum.com;Wave 1;Cliente Alfa;QA;Calidad;Completó;Sí;En servicio"} />
       </div>
       {preview && (
         <div className="card">
@@ -25,8 +25,8 @@ export function HistoricalImport() {
           {preview.errors.length > 0 && <ul className="error" style={{ fontWeight: 400 }}>{preview.errors.map((e) => <li key={e}>{e}</li>)}</ul>}
           <div className="table-wrap" tabIndex={0} style={{ marginTop: 8 }}>
             <table>
-              <thead><tr><th>Nombre</th><th>Wave</th><th>Completó</th><th>Servicio</th></tr></thead>
-              <tbody>{preview.rows.slice(0, 8).map((r) => <tr key={r.corporate_email + r.wave_id}><td>{r.full_name}</td><td>{r.wave_id}</td><td>{r.completed ? "Sí" : "No"}</td><td>{SERVICE_LABEL[r.service_status]}</td></tr>)}</tbody>
+              <thead><tr><th>Nombre</th><th>Wave</th><th>Completó</th><th>AI CERT</th><th>Servicio</th></tr></thead>
+              <tbody>{preview.rows.slice(0, 8).map((r) => <tr key={r.corporate_email + r.wave_id}><td>{r.full_name}</td><td>{r.wave_id}</td><td>{r.completed ? "Sí" : "No"}</td><td>{r.certified === null ? "—" : r.certified ? "Aprobada" : "No aprobada"}</td><td>{SERVICE_LABEL[r.service_status]}</td></tr>)}</tbody>
             </table>
           </div>
           <button className="btn" style={{ marginTop: 10 }} disabled={pending || !preview.rows.length} onClick={() => start(async () => setRes(await importHistorical(text)))}>{pending ? "Cargando…" : `Cargar ${preview.rows.length}`}</button>

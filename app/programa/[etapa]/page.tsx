@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { PUBLIC_STAGES, stageBySlug } from "@/lib/data/site";
+import { AiCertSection } from "@/components/site/AiCertSection";
+import { certifiedRate } from "@/lib/aicert/stats";
 import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
@@ -137,6 +139,14 @@ export default async function EtapaPage({ params, searchParams }: { params: Prom
           </div>
         </div>
       </section>
+
+      {stage.slug === "role-enablement" && (
+        <section className="sec" id="certificacion" style={{ paddingTop: 0 }}>
+          <div className="sec-inner">
+            <AiCertSection id="aic-etapa" audience={aud === "cliente" ? "cliente" : "profesional"} stat={await certifiedRate()} />
+          </div>
+        </section>
+      )}
 
       <section className="sec" style={{ paddingTop: 0 }}>
         <div className="sec-inner duo">

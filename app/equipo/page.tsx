@@ -22,7 +22,7 @@ const TOOLS: { title: string; body: string; icon: IconName; size?: "wide" | "ful
   { title: "Resumen con pendientes", body: "Lo que necesita acción hoy en cada Wave: evaluar, decidir, revisar entregas y verificar certificaciones.", icon: "grid", size: "wide" },
   { title: "Admisión por columnas", body: "Dónde está cada persona, de un vistazo.", icon: "kanban" },
   { title: "Journey y entregas", body: "Avance por etapa, tareas de Mindset y certificaciones.", icon: "route" },
-  { title: "Feedback semanal de mentores", body: "Cada mentor registra el avance de su grupo desde Role Enablement.", icon: "chat", size: "wide" },
+  { title: "Feedback semanal de AI Coaches", body: "Cada AI Coach registra el avance de su grupo desde Role Enablement.", icon: "chat", size: "wide" },
   { title: "Pool de talento", body: "Todas las Waves, por especialidad, con High Talent y seguimiento a 1 y 3 meses.", icon: "star", size: "full" },
 ];
 
@@ -46,7 +46,7 @@ export default function EquipoPage() {
             <h1 style={{ textTransform: "none", fontSize: "var(--fs-h1)", lineHeight: 1.05 }}>Todo para operar<br /><span className="grad">cada Wave.</span></h1>
           </Reveal>
           <Reveal delay={100}>
-            <p className="lead">Delivery, mentores, Hub AI y Product Lead: qué hacer en cada etapa, quién decide y dónde registrar la evidencia.</p>
+            <p className="lead">Delivery, AI Coaches, Hub AI y Product Lead: qué hacer en cada etapa, quién decide y dónde registrar la evidencia.</p>
             <div className="actions">
               <Link className="pill accent lg" href="/inicio">Entrar al portal <Icon name="arrowRight" size={18} /></Link>
               <Link className="pill ghost lg" href="/delivery/playbook">Ver el playbook</Link>

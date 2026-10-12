@@ -14,7 +14,7 @@ const TABS = [
   ["participantes", "Participantes"],
   ["entregas", "Entregas"],
   ["certificaciones", "Certificaciones"],
-  ["grupos", "Grupos y mentores"],
+  ["grupos", "Grupos y AI Coaches"],
   ["feedback", "Feedback semanal"],
 ] as const;
 
@@ -90,7 +90,7 @@ export default async function JourneyAdmin({ params, searchParams }: { params: P
               <strong>Semana del {week}</strong>
               <Link className="btn ghost small" href={`?tab=feedback&semana=${nxt.toISOString().slice(0, 10)}`}>Semana siguiente →</Link>
             </div>
-            {(groups ?? []).length === 0 && <p className="muted">Aún no hay grupos con mentores asignados.</p>}
+            {(groups ?? []).length === 0 && <p className="muted">Aún no hay grupos con AI Coaches asignados.</p>}
             {(groups ?? []).map((g) => {
               const members = (g.group_members as { candidate_id: string }[]).map((m) => m.candidate_id);
               const mentors = (g.group_mentors as unknown as { mentor_id: string; profiles: { email: string } }[]);

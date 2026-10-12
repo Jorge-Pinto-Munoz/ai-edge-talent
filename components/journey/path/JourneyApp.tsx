@@ -12,7 +12,9 @@ import { CertificationForm } from "@/components/journey/CertificationForm";
 import { LabFiles } from "@/components/hub/LabFiles";
 import { SignOut } from "@/components/admission/SignOut";
 import { fmtDate, fmtYmd } from "@/components/ui";
-import { Sheet } from "./Sheet";
+import { Sheet } from "@/components/site/Sheet";
+import { openHelp } from "@/components/site/Help";
+import { AiCertSection } from "@/components/site/AiCertSection";
 import type { JourneyView } from "./types";
 
 /** Color de cada etapa (texto oscuro encima: contraste AA en todas). */
@@ -52,6 +54,12 @@ export function JourneyApp({ v }: { v: JourneyView }) {
 
   return (
     <div className="jr">
+      {v.preview && (
+        <div className="jr-preview" role="note">
+          <Icon name="user" size={18} />
+          <span><strong>Vista de admin</strong> · así ve su journey {v.preview.label}. Puedes recorrer todo; los envíos están desactivados.</span>
+        </div>
+      )}
       <JourneyHero v={v} />
 
       <nav className="jr-tabs" aria-label="Secciones de mi journey">
@@ -65,6 +73,10 @@ export function JourneyApp({ v }: { v: JourneyView }) {
             <span>{label}</span>
           </button>
         ))}
+        <button type="button" onClick={openHelp} aria-haspopup="dialog">
+          <Icon name="help" size={20} />
+          <span>Ayuda</span>
+        </button>
       </nav>
 
       {tab === "camino" && (
@@ -100,7 +112,7 @@ function JourneyHero({ v }: { v: JourneyView }) {
     <header className="jr-hero" style={stageVars(cur.layer)}>
       <div className="jr-hero-top">
         <span className="jr-wave">{v.waveName}</span>
-        <SignOut />
+        {!v.preview && <SignOut />}
       </div>
       <div className="jr-hero-main">
         <div>
@@ -148,7 +160,7 @@ function NextStep({ v, reviewing, onOpen, onGuide }: { v: JourneyView; reviewing
       </section>
     );
   }
-  const isCapsule = n.kind === "capsule" && n.capsuleId;
+  const isCapsule = n.kind === "capsule" && n.capsuleId && !v.preview;
   return (
     <section className="jr-next" style={stageVars(n.stage)} aria-labelledby="jr-next-t">
       <div className="jr-next-ico"><Icon name={nodeIcon({ ...n, state: "available" })} size={26} /></div>
@@ -266,9 +278,13 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
         {c?.description && <p>{c.description}</p>}
         {c?.feedback && <div className="jr-feedback"><strong>Feedback de tu última entrega</strong><p>{c.feedback}</p></div>}
         {c?.resources.length ? <ResourceList items={c.resources} /> : null}
-        <Link className="jr-cta wide" href={`/mi-journey/capsula/${node.capsuleId}`} data-autofocus>
-          {node.state === "done" ? "Volver a ver la cápsula" : node.cta ?? "Abrir la cápsula"} <Icon name="arrowRight" size={18} />
-        </Link>
+        {v.preview ? (
+          <p className="jr-feedback">Aquí el profesional abre la cápsula: video, material y entrega de la tarea.</p>
+        ) : (
+          <Link className="jr-cta wide" href={`/mi-journey/capsula/${node.capsuleId}`} data-autofocus>
+            {node.state === "done" ? "Volver a ver la cápsula" : node.cta ?? "Abrir la cápsula"} <Icon name="arrowRight" size={18} />
+          </Link>
+        )}
       </div>
     );
   }
@@ -279,7 +295,6 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
     return (
       <div className="jr-sheet-stack">
         {status}
-        <p>Ruta formativa de unas 40 horas, normalmente en 3 a 4 semanas. Kibernum financia hasta dos intentos de examen. Tu certificación aprobada abre AI Lab.</p>
         {note && <div className="jr-feedback warn"><p>{note}</p></div>}
         {v.certifications.length > 0 && (
           <ul className="jr-list">
@@ -291,7 +306,14 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
             ))}
           </ul>
         )}
-        {canSubmit && <CertificationForm />}
+        {canSubmit && !v.preview && (
+          <div className="jr-project">
+            <span className="jr-k">Registrar tu resultado</span>
+            <CertificationForm />
+          </div>
+        )}
+        <AiCertSection audience="profesional" stat={v.certStat} compact id="aic-sheet" />
+        <Link className="more-link" href="/programa/role-enablement#certificacion">Ver todo sobre AI CERT <Icon name="arrowRight" size={16} /></Link>
       </div>
     );
   }
@@ -315,7 +337,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
       <div className="jr-sheet-stack">
         {status}
         <p>Sube la presentación con la que mostrarás tu caso en el Showcase (PPT, PDF o Keynote). Puedes reemplazarla cuando quieras antes de presentar.</p>
-        {v.lab ? <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload myId={v.myId} /> : <p className="muted">Podrás subirla cuando el Hub AI registre tu proyecto.</p>}
+        {v.lab ? <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={!v.preview} myId={v.preview ? undefined : v.myId} /> : <p className="muted">Podrás subirla cuando el Hub AI registre tu proyecto.</p>}
       </div>
     );
   }
@@ -415,7 +437,7 @@ function Materials({ v, onGuide }: { v: JourneyView; onGuide: (s: PathStage) => 
           </div>
           {(groups.find((g) => g.s.layer === s.layer)?.caps ?? []).map(({ n, c }) => (
             <div key={n.id} className="jr-mat">
-              <Link href={`/mi-journey/capsula/${n.capsuleId}`} className="jr-mat-title">{c.title}</Link>
+              {v.preview ? <strong className="jr-mat-title">{c.title}</strong> : <Link href={`/mi-journey/capsula/${n.capsuleId}`} className="jr-mat-title">{c.title}</Link>}
               <ResourceList items={c.resources} />
             </div>
           ))}
@@ -470,7 +492,7 @@ function Deliverables({ v }: { v: JourneyView }) {
       {v.lab && (
         <div className="jr-group">
           <h3>Presentación del Showcase</h3>
-          <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={v.path.currentLayer === "AI_LAB_SHOWCASE"} myId={v.myId} />
+          <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={!v.preview && v.path.currentLayer === "AI_LAB_SHOWCASE"} myId={v.preview ? undefined : v.myId} />
         </div>
       )}
     </section>

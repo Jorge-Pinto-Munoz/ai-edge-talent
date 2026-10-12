@@ -4,6 +4,7 @@ import "./site.css";
 import { StoreProvider } from "@/lib/store/StoreProvider";
 import { Header } from "@/components/Header";
 import { FooterNote } from "@/components/site/FooterNote";
+import { HelpButton } from "@/components/site/Help";
 
 export const metadata: Metadata = {
   title: "AI Edge Talent · Kibernum",
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <FooterNote live={Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL)} />
             </div>
           </footer>
+          <HelpButton />
         </StoreProvider>
       </body>
     </html>

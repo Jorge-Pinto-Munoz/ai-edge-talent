@@ -80,7 +80,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
     slug: "role-enablement",
     n: 3,
     name: "Role Enablement",
-    tagline: "Te certificas en IA aplicada a tu rol, con profesor y mentor.",
+    tagline: "Te certificas en IA aplicada a tu rol, con profesor y AI Coach.",
     icon: "badge",
     image: "trabajo-laptop",
     facts: [
@@ -89,15 +89,15 @@ export const PUBLIC_STAGES: PublicStage[] = [
       { label: "Intentos financiados", value: "Hasta dos" },
     ],
     intro:
-      "Es la etapa de certificación técnica (AI CERTs) alineada a tu rol. Combinas autoestudio con un profesor y un canal de cohorte, y un mentor te acompaña con feedback semanal.",
+      "Es la etapa de certificación técnica (AI CERTs) alineada a tu rol. Combinas autoestudio con un profesor y un canal de cohorte, y un AI Coach te acompaña con feedback semanal.",
     happens: [
       { title: "Estudias a tu ritmo", body: "Contenido de certificación alineado a tu rol, con avance semanal visible." },
-      { title: "Te acompañan", body: "Profesor y canal de cohorte para dudas; mentor asignado que deja feedback cada semana." },
+      { title: "Te acompañan", body: "Profesor y canal de cohorte para dudas; AI Coach asignado que deja feedback cada semana." },
       { title: "Rindes tu examen", body: "Kibernum financia hasta dos intentos." },
       { title: "Registras tu certificación", body: "Subes el certificado a la plataforma y se verifica." },
     ],
     youDo: ["Mantener un avance semanal", "Participar del acompañamiento", "Rendir el examen con seriedad"],
-    youGet: ["Una certificación reconocida en IA para tu rol", "Feedback semanal de tu mentor", "El pase a AI Lab"],
+    youGet: ["Una certificación reconocida en IA para tu rol", "Feedback semanal de tu AI Coach", "El pase a AI Lab"],
     advance: "Con la certificación aprobada y verificada entras a AI Lab.",
     ifNot: "Si el segundo intento no se aprueba, el journey se cierra, salvo excepción explícita.",
   },
@@ -169,7 +169,7 @@ export const SITE_INDEX: { href: string; title: string; body: string; icon: Icon
 export const BENEFITS: { title: string; body: string; icon: IconName; size?: "wide" | "full" }[] = [
   { title: "IA aplicada a tu rol real", body: "No es un curso genérico: todo termina en tu trabajo, con tu cliente.", icon: "target", size: "wide" },
   { title: "Certificación AI CERTs", body: "Financiada por Kibernum, hasta dos intentos.", icon: "badge" },
-  { title: "Mentor con feedback semanal", body: "Alguien que sigue tu avance y te ayuda a destrabarte.", icon: "chat" },
+  { title: "AI Coach con feedback semanal", body: "Alguien que sigue tu avance y te ayuda a destrabarte.", icon: "chat" },
   { title: "Showcase con el cliente", body: "Presentas un caso real con evidencia de valor.", icon: "presentation", size: "wide" },
   { title: "Banca de talento", body: "Al cerrar, quedas visible como talento habilitado en IA para nuevas oportunidades.", icon: "star", size: "full" },
 ];
@@ -187,7 +187,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   { q: "¿Cuánto dura el programa?", a: "Entre 30 y 45 días como referencia, según tu avance en cada etapa." },
   { q: "¿Cuánto tiempo debo dedicar?", a: "Espacios coordinados dentro de jornada, normalmente 2 a 3 horas por semana según la etapa, más tu tiempo de estudio. La certificación contempla unas 40 horas en 3 a 4 semanas." },
   { q: "¿Postular significa quedar seleccionado/a?", a: "No. La selección depende de la evidencia de tu Assessment y de la capacidad de la Wave." },
-  { q: "¿Quién me acompaña?", a: "Tu Delivery primero, un mentor con feedback semanal desde Role Enablement y el profesor de la certificación." },
+  { q: "¿Quién me acompaña?", a: "Tu Delivery primero, un AI Coach con feedback semanal desde Role Enablement y el profesor de la certificación." },
 ];
 
 /** Una línea por etapa según quién mira (tarjetas de los homes de clientes y equipo). */

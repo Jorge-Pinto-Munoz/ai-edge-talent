@@ -13,7 +13,7 @@ export function GroupsManager({ waveId, groups, people, isAdmin }: { waveId: str
   const assigned = new Set(groups.flatMap((g) => g.group_members.map((m) => m.candidate_id)));
   return (
     <div className="stack">
-      <p className="muted">Cada grupo tiene uno o más mentores/acompañantes que entregan feedback semanal desde Role Enablement (certificación y acompañamiento).</p>
+      <p className="muted">Cada grupo tiene uno o más AI Coaches que entregan feedback semanal desde Role Enablement (certificación y acompañamiento).</p>
       {isAdmin && (
         <form className="row" onSubmit={(e) => { e.preventDefault(); start(async () => { setMsg(await createGroup(waveId, name)); setName(""); }); }}>
           <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del grupo (p.ej. QA · Grupo 1)" style={{ maxWidth: 320 }} />
@@ -36,7 +36,7 @@ function GroupCard({ waveId, g, people, isAdmin, onMsg }: { waveId: string; g: G
       <h3 style={{ marginTop: 0 }}>{g.name}</h3>
       <div className="grid grid-2">
         <div>
-          <div className="eyebrow">Mentores / acompañantes</div>
+          <div className="eyebrow">AI Coaches</div>
           <ul>
             {g.group_mentors.map((m) => (
               <li key={m.mentor_id}>
@@ -44,11 +44,11 @@ function GroupCard({ waveId, g, people, isAdmin, onMsg }: { waveId: string; g: G
                 {isAdmin && <button className="btn ghost small" style={{ marginLeft: 8 }} disabled={pending} onClick={() => start(async () => onMsg(await removeGroupMentor(waveId, g.id, m.mentor_id)))}>Quitar</button>}
               </li>
             ))}
-            {g.group_mentors.length === 0 && <li className="muted">Sin mentor asignado</li>}
+            {g.group_mentors.length === 0 && <li className="muted">Sin AI Coach asignado</li>}
           </ul>
           {isAdmin && (
             <form className="row" onSubmit={(e) => { e.preventDefault(); start(async () => { onMsg(await addGroupMentor(waveId, g.id, email)); setEmail(""); }); }}>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo del mentor" style={{ maxWidth: 260 }} />
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo del AI Coach" style={{ maxWidth: 260 }} />
               <button className="btn small" disabled={pending}>Asignar</button>
             </form>
           )}

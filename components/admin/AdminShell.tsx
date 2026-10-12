@@ -28,6 +28,8 @@ const SECTIONS: Section[] = [
   { key: "contenido", label: "Contenido", icon: "book", href: (w) => `/admin/contenido/${w}`, match: /^\/admin\/contenido/, roles: ADMIN, perWave: true },
   { key: "evaluacion", label: "Cómo evaluamos", icon: "target", href: () => "/admin/evaluacion", match: /^\/admin\/evaluacion/, roles: ADMIN },
   { key: "talento", label: "Talento", icon: "star", href: () => "/admin/talento", match: /^\/admin\/talento/, roles: STAFF },
+  { key: "vista", label: "Ver como", icon: "user", href: () => "/admin/vista", match: /^\/admin\/vista/, roles: ADMIN },
+  { key: "soporte", label: "Soporte", icon: "help", href: () => "/admin/soporte", match: /^\/admin\/soporte/, roles: ADMIN },
   { key: "accesos", label: "Accesos", icon: "key", href: () => "/admin/accesos", match: /^\/admin\/accesos/, roles: ADMIN },
 ];
 

@@ -1,6 +1,7 @@
 import type { JourneyPath } from "@/lib/journey/path";
 import type { Layer } from "@/lib/journey/rules";
 import type { LabFile } from "@/components/hub/LabFiles";
+import type { CertStat } from "@/lib/aicert/stats";
 
 /** Todo lo que necesita el portal del profesional, ya serializable (lo arma el servidor). */
 export interface JourneyView {
@@ -23,6 +24,9 @@ export interface JourneyView {
   guides: Partial<Record<Layer, { title: string; summary: string | null; whatHappens: string | null; whatWeExpect: string | null; videoUrl: string | null; videoPath: string | null }>>;
   certifications: { id: string; attempt: number; result: string; status: string; reviewNote: string | null; filePath: string | null; createdAt: string }[];
   failedCerts: number;
+  certStat: CertStat | null;
+  /** Vista previa del admin: se ve igual, sin poder enviar nada. */
+  preview?: { label: string } | null;
   submissions: { id: string; capsuleTitle: string; attempt: number; status: string; feedback: string | null; files: { name: string; path: string; size: number }[]; submittedAt: string }[];
   lab: {
     id: string;
