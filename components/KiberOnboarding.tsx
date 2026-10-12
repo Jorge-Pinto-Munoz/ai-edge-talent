@@ -31,7 +31,7 @@ function onboardingSteps(app: ApplicationRecord, wave: Wave, state: AppState): {
           <li><strong>Cliente:</strong> {app.client}</li>
           <li><strong>Rol:</strong> {app.role}</li>
           <li><strong>Inicio:</strong> {wave.startDate ? fmtDay(wave.startDate) : "lo confirma tu Delivery en el calendario inicial"}</li>
-          <li><strong>Duración de referencia:</strong> 30–45 días</li>
+          <li><strong>Duración:</strong> 30 a 45 días según tu ritmo</li>
         </ul>
       ),
     },

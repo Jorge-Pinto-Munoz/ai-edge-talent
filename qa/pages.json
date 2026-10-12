@@ -26,7 +26,9 @@
     "/admin/profesor",
     "/admin/lab",
     "/admin/vista",
-    "/admin/soporte"
+    "/admin/soporte",
+    "/admin/pulsos/wave-3",
+    "/admin/journey/wave-3?tab=aicert"
   ],
   "delivery": [
     "/admin",

@@ -2,10 +2,16 @@ import type { JourneyPath } from "@/lib/journey/path";
 import type { Layer } from "@/lib/journey/rules";
 import type { LabFile } from "@/components/hub/LabFiles";
 import type { CertStat } from "@/lib/aicert/stats";
+import type { PulseDef } from "@/lib/pulse/definitions";
 
 /** Todo lo que necesita el portal del profesional, ya serializable (lo arma el servidor). */
 export interface JourneyView {
   myId: string;
+  waveId: string;
+  /** Pulso pendiente (uno a la vez); se activa solo al pasar de etapa. */
+  pulse: PulseDef | null;
+  /** Avance AI CERT por tramos (lo actualiza el líder del programa). */
+  aicert: { label: string; course: "INTRO" | "SPECIALIST"; tramo: number; percent: number; overall: number; introCourse: string | null; specialistCourse: string | null; examDate: string | null; updatedAt: string } | null;
   firstName: string;
   subtitle: string;
   waveName: string;

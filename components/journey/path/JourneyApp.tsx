@@ -16,6 +16,8 @@ import { Sheet } from "@/components/site/Sheet";
 import { openHelp } from "@/components/site/Help";
 import { AiCertSection } from "@/components/site/AiCertSection";
 import { ShowcaseGuide } from "@/components/site/ShowcaseGuide";
+import { PulseForm } from "@/components/pulse/PulseForm";
+import { AiCertProgressView } from "@/components/journey/AiCertProgressView";
 import type { JourneyView } from "./types";
 
 /** Color de cada etapa (texto oscuro encima: contraste AA en todas). */
@@ -48,6 +50,7 @@ type Open = { type: "node"; node: PathNode; stage: PathStage } | { type: "guide"
 export function JourneyApp({ v }: { v: JourneyView }) {
   const [tab, setTab] = useState<Tab>("camino");
   const [open, setOpen] = useState<Open>(null);
+  const [pulseOpen, setPulseOpen] = useState(false);
   const close = useCallback(() => setOpen(null), []);
   const stageOf = (l: Layer) => v.path.stages.find((s) => s.layer === l)!;
   const next = v.path.next;
@@ -82,6 +85,16 @@ export function JourneyApp({ v }: { v: JourneyView }) {
 
       {tab === "camino" && (
         <>
+          {v.pulse && (
+            <div className="pulse-card">
+              <Icon name="chat" size={26} />
+              <div>
+                <strong>{v.pulse.title} · 2 minutos</strong>
+                <p>Cuéntanos cómo te fue. No es una evaluación: con esto ajustamos tu acompañamiento.</p>
+              </div>
+              <button type="button" className="btn small" onClick={() => setPulseOpen(true)} aria-haspopup="dialog">Responder</button>
+            </div>
+          )}
           <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => setOpen({ type: "node", node: n, stage: stageOf(next!.stage) })} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
           <StageChips stages={v.path.stages} />
           <PathView stages={v.path.stages} onNode={(node, stage) => setOpen({ type: "node", node, stage })} onGuide={(stage) => setOpen({ type: "guide", stage })} />
@@ -100,6 +113,11 @@ export function JourneyApp({ v }: { v: JourneyView }) {
         {open?.type === "node" && <NodeContent v={v} node={open.node} stage={open.stage} />}
         {open?.type === "guide" && <GuideContent v={v} stage={open.stage} />}
       </Sheet>
+      {v.pulse && (
+        <Sheet open={pulseOpen} onClose={() => setPulseOpen(false)} eyebrow="Pulso" title={v.pulse.title}>
+          <PulseForm def={v.pulse} waveId={v.waveId} preview={Boolean(v.preview)} onDone={() => setPulseOpen(false)} />
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -307,6 +325,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
             ))}
           </ul>
         )}
+        <AiCertProgressView p={v.aicert} />
         {canSubmit && !v.preview && (
           <div className="jr-project">
             <span className="jr-k">Registrar tu resultado</span>

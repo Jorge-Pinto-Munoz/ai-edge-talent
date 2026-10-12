@@ -1,6 +1,7 @@
 import "server-only";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import type { Layer } from "./rules";
+import type { AiCertProgress } from "@/lib/aicert/progress";
 
 export interface Capsule {
   id: string;
@@ -65,7 +66,7 @@ export async function journeyForCandidate(candidateId: string) {
 type Cand = { id: string; wave_id: string; full_name: string; client_name: string | null; role_title: string | null; delivery_owner: string | null; status: string; journey_layer: string | null; journey_layer_since: string | null };
 
 async function loadJourney(db: Db, cand: Cand) {
-  const [wave, guides, capsules, progress, subs, certs, events] = await Promise.all([
+  const [wave, guides, capsules, progress, subs, certs, events, aicert, pulses] = await Promise.all([
     db.from("waves").select("id, name, start_date, estimated_close_date").eq("id", cand.wave_id).single(),
     db.from("stage_guides").select("*").eq("wave_id", cand.wave_id),
     db.from("capsules").select("*").eq("wave_id", cand.wave_id).eq("published", true).order("position"),
@@ -73,6 +74,8 @@ async function loadJourney(db: Db, cand: Cand) {
     db.from("submissions").select("id, capsule_id, attempt, status, score, feedback, submitted_at, reviewed_at, text_answer, files").eq("candidate_id", cand.id).order("attempt"),
     db.from("certifications").select("*").eq("candidate_id", cand.id).order("created_at"),
     db.from("journey_events").select("from_layer, to_layer, at").eq("candidate_id", cand.id).order("at"),
+    db.from("aicert_progress").select("course, tramo, percent, intro_course, specialist_course, exam_date, note, updated_at").eq("candidate_id", cand.id).maybeSingle(),
+    db.from("pulse_responses").select("pulse").eq("candidate_id", cand.id),
   ]);
   // Proyecto del AI Lab (RLS: el integrante ve su proyecto, sus compañeros y sus archivos).
   let lab: LabProjectView | null = null;
@@ -98,5 +101,7 @@ async function loadJourney(db: Db, cand: Cand) {
     submissions: subs.data ?? [],
     certifications: certs.data ?? [],
     events: events.data ?? [],
+    aicert: (aicert.data ?? null) as AiCertProgress | null,
+    answeredPulses: (pulses.data ?? []).map((p) => p.pulse as string),
   };
 }

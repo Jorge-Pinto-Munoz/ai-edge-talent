@@ -28,7 +28,7 @@ export const PROGRAM_QA: { section: string; items: QA[] }[] = [
       },
       {
         q: "¿Cuánto dura?",
-        a: "30–45 días como referencia total.",
+        a: "De 30 a 45 días según tu ritmo.",
       },
       {
         q: "¿Cuánta dedicación requiere?",
@@ -116,7 +116,7 @@ export type FaqRole = "KIBER" | "CLIENT" | "DELIVERY";
 
 export const FAQ_BY_ROLE: Record<FaqRole, QA[]> = {
   KIBER: [
-    { q: "¿Cuánto dura?", a: "30–45 días como referencia total." },
+    { q: "¿Cuánto dura?", a: "De 30 a 45 días según tu ritmo." },
     { q: "¿Cuánto tiempo debo dedicar?", a: "Los espacios coordinados dentro de jornada (normalmente 2–3 h/semana según etapa) más tu tiempo personal de estudio y práctica. AI CERTs contempla ~40 horas en 3–4 semanas." },
     { q: "¿Qué pasa si no apruebo?", a: "Mindset: segundo intento no aprobado impide avanzar a AI CERTs salvo excepción de Product Lead. AI CERTs: segundo intento no aprobado cierra el journey salvo excepción. AI Lab: se ajusta hasta readiness. Un atraso activa alerta y recovery, no expulsión automática." },
     { q: "¿Cuántos intentos tengo?", a: "Mindset: dos (REVISIÓN HUMANA no consume intento). AI CERTs: dos intentos financiados por Kibernum. AI Lab: sin máximo fijo vigente." },

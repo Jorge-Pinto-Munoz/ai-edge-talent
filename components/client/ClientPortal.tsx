@@ -5,6 +5,9 @@ import { WAVE_STATUS_LABEL, type WaveStatus } from "@/lib/domain/types";
 import { AiCertSection } from "@/components/site/AiCertSection";
 import { certifiedRate } from "@/lib/aicert/stats";
 import { Callout, fmtDate } from "@/components/ui";
+import { PulseCard } from "@/components/pulse/PulseCard";
+import { pulseDef } from "@/lib/pulse/definitions";
+import { dueClientPulse } from "@/lib/pulse/rules";
 
 /**
  * Portal del cliente: en qué va cada Wave y su gente, sin puntajes ni detalle de evaluación.
@@ -12,11 +15,12 @@ import { Callout, fmtDate } from "@/components/ui";
  */
 export async function ClientPortal({ clientName, preview }: { clientName?: string; preview?: boolean }) {
   const db = await supabaseUser();
-  const [{ data: peopleAll }, { data: statusAll }, { data: allWaves }, stat] = await Promise.all([
+  const [{ data: peopleAll }, { data: statusAll }, { data: allWaves }, stat, { data: pulsesAll }] = await Promise.all([
     db.from("client_candidate_journey").select("*").order("full_name"),
     db.from("client_candidate_status").select("wave_id, visible_status, client_name"),
     db.from("waves").select("id, name, status"),
     certifiedRate(),
+    db.from("pulse_responses").select("wave_id, pulse, client_name").eq("respondent", "CLIENT"),
   ]);
   // El cliente ya recibe solo lo suyo (vistas con RLS); en vista previa se filtra por el cliente elegido.
   const people = clientName ? (peopleAll ?? []).filter((p) => p.client_name === clientName) : peopleAll ?? [];
@@ -47,6 +51,10 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
       {journeyWaves.map((wid) => {
         const w = wave(wid);
         const mine = people.filter((p) => p.wave_id === wid);
+        const answered = (pulsesAll ?? []).filter((r) => r.wave_id === wid && (!clientName || r.client_name === clientName)).map((r) => r.pulse);
+        // Las Waves cerradas (históricas) no piden pulsos.
+        const due = w?.status === "CLOSED" ? null : dueClientPulse(mine.map((p) => p.journey_layer as Layer | null), answered);
+        const def = due ? pulseDef(due) : null;
         return (
           <div key={wid} className="card">
             <div className="spread">
@@ -54,6 +62,11 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
               {w && <span className="badge">{WAVE_STATUS_LABEL[w.status as WaveStatus]}</span>}
             </div>
             <p className="muted">{mine.length} profesional(es) de su organización en el journey.</p>
+            {def && (
+              <div style={{ marginBottom: 14 }}>
+                <PulseCard def={def} waveId={wid} preview={preview} text={due === "CLIENTE_INICIO" ? "Su punto de partida: con la misma pregunta al cierre medimos las horas ahorradas." : "Su mirada al cierre y las horas de hoy, para medir el antes y el después."} />
+              </div>
+            )}
             <div className="rail">
               {LAYERS.filter((l) => l.id !== "ASSESSMENT").map((l) => {
                 const n = mine.filter((p) => p.journey_layer === l.id).length;
@@ -68,7 +81,7 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
             </div>
             <div className="table-wrap" tabIndex={0} style={{ marginTop: 12 }}>
               <table className="rtable">
-                <thead><tr><th>Profesional</th><th>Rol</th><th>Etapa</th><th>Desde</th></tr></thead>
+                <thead><tr><th>Profesional</th><th>Rol</th><th>Etapa</th><th>Desde</th><th>Avance AI CERT</th></tr></thead>
                 <tbody>
                   {mine.map((p) => (
                     <tr key={p.id}>
@@ -76,6 +89,7 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
                       <td data-label="Rol">{p.role_title ?? "—"}</td>
                       <td data-label="Etapa">{p.journey_layer ? layerName(p.journey_layer as Layer) : "Inscrito/a, por iniciar"}</td>
                       <td data-label="Desde">{p.journey_layer_since ? fmtDate(p.journey_layer_since) : "—"}</td>
+                      <td data-label="Avance AI CERT">{p.aicert_tramo ? <>{p.aicert_course_name ?? (p.aicert_course === "SPECIALIST" ? "Especialista" : "Introductorio")}<br /><small className="muted">Tramo {p.aicert_tramo} · {p.aicert_percent}%</small></> : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

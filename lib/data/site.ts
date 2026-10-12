@@ -59,16 +59,16 @@ export const PUBLIC_STAGES: PublicStage[] = [
     icon: "brain",
     image: "profesional-tablet",
     facts: [
-      { label: "Formato", value: "Micro-cápsulas grabadas + tarea" },
+      { label: "Formato", value: "Contenido e-learning + trabajo evaluado" },
       { label: "Aprobación", value: "≥ 75/100 y hard gates" },
       { label: "Intentos", value: "Dos" },
     ],
     intro:
-      "Una serie de cápsulas cortas, a tu ritmo, que terminan en una tarea concreta: tomar una actividad real de tu rol y rediseñarla con IA. Descargas el material, practicas y subes tu entrega.",
+      "Accedes al contenido e-learning (cápsulas cortas, a tu ritmo) y luego realizas un pequeño trabajo evaluado: tomar una actividad real de tu rol y rediseñarla con IA. Descargas el material, practicas y subes tu entrega.",
     happens: [
-      { title: "Ves las cápsulas", body: "Videos breves con material descargable, como en un curso online, ordenados para avanzar sin perderte." },
+      { title: "Accedes al contenido e-learning", body: "Cápsulas breves con material descargable, como en un curso online, ordenadas para avanzar sin perderte." },
       { title: "Eliges una actividad real", body: "Algo que haces todas las semanas y que puede mejorar con IA." },
-      { title: "Subes tu rediseño", body: "Con evidencia propia: antes, después y por qué funciona." },
+      { title: "Haces el trabajo evaluado", body: "Una entrega corta con evidencia propia: antes, después y por qué funciona." },
       { title: "Recibes feedback", body: "Se revisa con criterios conocidos de antemano. Una revisión humana no consume intento." },
     ],
     youDo: ["Ver las cápsulas y descargar el material", "Entregar un rediseño con evidencia propia", "Conocer los criterios antes de entregar"],
@@ -184,7 +184,7 @@ export const WAVE3_TIMELINE: { when: string; title: string; body: string; done?:
 export const WAVE3_DEADLINE = "2026-10-16T12:00:00-03:00";
 
 export const HOME_FAQ: { q: string; a: string }[] = [
-  { q: "¿Cuánto dura el programa?", a: "Entre 30 y 45 días como referencia, según tu avance en cada etapa." },
+  { q: "¿Cuánto dura el programa?", a: "De 30 a 45 días, según tu ritmo: depende de la velocidad con que avances en cada etapa, sobre todo en la certificación." },
   { q: "¿Cuánto tiempo debo dedicar?", a: "Espacios coordinados dentro de jornada, normalmente 2 a 3 horas por semana según la etapa, más tu tiempo de estudio. La certificación contempla unas 40 horas en 3 a 4 semanas." },
   { q: "¿Postular significa quedar seleccionado/a?", a: "No. La selección depende de la evidencia de tu Assessment y de la capacidad de la Wave." },
   { q: "¿Quién me acompaña?", a: "Tu Delivery primero, un AI Coach con feedback semanal desde Role Enablement y el profesor de la certificación." },

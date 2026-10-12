@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const PROTECTED = ["/admin/admision", "/admin/accesos", "/admin/journey", "/admin/contenido", "/admin/talento", "/admin/profesor", "/admin/lab", "/admin/vista", "/admin/soporte", "/mi-journey", "/mentor", "/cliente", "/inicio"];
+  const PROTECTED = ["/admin/admision", "/admin/accesos", "/admin/journey", "/admin/contenido", "/admin/talento", "/admin/profesor", "/admin/lab", "/admin/vista", "/admin/soporte", "/admin/pulsos", "/mi-journey", "/mentor", "/cliente", "/inicio"];
   const protectedPath = PROTECTED.some((p) => request.nextUrl.pathname.startsWith(p));
   if (protectedPath && !user) {
     const login = request.nextUrl.clone();

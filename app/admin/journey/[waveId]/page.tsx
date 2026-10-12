@@ -7,12 +7,15 @@ import { ParticipantsBoard } from "@/components/journey-admin/ParticipantsBoard"
 import { ReviewQueue } from "@/components/journey-admin/ReviewQueue";
 import { GroupsManager } from "@/components/journey-admin/GroupsManager";
 import { fmtDate } from "@/components/ui";
+import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
+import { waveReport } from "@/lib/pulse/report";
 
 export const dynamic = "force-dynamic";
 
 const TABS = [
   ["participantes", "Participantes"],
   ["entregas", "Entregas"],
+  ["aicert", "Avance AI CERT"],
   ["certificaciones", "Certificaciones"],
   ["grupos", "Grupos y AI Coaches"],
   ["feedback", "Feedback semanal"],
@@ -57,6 +60,11 @@ export default async function JourneyAdmin({ params, searchParams }: { params: P
           ? await db.from("submissions").select("id, candidate_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts)").in("candidate_id", ids).order("submitted_at", { ascending: false })
           : { data: [] };
         return <ReviewQueue kind="submissions" items={(subs ?? []).map((s) => ({ ...s, person: nameOf(s.candidate_id) })) as never} />;
+      })())}
+
+      {tab === "aicert" && (await (async () => {
+        const r = await waveReport(waveId);
+        return <AiCertBoard waveId={waveId} isAdmin={isAdmin} people={r.persons.map(({ id, name, role, layer, progress, overall, attendance, alert }) => ({ id, name, role, layer, progress, overall, attendance, alert }))} />;
       })())}
 
       {tab === "certificaciones" && (await (async () => {

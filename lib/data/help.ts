@@ -4,10 +4,13 @@ export interface HelpItem {
   q: string;
   a: string;
   aud: HelpAudience[];
-  topic: "Postulación" | "Selección" | "Certificación" | "AI Lab" | "Después" | "Cliente" | "Plataforma";
+  topic: "Programa" | "Postulación" | "Selección" | "Certificación" | "AI Lab" | "Después" | "Cliente" | "Plataforma";
 }
 
 export const HELP: HelpItem[] = [
+  { topic: "Programa", aud: ["profesional", "cliente"], q: "¿Cuánto dura el programa?", a: "De 30 a 45 días según tu ritmo. Depende sobre todo de la velocidad con que avances en la certificación de tu rol." },
+  { topic: "Programa", aud: ["profesional"], q: "¿Qué hago en AI First Mindset?", a: "Accedes al contenido e-learning (cápsulas cortas, a tu ritmo) y luego entregas un pequeño trabajo evaluado: rediseñar con IA una actividad real de tu rol. Se aprueba con 75/100 y tienes dos intentos." },
+  { topic: "Programa", aud: ["profesional", "cliente"], q: "¿Qué son los pulsos?", a: "Encuestas muy cortas (2 a 3 minutos) que respondes en la plataforma al terminar cada etapa. Con ellas medimos tu experiencia, tu adopción de IA y el ahorro de tiempo antes y después. No son evaluaciones." },
   { topic: "Postulación", aud: ["profesional"], q: "¿Cómo postulo?", a: "Con el link de postulación de tu Wave. Completas el Assessment (unos 20 minutos) con casos reales de tu trabajo. Puedes guardar y seguir después hasta el cierre." },
   { topic: "Postulación", aud: ["profesional"], q: "¿Tiene algún costo para mí?", a: "Ninguno. Kibernum financia el 100 %: habilitación, certificación AI CERT (hasta dos intentos) y AI Lab. Lo único que pedimos es compromiso." },
   { topic: "Selección", aud: ["profesional", "cliente"], q: "¿Cómo se evalúa la postulación?", a: "Con una rúbrica conocida de cinco dimensiones: uso real de IA, profundidad del caso, mindset de reformulación, aprendizaje autónomo y disposición. Se evalúa evidencia, no seniority ni nombres de herramientas." },
@@ -15,6 +18,7 @@ export const HELP: HelpItem[] = [
   { topic: "Selección", aud: ["profesional"], q: "¿Cuándo sé el resultado?", a: "Después del cierre de postulación. Te avisamos por correo y lo ves en tu enlace personal: avanzas, video de rescate o próxima Wave." },
   { topic: "Certificación", aud: ["profesional", "cliente"], q: "¿Qué es AI CERT?", a: "AI CERTs™ es una certificadora internacional de inteligencia artificial. Su certificación AI+ valida con examen tu dominio técnico de la IA aplicada a tu rol. En AI Edge Talent es el respaldo externo; Kibernum certifica tu mindset y tu ejecución práctica." },
   { topic: "Certificación", aud: ["profesional"], q: "¿Qué certificación me corresponde?", a: "Depende de tu rol: desarrollo (AI+ Developer Practitioner™), datos y analítica (AI+ Business Intelligence Practitioner™), full stack (AI+ Engineer™) o arquitectura (AI+ Architect™). Primero haces un curso introductorio y luego el especialista; la ruta exacta se confirma según tu cargo." },
+  { topic: "Certificación", aud: ["profesional", "cliente"], q: "¿Cómo se ve mi avance en AI CERT?", a: "Por tramos del 1 al 5 en tu curso introductorio y luego en el especialista. El líder del programa lo actualiza desde la plataforma AI CERTs y lo ves en Mi journey." },
   { topic: "Certificación", aud: ["profesional"], q: "¿Qué recibo al aprobar?", a: "El certificado oficial de AI CERTs con verificación en línea y un badge digital para LinkedIn. La certificación aprobada y verificada te da paso al AI Lab." },
   { topic: "Certificación", aud: ["profesional"], q: "¿Y si no apruebo el examen AI CERT?", a: "Tienes un segundo intento, también financiado por Kibernum. Avisa a tu Delivery para preparar ese intento con tu profesor." },
   { topic: "AI Lab", aud: ["profesional", "cliente"], q: "¿Qué pasa en el AI Lab y el Showcase?", a: "Dos clases con el Hub AI: en la primera llegas con un desafío real de tu cliente; en la segunda, con lo que construiste. Luego lo presentas en el Showcase con evidencia de valor, de forma individual o en grupo." },

@@ -4,6 +4,9 @@ import { certifiedRate } from "@/lib/aicert/stats";
 import type { Layer } from "@/lib/journey/rules";
 import type { JourneyView } from "@/components/journey/path/types";
 import type { myJourney } from "./queries";
+import { overallProgress, progressLabel } from "@/lib/aicert/progress";
+import { pulseDef } from "@/lib/pulse/definitions";
+import { duePulse } from "@/lib/pulse/rules";
 
 type Journey = NonNullable<Awaited<ReturnType<typeof myJourney>>>;
 
@@ -21,8 +24,24 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
   const lastFeedback = (capsuleId: string) =>
     [...j.submissions].filter((s) => s.capsule_id === capsuleId && s.feedback).sort((a, b) => b.attempt - a.attempt)[0]?.feedback ?? null;
 
+  const due = duePulse({ layer: j.candidate.journey_layer, layerSince: j.candidate.journey_layer_since, labStatus: j.lab?.status ?? null, answered: j.answeredPulses });
   const view: JourneyView = {
     myId: viewerId,
+    waveId: j.candidate.wave_id,
+    pulse: due ? pulseDef(due) : null,
+    aicert: j.aicert
+      ? {
+          label: progressLabel(j.aicert),
+          course: j.aicert.course,
+          tramo: j.aicert.tramo,
+          percent: j.aicert.percent,
+          overall: overallProgress(j.aicert),
+          introCourse: j.aicert.intro_course,
+          specialistCourse: j.aicert.specialist_course,
+          examDate: j.aicert.exam_date,
+          updatedAt: j.aicert.updated_at,
+        }
+      : null,
     preview,
     firstName: j.candidate.full_name.split(" ")[0],
     subtitle: [j.candidate.role_title, j.candidate.client_name].filter(Boolean).join(" · "),

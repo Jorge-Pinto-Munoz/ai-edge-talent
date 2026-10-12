@@ -54,7 +54,7 @@ export function ApplyByInvitation({ token }: { token: string }) {
         <div className="card">
           <h3>Duración y dedicación</h3>
           <ul>
-            <li>30–45 días como referencia total.</li>
+            <li>De 30 a 45 días según tu ritmo.</li>
             <li>Normalmente 2–3 h/semana dentro de jornada, coordinadas con tu cliente según etapa.</li>
             <li>Además: estudio, práctica y avance autónomo.</li>
           </ul>
