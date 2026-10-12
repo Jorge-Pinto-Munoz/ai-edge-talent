@@ -177,6 +177,12 @@ Una **ficha de talento por persona** (por correo) que la acompaña en todas sus 
   - recordatorio por correo cuando vence un seguimiento;
   - vista agregada de adopción e impacto por Wave y por cliente.
 
+
+## Diagnóstico en producción
+- `GET /api/diagnostico` muestra la configuración que tiene el hosting sin revelar claves: URL de Supabase, prefijo y largo de cada clave, y si Supabase las acepta.
+- **GitHub → Actions → Diagnóstico** revisa el sitio publicado, prueba Supabase Auth (opcional: envía un enlace real a un correo) y lista accesos y últimos eventos de ingreso.
+- **Deploys en Vercel (plan Hobby):** solo se publican commits cuyo autor es el dueño de la cuenta de Vercel. Commits de otro autor quedan bloqueados.
+
 ## Arquitectura
 
 ```
