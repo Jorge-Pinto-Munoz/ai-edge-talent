@@ -4,31 +4,23 @@ import { supabaseUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { Callout, fmtDeadline } from "@/components/ui";
 import { WAVE_STATUS_LABEL, type WaveStatus } from "@/lib/domain/types";
-import { SignOut } from "@/components/admission/SignOut";
 
 export const metadata = { title: "Admisión · AI Edge Talent" };
 export const dynamic = "force-dynamic";
 
 export default async function AdmisionHome() {
   if (!isSupabaseConfigured()) return <Callout tone="warn" title="Base de datos no configurada">Ver README · Configuración de Supabase.</Callout>;
-  const viewer = await requireStaffPage("/admin/admision");
+  await requireStaffPage("/admin/admision");
   const db = await supabaseUser();
   const { data: waves } = await db.from("waves").select("id, name, status, application_deadline").order("created_at", { ascending: false });
   const { data: counts } = await db.from("candidates").select("wave_id, status");
   const byWave = (id: string) => (counts ?? []).filter((c) => c.wave_id === id);
   return (
     <div className="stack">
-      <div className="dark-band spread">
-        <div>
-          <div className="eyebrow">Portal de administración</div>
-          <h1 style={{ color: "#fff", margin: 0 }}>Admisión por Wave</h1>
-          <p className="muted" style={{ margin: "6px 0 0" }}>{viewer.email} · {viewer.role === "admin" ? "Admin" : "Delivery"}</p>
-        </div>
-        <div className="row">
-          <Link className="btn secondary" href="/admin/talento">Talento</Link>
-          {viewer.role === "admin" && <Link className="btn secondary" href="/admin/accesos">Accesos</Link>}
-          <SignOut />
-        </div>
+      <div>
+        <div className="eyebrow">Admisión</div>
+        <h1 style={{ margin: 0 }}>Todas las Waves</h1>
+        <p className="muted" style={{ margin: "4px 0 0" }}>Elige una Wave para ver sus candidatos. El resumen diario está en <Link href="/admin">Resumen</Link>.</p>
       </div>
       <div className="grid grid-2">
         {(waves ?? []).map((w) => {

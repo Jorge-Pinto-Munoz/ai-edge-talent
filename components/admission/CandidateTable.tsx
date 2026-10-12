@@ -16,9 +16,9 @@ const OUTCOMES = [
   ["NOT_SELECTED", "No continúa (todavía no)"],
 ] as const;
 
-export function CandidateTable({ waveId, candidates, isAdmin }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean }) {
+export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = "" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialStatus?: string }) {
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(initialStatus);
   const [rec, setRec] = useState("");
   const [sel, setSel] = useState<string[]>([]);
   const [result, setResult] = useState<ActionResult | null>(null);

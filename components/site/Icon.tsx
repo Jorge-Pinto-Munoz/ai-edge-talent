@@ -23,6 +23,15 @@ const PATHS = {
   clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
   check: "M5 12.5l4.5 4.5L19 7.5",
   play: "M8 5.5v13l10-6.5-10-6.5z",
+  grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  users: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4-6.3",
+  layers: "M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5",
+  book: "M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 1 2-2h14",
+  key: "M15 9a4 4 0 1 0-3.9 4.9L4 21v-3h3v-3h3l1.1-1.1A4 4 0 0 0 15 9zM16 8h.01",
+  logout: "M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4",
+  alert: "M12 3l9.5 17h-19L12 3zM12 10v4M12 17h.01",
+  kanban: "M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z",
+  list: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01",
 } as const;
 
 export type IconName = keyof typeof PATHS;
