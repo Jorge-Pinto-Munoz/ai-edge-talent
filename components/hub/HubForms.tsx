@@ -28,7 +28,7 @@ export function PassToLab({ waveId, people, readOnly }: { waveId: string; people
   const ready = people.filter((p) => p.ready);
   return (
     <>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead><tr>{!readOnly && <th style={{ width: 36 }}><input type="checkbox" aria-label="Seleccionar a todos los habilitados" checked={ready.length > 0 && sel.length === ready.length} onChange={(e) => setSel(e.target.checked ? ready.map((p) => p.id) : [])} /></th>}<th>Participante</th><th>AI CERT</th><th>Gate</th></tr></thead>
           <tbody>
@@ -80,7 +80,7 @@ export function LabSessionForm({ waveId, n, heldOn, notes, projects, entries, re
       {projects.length === 0 ? (
         <p className="muted" style={{ margin: 0 }}><small>Crea los proyectos en la pestaña Proyectos para registrar qué trajo cada uno.</small></p>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0}>
           <table>
             <thead><tr><th>Proyecto</th><th>Asistió</th><th>{n === 1 ? "Qué idea trajo" : "Qué construyó"}</th></tr></thead>
             <tbody>

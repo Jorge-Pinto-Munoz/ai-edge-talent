@@ -46,7 +46,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
 
   return (
     <div className="stack">
-      <div className="grid grid-3">
+      <div className="kpi-row">
         <Kpi n={candidates.length} label="candidatos" />
         <Kpi n={candidates.filter((c) => !["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(c.status)).length} label="completaron la postulación" />
         <Kpi n={candidates.filter((c) => ["ENROLLED", "MINDSET_READY"].includes(c.status)).length} label="inscritos (compromiso aceptado)" />
@@ -131,8 +131,8 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
         </Callout>
       )}
 
-      <div className="table-wrap">
-        <table>
+      <div className="table-wrap" tabIndex={0}>
+        <table className="rtable">
           <thead>
             <tr>
               {isAdmin && <th><input type="checkbox" aria-label="Seleccionar todo" checked={allSel} onChange={(e) => setSel(e.target.checked ? rows.map((r) => r.id) : [])} /></th>}
@@ -147,15 +147,15 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
           <tbody>
             {rows.map((c) => (
               <tr key={c.id}>
-                {isAdmin && <td><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
-                <td>
+                {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
+                <td className="rt-title">
                   <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
                   <br /><small className="muted">{c.corporate_email}</small>
                 </td>
-                <td>{c.client_name ?? "—"}<br /><small className="muted">{c.role_title ?? ""}{c.specialty ? ` · ${c.specialty}` : ""}</small></td>
-                <td><Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge></td>
+                <td data-label="Cliente · Rol">{c.client_name ?? "—"}<br /><small className="muted">{c.role_title ?? ""}{c.specialty ? ` · ${c.specialty}` : ""}</small></td>
+                <td data-label="Estado"><Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge></td>
                 {isAdmin && (
-                  <td>
+                  <td data-label="Propuesta IA">
                     {c.eval ? (
                       <>
                         <strong>{c.eval.total.toFixed(0)}</strong> <span className="badge">{c.eval.level}</span>
@@ -165,7 +165,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
                   </td>
                 )}
                 {isAdmin && (
-                  <td>
+                  <td data-label="Decisión">
                     {c.decision ? (
                       <>
                         {REC_LABEL[c.decision.outcome]}
@@ -174,10 +174,10 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
                     ) : <span className="muted">Pendiente</span>}
                   </td>
                 )}
-                <td>{c.lastEmail ? <small>{TEMPLATE_LABEL[c.lastEmail.template as EmailTemplate]} · {c.lastEmail.status === "sent" ? "enviado" : c.lastEmail.status === "failed" ? "falló" : "en cola"}</small> : <span className="muted">—</span>}</td>
+                <td data-label="Último correo">{c.lastEmail ? <small>{TEMPLATE_LABEL[c.lastEmail.template as EmailTemplate]} · {c.lastEmail.status === "sent" ? "enviado" : c.lastEmail.status === "failed" ? "falló" : "en cola"}</small> : <span className="muted">—</span>}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={7} className="muted">Sin candidatos. Importa la base de la Wave.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={7} className="muted">Aún no hay postulaciones. Comparte el link de postulación con los profesionales.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -187,7 +187,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
 
 function Kpi({ n, label }: { n: number; label: string }) {
   return (
-    <div className="card">
+    <div className="card kpi-card">
       <div className="kpi">{n}</div>
       <small className="muted">{label}</small>
     </div>

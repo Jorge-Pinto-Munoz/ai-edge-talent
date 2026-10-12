@@ -8,7 +8,8 @@ import { setRole } from "@/lib/store/state";
 import { ROLE_LABEL, type Role } from "@/lib/domain/types";
 import { PUBLIC_STAGES } from "@/lib/data/site";
 import { Icon } from "@/components/site/Icon";
-import { AUDIENCE, AUDIENCES, AUDIENCE_COOKIE, audienceOfPath, isAudience, type Audience } from "@/lib/site/audience";
+import { StageIcon } from "@/components/site/StageIcon";
+import { AUDIENCE, AUDIENCES, AUDIENCE_COOKIE, audienceOfPath, isAudience, isPortalPath, type Audience } from "@/lib/site/audience";
 
 const MEGA_COPY: Record<Audience, { title: string; body: string }> = {
   profesional: { title: "De la postulación al Showcase", body: "Cinco etapas para integrar IA a tu rol y llevarla a un desafío real con tu cliente." },
@@ -111,12 +112,28 @@ export function Header() {
     </div>
   );
 
+  // Portales con sesión: solo marca y salida al sitio; cada portal trae su propia navegación.
+  if (live && isPortalPath(path)) {
+    return (
+      <header className="sitenav portal">
+        <div className="sitenav-inner">
+          <Link href="/" className="brand" aria-label="AI Edge Talent · Kibernum, ir al sitio">
+            <img src="/brand/kibernum-blanco.svg" alt="Kibernum" />
+            <span className="program">AI Edge Talent</span>
+          </Link>
+          <span style={{ flex: 1 }} />
+          <Link href="/programa" className="pill ghost">Ver el programa</Link>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <>
     <div className="aud-bar">
       <div className="aud-bar-inner">
         {audBar}
-        <span className="aud-bar-note">AI Edge Talent · Kibernum</span>
+        <span className="aud-bar-note" aria-hidden="true">AI Edge Talent · Kibernum</span>
       </div>
     </div>
     <header className="sitenav" onMouseLeave={closeMegaSoon}>
@@ -161,7 +178,7 @@ export function Header() {
           <div className="mega-stages">
             {PUBLIC_STAGES.map((s) => (
               <Link key={s.slug} href={stageHref(s.slug)} className="mega-stage" tabIndex={mega ? 0 : -1}>
-                <span className="ico"><Icon name={s.icon} size={20} /></span>
+                <span className="ico"><StageIcon slug={s.slug} fallback={s.icon} size={20} /></span>
                 <strong>{s.n}. {s.name}</strong>
                 <small>{s.tagline}</small>
               </Link>

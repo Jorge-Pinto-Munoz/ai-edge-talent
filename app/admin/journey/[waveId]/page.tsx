@@ -109,7 +109,7 @@ export default async function JourneyAdmin({ params, searchParams }: { params: P
                       {n.blockers && <><br /><small><strong>Bloqueos:</strong> {n.blockers}</small></>}
                     </div>
                   ))}
-                  <div className="table-wrap" style={{ marginTop: 10 }}>
+                  <div className="table-wrap" tabIndex={0} style={{ marginTop: 10 }}>
                     <table>
                       <thead><tr><th>Persona</th><th>Asistencia</th><th>Avance</th><th>Riesgo</th><th>Comentario</th></tr></thead>
                       <tbody>

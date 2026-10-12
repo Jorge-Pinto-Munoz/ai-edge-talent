@@ -1,0 +1,10 @@
+{
+  "anon": ["/", "/programa", "/programa/assessment", "/programa/mindset", "/programa/role-enablement", "/programa/ai-lab-showcase", "/programa/cierre", "/clientes", "/equipo", "/ayuda", "/responsabilidades", "/login", "/postular/registro?wave=wave-3", "/wave-3/postular", "/sin-acceso", "/no-existe"],
+  "admin": ["/admin", "/admin/admision", "/admin/evaluacion", "/admin/talento", "/admin/accesos", "/admin/profesor", "/admin/lab"],
+  "delivery": ["/admin", "/admin/profesor"],
+  "profesor": ["/admin/profesor"],
+  "hub": ["/admin/lab"],
+  "kiber": ["/mi-journey"],
+  "mentor": ["/mentor"],
+  "client": ["/cliente"]
+}

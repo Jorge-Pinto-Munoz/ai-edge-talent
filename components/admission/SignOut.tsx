@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { signOut } from "@/app/login/actions";
 
-export function SignOut() {
+/** Cerrar sesión. `onDark` para usarlo sobre bandas oscuras (texto blanco). */
+export function SignOut({ onDark = true, label = "Salir" }: { onDark?: boolean; label?: string }) {
   const router = useRouter();
   return (
-    <button className="btn ghost small" style={{ color: "#fff" }} onClick={async () => { await signOut(); router.push("/login"); }}>
-      Salir
+    <button type="button" className={onDark ? "btn ghost small" : "btn ghost"} style={onDark ? { color: "#fff" } : undefined} onClick={async () => { await signOut(); router.push("/login"); }}>
+      {label}
     </button>
   );
 }

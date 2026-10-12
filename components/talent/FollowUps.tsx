@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { recordFollowUp, scheduleFollowUps, type TalentResult } from "@/lib/talent/actions";
-import { Callout, fmtDate } from "@/components/ui";
+import { Callout, fmtDate, fmtYmd } from "@/components/ui";
 
 interface FU { id: string; wave_id: string | null; kind: string; due_date: string; done_at: string | null; adoption: number | null; still_using_ai: boolean | null; impact: string | null; client_perception: string | null; next_step: string | null }
 const KIND: Record<string, string> = { MONTH_1: "Mes 1 · percepción y adopción", MONTH_3: "Mes 3 · impacto real", CUSTOM: "Seguimiento" };
@@ -17,7 +17,7 @@ export function FollowUps({ talentId, waves, items }: { talentId: string; waves:
   const today = new Date().toISOString().slice(0, 10);
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>Seguimiento post-habilitación</h3>
+      <h2 className="h-card" style={{ marginTop: 0 }}>Seguimiento post-habilitación</h2>
       <p className="muted">Mes 1: ¿adoptó las herramientas y cómo lo percibe el cliente? Mes 3: ¿se cumplió la promesa de agilidad? ¿hay impacto real?</p>
       <div className="row">
         <select value={wave} onChange={(e) => setWave(e.target.value)} style={{ width: "auto" }} aria-label="Wave">{waves.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select>
@@ -44,7 +44,7 @@ function PendingFU({ f, overdue, onDone }: { f: FU; overdue: boolean; onDone: (r
   const [pending, start] = useTransition();
   return (
     <div className="card" style={{ borderColor: overdue ? "var(--st-warn)" : undefined }}>
-      <div className="spread"><strong>{KIND[f.kind]}</strong><small className={overdue ? "pending-def" : "muted"}>{overdue ? "Vencido · " : ""}{f.due_date}</small></div>
+      <div className="spread"><strong>{KIND[f.kind]}</strong><small className={overdue ? "pending-def" : "muted"}>{overdue ? "Vencido · " : ""}{fmtYmd(f.due_date)}</small></div>
       <div className="grid grid-3" style={{ marginTop: 8 }}>
         <div className="field"><label htmlFor={`ad-${f.id}`}>Adopción de IA (1–5)</label>
           <select id={`ad-${f.id}`} value={v.adoption} onChange={(e) => setV({ ...v, adoption: Number(e.target.value) })}>{[1, 2, 3, 4, 5].map((n) => <option key={n}>{n}</option>)}</select>

@@ -58,6 +58,12 @@ export function audienceOfPath(path: string): Audience | null {
   return null;
 }
 
+/** Portales con sesión: llevan su propia navegación y no muestran la del sitio público. */
+const PORTALS = ["/admin", "/mi-journey", "/mentor", "/cliente", "/inicio", "/sin-acceso"];
+export function isPortalPath(path: string): boolean {
+  return PORTALS.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
 /** Etapas del ciclo completo que cubre cada etapa pública. */
 const STAGE_MAP: Record<string, LifecycleStageId[]> = {
   assessment: ["NOMINATION", "APPLICATION", "ASSESSMENT", "SELECTION", "CONDITIONS"],

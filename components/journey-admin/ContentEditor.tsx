@@ -16,7 +16,7 @@ export function ContentEditor({ waveId, guides, capsules }: { waveId: string; gu
   const list = capsules.filter((c) => c.layer === layer);
   return (
     <div className="stack">
-      <nav className="row">
+      <nav className="row" aria-label="Etapas del contenido">
         {EDITABLE.map((l) => (
           <button key={l} className={`btn small ${layer === l ? "" : "ghost"}`} onClick={() => { setLayer(l); setEditing(null); }}>
             {LAYERS.find((x) => x.id === l)!.name}
@@ -26,7 +26,7 @@ export function ContentEditor({ waveId, guides, capsules }: { waveId: string; gu
       <GuideForm key={layer} waveId={waveId} layer={layer} guide={guides.find((g) => g.layer === layer) ?? null} />
       <div className="card">
         <div className="spread">
-          <h3 style={{ margin: 0 }}>Cápsulas</h3>
+          <h2 className="h-card" style={{ margin: 0 }}>Cápsulas</h2>
           <button className="btn small" onClick={() => setEditing("new")}>Nueva cápsula</button>
         </div>
         <ul style={{ marginTop: 10 }}>
@@ -116,7 +116,7 @@ function CapsuleForm({ waveId, layer, capsule, nextPosition, onDone }: { waveId:
   const txt = (k: "title" | "description" | "videoUrl" | "taskPrompt" | "dueDate") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setC({ ...c, [k]: e.target.value });
   return (
     <div className="card" style={{ borderColor: "var(--accent)" }}>
-      <h3 style={{ marginTop: 0 }}>{capsule ? "Editar cápsula" : "Nueva cápsula"}</h3>
+      <h2 className="h-card" style={{ marginTop: 0 }}>{capsule ? "Editar cápsula" : "Nueva cápsula"}</h2>
       <div className="grid grid-3">
         <div className="field"><label htmlFor="ct">Título</label><input id="ct" type="text" value={c.title} onChange={txt("title")} /></div>
         <div className="field"><label htmlFor="cp">Orden</label><input id="cp" type="text" inputMode="numeric" value={c.position} onChange={(e) => setC({ ...c, position: Number(e.target.value) || 1 })} /></div>

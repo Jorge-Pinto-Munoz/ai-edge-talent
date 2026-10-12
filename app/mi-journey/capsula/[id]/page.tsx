@@ -5,7 +5,7 @@ import { myJourney } from "@/lib/journey/queries";
 import { layerName, submissionGate, type SubmissionStatus } from "@/lib/journey/rules";
 import { SignedLink, VideoPlayer } from "@/components/journey/SignedLink";
 import { CompleteToggle, TaskForm } from "@/components/journey/CapsuleTask";
-import { Badge, fmtDate } from "@/components/ui";
+import { Badge, fmtDate, fmtYmd } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,7 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
             {c.max_attempts && <small className="muted">Intentos usados: {usedAttempts} de {c.max_attempts}</small>}
           </div>
           <p style={{ whiteSpace: "pre-wrap" }}>{c.task_prompt}</p>
-          {c.due_date && <p className="muted"><small>Plazo: {c.due_date}. Si te atrasas, avisa a tu Delivery: un atraso activa apoyo y revisión, no una expulsión automática.</small></p>}
+          {c.due_date && <p className="muted"><small>Plazo: {fmtYmd(c.due_date)}. Si te atrasas, avisa a tu Delivery: un atraso activa apoyo y revisión, no una expulsión automática.</small></p>}
           {subs.length > 0 && (
             <>
               <h4>Tus entregas</h4>

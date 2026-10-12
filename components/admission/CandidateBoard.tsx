@@ -18,11 +18,11 @@ const COLUMNS: { key: string; label: string; color: string; statuses: string[] }
  */
 export function CandidateBoard({ waveId, candidates, isAdmin }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean }) {
   return (
-    <div className="board" role="list" aria-label="Candidatos por etapa de admisión">
+    <div className="board" role="region" aria-label="Candidatos por etapa de admisión" tabIndex={0}>
       {COLUMNS.map((col) => {
         const items = candidates.filter((c) => col.statuses.includes(c.status)).sort((a, b) => (b.eval?.total ?? -1) - (a.eval?.total ?? -1));
         return (
-          <section key={col.key} className="board-col" role="listitem" aria-label={`${col.label}: ${items.length}`}>
+          <section key={col.key} className="board-col" aria-label={`${col.label}: ${items.length}`}>
             <div className="board-col-head">
               <strong><span className="swatch" style={{ background: col.color }} />{col.label}</strong>
               <span className="n">{items.length}</span>

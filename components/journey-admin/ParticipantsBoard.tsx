@@ -42,9 +42,9 @@ export function ParticipantsBoard({ waveId, people, isAdmin }: { waveId: string;
           {res.data && res.data.length > 0 && <ul style={{ margin: 0 }}>{res.data.map((d) => <li key={d}><small>{d}</small></li>)}</ul>}
         </Callout>
       )}
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
-          <thead><tr>{isAdmin && <th></th>}<th>Persona</th><th>Cliente · Rol</th><th>Especialidad</th><th>Etapa</th><th>Desde</th></tr></thead>
+          <thead><tr>{isAdmin && <th><span className="sr-only">Seleccionar</span></th>}<th>Persona</th><th>Cliente · Rol</th><th>Especialidad</th><th>Etapa</th><th>Desde</th></tr></thead>
           <tbody>
             {people.map((p) => (
               <tr key={p.id}>

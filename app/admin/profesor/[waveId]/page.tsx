@@ -172,7 +172,7 @@ export default async function ProfesorWave({ params, searchParams }: { params: P
       {matrix.length > 0 && (
         <section className="adm-card">
           <div className="adm-card-head"><h2>Asistencia por persona</h2><span className="muted">Últimas {matrix.length} clases</span></div>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0}>
             <table className="attend-matrix">
               <thead>
                 <tr><th>Participante</th>{matrix.map((c) => <th key={c.id}>{classDateLabel(c.held_on).replace(/^\S+ /, "")}</th>)}<th>Total</th></tr>

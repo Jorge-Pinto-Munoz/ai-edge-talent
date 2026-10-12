@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
-import { getViewer, myStaffWaves, type Viewer } from "@/lib/admission/auth";
+import { getViewer, myStaffWaves, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, type Layer } from "@/lib/journey/rules";
 import { LAB_DECISIONS, LAB_STATUS, type LabDecision, type LabMode, type LabStatus } from "./rules";
 
@@ -13,8 +13,9 @@ const MAX_LAB_MB = 100;
 /** Admin, o líder del Hub AI asignado a esta Wave. */
 async function requireHub(waveId: string): Promise<Viewer> {
   const v = await getViewer();
-  if (v?.role === "admin") return v;
-  if (v?.role === "hub" && (await myStaffWaves(v)).includes(waveId)) return v;
+  if (!v) throw new Error(SESSION_EXPIRED);
+  if (v.role === "admin") return v;
+  if (v.role === "hub" && (await myStaffWaves(v)).includes(waveId)) return v;
   throw new Error("Solo el líder del Hub AI de esta Wave puede hacer esto.");
 }
 
@@ -176,7 +177,7 @@ export async function saveShowcase(projectId: string, input: { date: string; dec
 /* ───────── Presentaciones: suben integrantes o el Hub; descargan Hub, equipo interno e integrantes ───────── */
 async function canUpload(projectId: string): Promise<{ viewer: Viewer; waveId: string }> {
   const viewer = await getViewer();
-  if (!viewer) throw new Error("Debes ingresar.");
+  if (!viewer) throw new Error(SESSION_EXPIRED);
   const waveId = await projectWave(projectId);
   if (viewer.role === "admin" || viewer.role === "hub") return { viewer: await requireHub(waveId), waveId };
   // RLS: el Kiber solo ve el proyecto si es integrante.

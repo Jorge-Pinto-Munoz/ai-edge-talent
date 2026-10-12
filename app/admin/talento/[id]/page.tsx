@@ -40,7 +40,7 @@ export default async function TalentDetail({ params }: { params: Promise<{ id: s
 
       <div className="grid grid-2">
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Recorrido por Wave</h3>
+          <h2 className="h-card" style={{ marginTop: 0 }}>Recorrido por Wave</h2>
           {(cands ?? []).map((c) => (
             <div key={c.id} style={{ marginBottom: 12 }}>
               <strong>{waveName(c.wave_id)}</strong> · <small>{c.journey_layer ? layerName(c.journey_layer as Layer) : ADMISSION_LABEL[c.status as AdmissionStatus]}</small>
@@ -53,7 +53,7 @@ export default async function TalentDetail({ params }: { params: Promise<{ id: s
           ))}
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Historial de servicio</h3>
+          <h2 className="h-card" style={{ marginTop: 0 }}>Historial de servicio</h2>
           <ul>
             {(history ?? []).map((h) => (
               <li key={h.id}><small>{h.effective_date ?? fmtDate(h.at)} · {h.from_status ? `${SERVICE_LABEL[h.from_status as ServiceStatus]} → ` : ""}{SERVICE_LABEL[h.to_status as ServiceStatus]}{h.note ? ` · ${h.note}` : ""}</small></li>

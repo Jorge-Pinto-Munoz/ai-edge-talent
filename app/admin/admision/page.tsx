@@ -30,7 +30,7 @@ export default async function AdmisionHome() {
           return (
             <Link key={w.id} href={`/admin/admision/${w.id}`} className="card signal" style={{ textDecoration: "none", color: "inherit" }}>
               <div className="spread">
-                <h3 style={{ margin: 0 }}>{w.name}</h3>
+                <h2 className="h-card" style={{ margin: 0 }}>{w.name}</h2>
                 <span className="badge">{WAVE_STATUS_LABEL[w.status as WaveStatus]}</span>
               </div>
               <p className="muted" style={{ margin: "6px 0 12px" }}>{w.application_deadline ? `Deadline: ${fmtDeadline(w.application_deadline)}` : "Sin deadline"}</p>

@@ -52,6 +52,7 @@
   --review-soft: #efeaff;
   --info-soft: #e3f5f7;
   --warn-text: #7a4a00;
+  --ok-text: #1f6b40;
   --bad-text: #9b2a20;
   --radius: 12px;
   --shadow: 0 1px 2px rgba(8, 11, 16, 0.06);
@@ -76,13 +77,14 @@
     --info-soft: #0f2a30;
     --warn-text: #f7c46c;
     --bad-text: #ff9d96;
+    --ok-text: #9fdcb2;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #080b10; --surface: #141b23; --surface-2: #1c2530; --text: #ffffff; --muted: #cad6de; --border: #26313c;
   --brand: #3dc9d4; --brand-soft: #10303a; --ok-soft: #132a1f; --warn-soft: #2d2412; --bad-soft: #321716;
-  --review-soft: #221d38; --info-soft: #0f2a30; --warn-text: #f7c46c; --bad-text: #ff9d96; color-scheme: dark;
+  --review-soft: #221d38; --info-soft: #0f2a30; --warn-text: #f7c46c; --bad-text: #ff9d96; --ok-text: #9fdcb2; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -315,3 +317,39 @@ details.faq p { margin-top: 8px; color: var(--muted); }
 .file-link:hover { color: var(--brand); }
 .icon-btn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .icon-btn:hover { background: var(--bad-soft); color: var(--bad-text); }
+
+/* ───── Páginas de estado (404, error, sin acceso) ───── */
+.state-page { max-width: 560px; margin: 64px auto; padding: 40px 24px; text-align: center; display: grid; gap: 14px; justify-items: center; }
+.state-page h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); }
+.state-page p { margin: 0; color: var(--muted); }
+.state-code { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 24px; background: var(--obsidian); color: var(--cyan); font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+
+/* Botones y enlaces sobre bandas oscuras: el acento oscuro no tiene contraste suficiente. */
+.dark-band .btn.secondary, .dark-band .btn.ghost { color: var(--white); border-color: rgba(255, 255, 255, 0.35); background: transparent; }
+.dark-band .btn.secondary:hover, .dark-band .btn.ghost:hover { border-color: var(--cyan); }
+.dark-band a:not(.btn) { color: var(--cyan); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.h-card { font-size: 1.15rem; line-height: 1.3; } .h-sub { font-size: 1rem; }
+.stage-icon { display: inline-block; flex-shrink: 0; background: currentColor; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; -webkit-mask-size: contain; mask-size: contain; }
+
+/* ───── Tabla que se vuelve tarjetas en móvil (class="rtable" + data-label en cada celda) ───── */
+@media (max-width: 720px) {
+  .table-wrap:has(> .rtable) { border: 0; background: transparent; overflow: visible; }
+  .rtable, .rtable tbody { display: block; }
+  .rtable thead { display: none; }
+  .rtable tr { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+  .rtable td { display: block; padding: 0; border: 0; grid-column: 1 / -1; }
+  .rtable td.rt-title { grid-column: 1; grid-row: 1; font-size: 1.02rem; }
+  .rtable td.rt-check { grid-column: 2; grid-row: 1; justify-self: end; }
+  .rtable td[data-label] { padding-top: 8px; border-top: 1px dashed var(--border); text-align: right; overflow-wrap: anywhere; }
+  .rtable td[data-label]::before { content: attr(data-label); float: left; margin-right: 12px; color: var(--muted); font-size: 0.8rem; font-weight: 600; text-align: left; }
+}
+/* Fila de indicadores: siempre en una línea (en móvil, compacta). */
+.kpi-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.kpi-row > .kpi-card { margin: 0; }
+@media (max-width: 720px) {
+  .kpi-row { gap: 8px; }
+  .kpi-row .kpi-card { padding: 12px; }
+  .kpi-row .kpi { font-size: 1.6rem; }
+  .kpi-row small { font-size: 0.74rem; line-height: 1.25; display: block; }
+}

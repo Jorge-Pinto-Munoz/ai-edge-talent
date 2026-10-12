@@ -3,6 +3,7 @@ import "./globals.css";
 import "./site.css";
 import { StoreProvider } from "@/lib/store/StoreProvider";
 import { Header } from "@/components/Header";
+import { FooterNote } from "@/components/site/FooterNote";
 
 export const metadata: Metadata = {
   title: "AI Edge Talent · Kibernum",
@@ -28,11 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <img src="/brand/kibernum-blanco.svg" alt="Kibernum" />
                 <span className="label">AI Edge Talent · AET Platform</span>
               </div>
-              <span>
-                {process.env.NEXT_PUBLIC_SUPABASE_URL
-                  ? "Imágenes ilustrativas, no participantes reales."
-                  : "Demo funcional: datos locales en este navegador. Imágenes ilustrativas, no participantes reales."}
-              </span>
+              <FooterNote live={Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL)} />
             </div>
           </footer>
         </StoreProvider>

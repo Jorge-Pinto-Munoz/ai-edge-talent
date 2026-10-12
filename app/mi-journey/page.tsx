@@ -6,7 +6,7 @@ import { myJourney } from "@/lib/journey/queries";
 import { LAYERS, certificationAttemptNote, layerIndex, layerName } from "@/lib/journey/rules";
 import { VideoPlayer } from "@/components/journey/SignedLink";
 import { CertificationForm } from "@/components/journey/CertificationForm";
-import { Badge, Callout, fmtDate } from "@/components/ui";
+import { Badge, Callout, fmtDate, fmtYmd } from "@/components/ui";
 import { LabFiles } from "@/components/hub/LabFiles";
 import { LAB_CLASSES, LAB_STATUS, labDecisionLabel } from "@/lib/hub/rules";
 
@@ -103,7 +103,7 @@ export default async function MiJourney() {
                     {c.duration_min ? `${c.duration_min} min` : ""}
                     {c.resources.length ? ` · ${c.resources.length} material(es)` : ""}
                     {c.task_prompt ? ` · Tarea${c.task_required ? " obligatoria" : ""}` : ""}
-                    {c.due_date ? ` · entrega ${c.due_date}` : ""}
+                    {c.due_date ? ` · entrega ${fmtYmd(c.due_date)}` : ""}
                   </small>
                   {s && <div style={{ marginTop: 8 }}><Badge tone={SUB_LABEL[s.status][1]}>{SUB_LABEL[s.status][0]}</Badge></div>}
                 </Link>
@@ -151,7 +151,7 @@ export default async function MiJourney() {
               <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                 <Badge tone="brand">{j.lab.mode === "GROUP" ? `Grupal · ${j.lab.teammates} personas` : "Individual"}</Badge>
                 <Badge>{LAB_STATUS.find((s) => s.id === j.lab!.status)?.label}</Badge>
-                {j.lab.showcase_date && <Badge>Showcase: {j.lab.showcase_date}</Badge>}
+                {j.lab.showcase_date && <Badge>Showcase: {fmtYmd(j.lab.showcase_date)}</Badge>}
                 {j.lab.showcase_decision && <Badge tone="ok">{labDecisionLabel(j.lab.showcase_decision)}</Badge>}
               </div>
               {j.lab.problem && <p style={{ margin: 0 }}><strong>Desafío:</strong> {j.lab.problem}</p>}

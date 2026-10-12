@@ -30,7 +30,7 @@ export function RescueReview({ waveId, candidateId, row, status }: { waveId: str
   return (
     <div className="card">
       <div className="spread">
-        <h3 style={{ margin: 0 }}>Video de rescate</h3>
+        <h2 className="h-card" style={{ margin: 0 }}>Video de rescate</h2>
         {row ? <span className="badge brand">Enviado {fmtDate(row.submitted_at)}</span> : <span className="badge warn">Pendiente</span>}
       </div>
       <details style={{ margin: "10px 0" }}>

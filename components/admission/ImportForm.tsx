@@ -29,7 +29,7 @@ export function ImportForm({ waveId }: { waveId: string }) {
             </ul>
           )}
           {preview.rows.length > 0 && (
-            <div className="table-wrap" style={{ marginTop: 10 }}>
+            <div className="table-wrap" tabIndex={0} style={{ marginTop: 10 }}>
               <table>
                 <thead><tr><th>Nombre</th><th>Correo</th><th>Cliente</th><th>Rol</th><th>Especialidad</th></tr></thead>
                 <tbody>

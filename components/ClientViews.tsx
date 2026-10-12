@@ -62,7 +62,7 @@ export function ClientJourney() {
 
       <h2>Mis profesionales</h2>
       <p className="muted">Usted ve el estado de postulación y avance. No ve ranking, puntajes ni evaluación detallada.</p>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead>
             <tr>
@@ -229,7 +229,7 @@ export function ClientNominate() {
         </form>
       )}
       <h2>Mis nominaciones</h2>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th></tr></thead>
           <tbody>

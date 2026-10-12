@@ -1,6 +1,9 @@
 /** Set de íconos de línea (24×24, trazo 1.75) para el sitio público. Sin dependencias externas. */
 const PATHS = {
-  spark: "M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5",
+  // Destello de IA (estrella de cuatro puntas + una menor). El anterior, de rayos, se leía como "cargando".
+  spark: "M10 3l1.7 4.6L16.3 9.3l-4.6 1.7L10 15.6l-1.7-4.6L3.7 9.3l4.6-1.7L10 3zM18 14l.8 2.2 2.2.8-2.2.8L18 20l-.8-2.2-2.2-.8 2.2-.8L18 14z",
+  send: "M21 3L10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5 21 3z",
+  calendar: "M8 3v3M16 3v3M4 9h16M5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12A1.5 1.5 0 0 1 5.5 5z",
   brain: "M9.5 4a2.5 2.5 0 0 0-2.5 2.5v.2A3 3 0 0 0 5 9.5a3 3 0 0 0 .6 1.8A3 3 0 0 0 5 13a3 3 0 0 0 2 2.8v.7A2.5 2.5 0 0 0 9.5 19H12V4H9.5zM14.5 4A2.5 2.5 0 0 1 17 6.5v.2a3 3 0 0 1 2 2.8 3 3 0 0 1-.6 1.8A3 3 0 0 1 19 13a3 3 0 0 1-2 2.8v.7a2.5 2.5 0 0 1-2.5 2.5H12",
   badge: "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14l-1.5 7 5-3 5 3-1.5-7",
   flask: "M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3M7.5 15h9",

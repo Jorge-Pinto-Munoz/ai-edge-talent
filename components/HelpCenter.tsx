@@ -34,7 +34,7 @@ export function HelpCenter() {
         <FaqList items={FAQ_BY_ROLE[tab]} />
       </div>
       <div className="card">
-        <h3>¿Dónde pedir ayuda?</h3>
+        <h2 className="h-card">¿Dónde pedir ayuda?</h2>
         <ul>
           {(wave3?.channels ?? []).map((c) => (
             <li key={c.label}>

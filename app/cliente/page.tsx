@@ -67,7 +67,7 @@ export default async function ClientePage() {
                 );
               })}
             </div>
-            <div className="table-wrap" style={{ marginTop: 12 }}>
+            <div className="table-wrap" tabIndex={0} style={{ marginTop: 12 }}>
               <table>
                 <thead><tr><th>Profesional</th><th>Rol</th><th>Etapa</th><th>Desde</th></tr></thead>
                 <tbody>

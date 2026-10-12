@@ -23,7 +23,7 @@ export function HistoricalImport() {
         <div className="card">
           <strong>{preview.rows.length} fila(s) válida(s)</strong>
           {preview.errors.length > 0 && <ul className="error" style={{ fontWeight: 400 }}>{preview.errors.map((e) => <li key={e}>{e}</li>)}</ul>}
-          <div className="table-wrap" style={{ marginTop: 8 }}>
+          <div className="table-wrap" tabIndex={0} style={{ marginTop: 8 }}>
             <table>
               <thead><tr><th>Nombre</th><th>Wave</th><th>Completó</th><th>Servicio</th></tr></thead>
               <tbody>{preview.rows.slice(0, 8).map((r) => <tr key={r.corporate_email + r.wave_id}><td>{r.full_name}</td><td>{r.wave_id}</td><td>{r.completed ? "Sí" : "No"}</td><td>{SERVICE_LABEL[r.service_status]}</td></tr>)}</tbody>

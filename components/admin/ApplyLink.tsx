@@ -8,7 +8,7 @@ export function ApplyLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="apply-link">
-      <span className="ico"><Icon name="spark" size={18} /></span>
+      <span className="ico"><Icon name="send" size={18} /></span>
       <span className="txt">
         <small>Link de postulación · compártelo con los profesionales</small>
         <code>{url}</code>

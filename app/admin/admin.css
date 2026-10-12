@@ -50,8 +50,9 @@
 .adm-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .adm-kpi { position: relative; padding: 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--e1); display: grid; gap: 2px; }
 .adm-kpi .ico { position: absolute; top: 18px; right: 18px; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
-.adm-kpi strong { font-size: 2.2rem; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.adm-kpi strong { padding-right: 44px; font-size: 2.2rem; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .adm-kpi small { color: var(--muted); font-weight: 600; }
+.adm-kpi strong, .adm-kpi small { overflow-wrap: anywhere; }
 .adm-kpi:first-child { background: var(--obsidian); border-color: var(--obsidian); color: var(--white); }
 .adm-kpi:first-child small { color: var(--fog); }
 .adm-kpi:first-child .ico { background: rgba(61, 201, 212, 0.16); color: var(--cyan); }
@@ -73,8 +74,8 @@
 .pending .count { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .pending .go { color: var(--muted); transition: transform 180ms ease; }
 .pending:hover .go { transform: translateX(3px); color: var(--brand); }
-.pending.done { opacity: 0.7; }
-.pending.done .ico { background: var(--ok-soft); color: #2f8a57; }
+.pending.done .txt strong { color: var(--muted); }
+.pending.done .ico { background: var(--ok-soft); color: var(--ok-text); }
 .pending.done .count { color: var(--muted); }
 
 .funnel { display: grid; gap: 10px; }
@@ -143,8 +144,8 @@
 .attend .who small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attend .state { font-size: 0.82rem; font-weight: 700; }
 .attend.in { border-color: rgba(61, 201, 212, 0.45); }
-.attend.in .mark { background: var(--ok-soft); color: #2f8a57; }
-.attend.in .state { color: #2f8a57; }
+.attend.in .mark { background: var(--ok-soft); color: var(--ok-text); }
+.attend.in .state { color: var(--ok-text); }
 .attend.out { background: var(--bad-soft); border-color: transparent; }
 .attend.out .mark { background: var(--surface); color: var(--bad-text); }
 .attend.out .state { color: var(--bad-text); }
@@ -158,7 +159,7 @@
 @media (max-width: 600px) { .class-dl { grid-template-columns: 1fr; } .class-dl dd { margin-bottom: 6px; } }
 .attend-matrix th, .attend-matrix td { text-align: center; white-space: nowrap; }
 .attend-matrix th:first-child, .attend-matrix td:first-child { text-align: left; }
-.attend-matrix td.in { color: #2f8a57; font-weight: 800; }
+.attend-matrix td.in { color: var(--ok-text); font-weight: 800; }
 .attend-matrix td.out { color: var(--bad-text); background: var(--bad-soft); font-weight: 800; }
 .attend-matrix td.na { color: var(--muted); }
 .pending.follow .ico { background: var(--bad-soft); color: var(--bad-text); }

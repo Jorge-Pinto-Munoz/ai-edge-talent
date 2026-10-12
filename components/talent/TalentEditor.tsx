@@ -23,7 +23,7 @@ export function TalentEditor({ talent, isAdmin }: { talent: T; isAdmin: boolean 
     <div className="stack">
     <div className="grid grid-2">
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Estado de servicio</h3>
+        <h2 className="h-card" style={{ marginTop: 0 }}>Estado de servicio</h2>
         <div className="grid grid-2">
           <div className="field"><label htmlFor="svc">Estado</label>
             <select id="svc" value={svc} onChange={(e) => setSvc(e.target.value as ServiceStatus)}>
@@ -35,7 +35,7 @@ export function TalentEditor({ talent, isAdmin }: { talent: T; isAdmin: boolean 
         <div className="field"><label htmlFor="reason">{svc === "LEFT" ? "Motivo de salida *" : "Nota (opcional)"}</label><input id="reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
         <button className="btn small" disabled={pending} onClick={() => run(() => updateServiceStatus(talent.id, svc, since, reason))}>Guardar estado</button>
 
-        <h3 style={{ marginTop: 24 }}>High Talent</h3>
+        <h2 className="h-card" style={{ marginTop: 24 }}>High Talent</h2>
         {isAdmin ? (
           <>
             <div className="field"><label htmlFor="ht">Evidencia / motivo</label><input id="ht" type="text" value={htReason} onChange={(e) => setHtReason(e.target.value)} placeholder="p.ej. nivel A + caso con continuidad en Showcase" /></div>
@@ -47,7 +47,7 @@ export function TalentEditor({ talent, isAdmin }: { talent: T; isAdmin: boolean 
         ) : <p className="muted"><small>Solo un admin marca High Talent.</small></p>}
       </div>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Ficha</h3>
+        <h2 className="h-card" style={{ marginTop: 0 }}>Ficha</h2>
         <div className="grid grid-2">
           <div className="field"><label htmlFor="sp">Especialidad</label><input id="sp" type="text" value={p.specialty} onChange={(e) => setP({ ...p, specialty: e.target.value })} /></div>
           <div className="field"><label htmlFor="fa">Cluster</label>

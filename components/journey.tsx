@@ -120,7 +120,7 @@ export function DeliveryPlaybookList() {
 
 export function ResponsibilityMatrix() {
   return (
-    <div className="table-wrap">
+    <div className="table-wrap" tabIndex={0}>
       <table className="raci">
         <thead>
           <tr>

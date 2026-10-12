@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { reviewCertification, reviewSubmission } from "@/lib/journey/actions";
 import { SignedLink } from "@/components/journey/SignedLink";
-import { Callout, fmtDate } from "@/components/ui";
+import { Callout, fmtDate, fmtYmd } from "@/components/ui";
 import { layerName, type Layer } from "@/lib/journey/rules";
 
 type Sub = { id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
@@ -72,7 +72,7 @@ function CertCard({ c, onDone }: { c: Cert; onDone: (m: string) => void }) {
         <strong>{c.person} · AI CERT · intento {c.attempt}</strong>
         <span className={`badge ${c.result === "PASSED" ? "ok" : "warn"}`}>{c.result === "PASSED" ? "Aprobado" : "No aprobado"}</span>
       </div>
-      <p className="muted">Registrado {fmtDate(c.created_at)}{c.issued_on ? ` · fecha examen ${c.issued_on}` : ""}</p>
+      <p className="muted">Registrado {fmtDate(c.created_at)}{c.issued_on ? ` · fecha examen ${fmtYmd(c.issued_on)}` : ""}</p>
       <div className="row">
         {c.file_path && <SignedLink bucket="certificates" path={c.file_path}>Ver certificado</SignedLink>}
         {c.credential_url && <a href={c.credential_url} target="_blank" rel="noopener noreferrer">Credencial en línea ↗</a>}

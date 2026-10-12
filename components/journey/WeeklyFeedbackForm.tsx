@@ -31,7 +31,7 @@ export function WeeklyFeedbackForm({ groupId, groupName, people, existing, note 
         <h2 style={{ margin: 0 }}>{groupName}</h2>
         {existing.length > 0 && <span className="badge ok">Enviado esta semana</span>}
       </div>
-      <div className="table-wrap" style={{ marginTop: 12 }}>
+      <div className="table-wrap" tabIndex={0} style={{ marginTop: 12 }}>
         <table>
           <thead><tr><th>Persona</th><th>Asistencia</th><th>Avance (1–5)</th><th>Riesgo</th><th>Comentario</th></tr></thead>
           <tbody>

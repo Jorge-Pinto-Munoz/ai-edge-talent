@@ -37,7 +37,7 @@ export function WavePortfolio({ basePath }: { basePath: string }) {
     <div className="stack">
       <h1>Waves</h1>
       <p className="lead">Portfolio de Waves. Cada Wave conserva sus propias reglas y versiones: no se mezclan reglas históricas.</p>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead>
             <tr>
@@ -275,7 +275,7 @@ function NominationReview({ wave }: { wave: Wave }) {
       <h3>Nominaciones</h3>
       <p className="muted">Delivery revisa cada caso. Invitar genera un enlace personal /apply/[token]; nominación ≠ selección.</p>
       {err && <p className="error">{err}</p>}
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead><tr><th>Nominado/a</th><th>Cliente</th><th>Motivo / oportunidad</th><th>Estado</th><th></th></tr></thead>
           <tbody>
@@ -314,7 +314,7 @@ function ParticipantsTable({ wave, canEvaluate }: { wave: Wave; canEvaluate: boo
       <h3>Participantes (admisión y journey)</h3>
       <p className="muted">Estado de admisión individual, separado del estado de la Wave. Vista interna: incluye evaluación (el cliente no la ve).</p>
       {err && <p className="error">{err}</p>}
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead><tr><th>Participante</th><th>Cliente</th><th>Admisión</th><th>Journey</th><th>Evaluación</th><th></th></tr></thead>
           <tbody>

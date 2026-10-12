@@ -18,7 +18,6 @@ export default async function TalentoPage() {
           <p className="muted" style={{ margin: "6px 0 0" }}>Todas las personas de todas las Waves: estado de servicio, clusters por especialidad, High Talent y seguimiento post-habilitación.</p>
         </div>
         <div className="row">
-          <Link className="btn secondary" href="/admin/admision">Admisión</Link>
           {viewer.role === "admin" && <Link className="btn secondary" href="/admin/talento/importar">Cargar Waves pasadas</Link>}
         </div>
       </div>

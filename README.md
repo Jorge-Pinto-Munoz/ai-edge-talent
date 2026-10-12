@@ -200,6 +200,20 @@ Dos roles por Wave (tabla `wave_staff`, por correo). Se asignan en **Accesos** o
 - **Profesional**: en `/mi-journey`, durante AI Lab & Showcase, ve su proyecto y sube su presentación (PPT/PDF, bucket privado `lab`, descarga con URL firmada de 10 minutos).
 - RLS: `tests/db/profesor_hub_rls_test.sql`. Migraciones `20261016000000_roles_profesor_hub.sql`, `20261016000100_profesor_hub.sql` y `20261017000000_profesor_clases.sql` (registro de clase y asistencia; reemplaza el cierre semanal por persona).
 
+## Auditoría UX/UI automática
+
+`npm run audit:ux` recorre las pantallas de `qa/pages.json` por rol y ancho (320, 390 y 1366 px) y detecta:
+desborde horizontal, íconos montados sobre texto, errores de consola, páginas sin un único `<h1>` y fallas de
+accesibilidad WCAG 2.2 AA (axe: contraste, etiquetas, tamaño de toque, orden de títulos…). Guarda una captura de
+cada pantalla en `qa/report/shots` y termina con error si encuentra algo, así que sirve antes de publicar o en CI.
+
+- `BASE_URL=https://… npm run audit:ux` para revisar otro entorno (por defecto `http://localhost:3000`).
+- `ZOOM=120` simula el texto agrandado de iPhone; `DARK=1` revisa el modo oscuro.
+- Para pantallas con sesión: `AUDIT_COOKIE=sb-<ref>-auth-token` y `AUDIT_SESSION_<ROL>=sesion.json` (ADMIN, DELIVERY, PROFESOR, HUB, KIBER, MENTOR, CLIENT). Sin sesión, ese rol se omite.
+
+Íconos de etapa: todos pasan por `components/site/StageIcon.tsx`. Para usar la iconografía oficial, deja cada SVG en
+`public/icons/etapas/<slug>.svg` y regístralo en `OFFICIAL`; se pinta con el color del texto (claro, oscuro y sobre fotos).
+
 ## Diagnóstico en producción
 - `GET /api/diagnostico` muestra la configuración que tiene el hosting sin revelar claves: URL de Supabase, prefijo y largo de cada clave, y si Supabase las acepta.
 - **GitHub → Actions → Diagnóstico** revisa el sitio publicado, prueba Supabase Auth (opcional: envía un enlace real a un correo) y lista accesos y últimos eventos de ingreso.

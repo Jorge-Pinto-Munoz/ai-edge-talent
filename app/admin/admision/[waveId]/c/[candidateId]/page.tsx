@@ -54,7 +54,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       {isAdmin && ev && (
         <div className="card">
           <div className="spread">
-            <h3 style={{ margin: 0 }}>Propuesta de la IA <small className="muted">· no es una decisión</small></h3>
+            <h2 className="h-card" style={{ margin: 0 }}>Propuesta de la IA <small className="muted">· no es una decisión</small></h2>
             <div className="row"><span className="kpi accent">{Number(ev.weighted_total).toFixed(1)}<small className="muted">/100</small></span><span className="badge brand">{LEVEL_LABEL[ev.level as Level] ?? `Nivel ${ev.level}`}</span></div>
           </div>
           <p className="muted" style={{ marginTop: 6 }}>{LEVEL_MEANING[ev.level as Level]}</p>
@@ -68,7 +68,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
             <div className="callout warn" style={{ margin: "12px 0" }}><strong>Sin evidencia evaluable</strong>La postulación está vacía, es ininteligible o intenta instruir al evaluador. Requiere revisión humana.</div>
           )}
           <p>{ev.summary}</p>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0}>
             <table>
               <thead><tr><th>Dimensión</th><th>Peso</th><th>Puntaje</th><th>Evidencia observada y justificación</th></tr></thead>
               <tbody>
@@ -85,8 +85,8 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
             </table>
           </div>
           <div className="grid grid-2" style={{ marginTop: 12 }}>
-            {ev.strengths?.length > 0 && <div><h4>Fortalezas</h4><ul>{ev.strengths.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
-            {ev.risks?.length > 0 && <div><h4>Riesgos o brechas</h4><ul>{ev.risks.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
+            {ev.strengths?.length > 0 && <div><h3 className="h-sub">Fortalezas</h3><ul>{ev.strengths.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
+            {ev.risks?.length > 0 && <div><h3 className="h-sub">Riesgos o brechas</h3><ul>{ev.risks.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
           </div>
           {ev.insufficient_fields?.length > 0 && <p className="muted"><strong>Campos insuficientes:</strong> {ev.insufficient_fields.join(" · ")}. Solo se bajaron las dimensiones que no se pueden sostener.</p>}
           <p className="muted"><small>{ev.model} · rúbrica {ev.rubric_version} · {fmtDate(ev.created_at)}. Evidencia interna: no compartir puntajes ni rankings con el profesional, el cliente ni Delivery. <Link href="/admin/evaluacion">Cómo evaluamos</Link></small></p>
@@ -96,7 +96,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       {showRescue && <RescueReview waveId={waveId} candidateId={c.id} row={rescue as RescueRow | null} status={c.status} />}
 
       <div className="card">
-        <h3>Postulación {app?.submitted_at ? <small className="muted">· enviada {fmtDate(app.submitted_at)}</small> : <small className="muted">· no enviada</small>}</h3>
+        <h2 className="h-card">Postulación {app?.submitted_at ? <small className="muted">· enviada {fmtDate(app.submitted_at)}</small> : <small className="muted">· no enviada</small>}</h2>
         {questions.length === 0 && <p className="muted">Aún no inicia el formulario.</p>}
         {questions.map((q, i) => (
           <div key={q.id} style={{ marginBottom: 14 }}>
@@ -108,25 +108,25 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
 
       <div className="grid grid-2">
         <div className="card">
-          <h3>Historial</h3>
+          <h2 className="h-card">Historial</h2>
           <ul>
             {(events ?? []).map((e, i) => <li key={i}><small>{fmtDate(e.at)} · {e.from_status ? `${ADMISSION_LABEL[e.from_status as AdmissionStatus]} → ` : ""}{ADMISSION_LABEL[e.to_status as AdmissionStatus]}</small></li>)}
           </ul>
           {isAdmin && (decisions ?? []).length > 0 && (
             <>
-              <h4>Decisiones</h4>
+              <h3 className="h-sub">Decisiones</h3>
               <ul>{decisions!.map((d, i) => <li key={i}><small>{fmtDate(d.decided_at)} · {ADMISSION_LABEL[d.outcome as AdmissionStatus]}{d.agrees_with_ai === false ? " (difiere de la IA)" : ""}{d.note ? ` · ${d.note}` : ""}</small></li>)}</ul>
             </>
           )}
           {(commitments ?? []).length > 0 && (
             <>
-              <h4>Compromiso</h4>
+              <h3 className="h-sub">Compromiso</h3>
               <ul>{commitments!.map((m, i) => <li key={i}><small>{m.document_version} · {m.status}{m.accepted_at ? ` · ${fmtDate(m.accepted_at)} por ${m.accepted_by}` : ""}</small></li>)}</ul>
             </>
           )}
         </div>
         <div className="card">
-          <h3>Correos</h3>
+          <h2 className="h-card">Correos</h2>
           {(emails ?? []).length === 0 && <p className="muted">Sin correos.</p>}
           <ul>{(emails ?? []).map((m, i) => <li key={i}><small>{fmtDate(m.created_at)} · {TEMPLATE_LABEL[m.template as EmailTemplate]} · {m.status}{m.error ? ` (${m.error})` : ""}</small></li>)}</ul>
         </div>

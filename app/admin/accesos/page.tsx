@@ -22,7 +22,7 @@ export default async function Accesos() {
       <h1>Accesos</h1>
       <p className="muted">Asigna el rol antes de que la persona ingrese por primera vez (o cámbialo después). Quien ingresa sin rol asignado queda como Kiber. Profesor y Líder Hub AI se asignan a una Wave (también desde Cierre semanal y AI Lab & Showcase).</p>
       <AccessForm waves={waves ?? []} />
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead><tr><th>Correo</th><th>Rol</th><th>Cliente / Wave</th></tr></thead>
           <tbody>{(grants ?? []).map((g) => <tr key={g.email}><td>{g.email}</td><td>{g.role}</td><td>{g.client_name ?? (wavesOf(g.email) || "—")}</td></tr>)}</tbody>

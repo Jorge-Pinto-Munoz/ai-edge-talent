@@ -23,7 +23,7 @@ export default function Home() {
           <Reveal>
             <Link href="/wave-3/postular" className="hero-chip">
               <span className="dot">Wave 3</span>
-              Postulación abierta · <Countdown to={WAVE3_DEADLINE} compact />
+              <Countdown to={WAVE3_DEADLINE} compact openPrefix="Postulación abierta · " />
             </Link>
           </Reveal>
           <Reveal delay={80}>

@@ -44,7 +44,7 @@ export function ProgramPortal({ intro }: { intro?: React.ReactNode }) {
       <section id="etapas">
         <h2>Etapas del ciclo completo</h2>
         <LifecycleRail />
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap" tabIndex={0} style={{ marginTop: 12 }}>
           <table>
             <thead>
               <tr>

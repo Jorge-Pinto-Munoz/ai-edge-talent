@@ -213,7 +213,9 @@ html, body { overflow-x: clip; }
 .bento-tile:hover { transform: translateY(-4px); border-color: rgba(61, 201, 212, 0.4); }
 .bento-tile.wide { grid-column: span 2; }
 .bento-tile.full { grid-column: 1 / -1; min-height: 180px; }
-.bento-tile .ico { position: absolute; top: 24px; left: 28px; color: var(--cyan); }
+/* El ícono va en el flujo y empuja el texto hacia abajo: nunca se monta sobre el título, tenga el largo que tenga. */
+.bento-tile .ico { position: relative; z-index: 1; color: var(--cyan); margin-bottom: auto; padding-bottom: 20px; line-height: 0; }
+.bento-tile h3, .bento-tile p { position: relative; z-index: 1; }
 .bento-tile h3 { color: var(--white); font-size: 1.35rem; margin: 0; }
 .bento-tile p { color: var(--fog); margin: 0; max-width: 460px; }
 .bento-tile .orb { position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; filter: blur(50px); opacity: 0.28; background: var(--cyan); transition: opacity 400ms var(--ease), transform 600ms var(--ease); }
@@ -369,3 +371,12 @@ html, body { overflow-x: clip; }
 .rescue-qs { counter-reset: q; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .rescue-qs li { counter-increment: q; position: relative; padding: 14px 16px 14px 56px; border-radius: 14px; background: var(--surface-2); margin: 0; }
 .rescue-qs li::before { content: counter(q); position: absolute; left: 14px; top: 12px; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: var(--obsidian); color: var(--cyan); font-weight: 800; font-size: 0.9rem; }
+
+/* Encabezado de portal (con sesión): más bajo, sin vistas ni llamados públicos. */
+.sitenav.portal .sitenav-inner { height: 56px; max-width: none; padding: 0 24px; }
+.sitenav.portal .pill { font-size: 0.85rem; padding: 7px 14px; }
+@media (max-width: 600px) { .sitenav.portal .sitenav-inner { padding: 0 16px; } .sitenav.portal .brand .program { display: none; } }
+.cd-pre { font-weight: 400; color: var(--fog); }
+/* Sobre fondos claros con brillo de color (lavanda/cian) el acento estándar queda en 4,3:1; se oscurece un tono. */
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .sec:not(.dark) .sec-head .eyebrow { color: #175863; } }
+:root[data-theme="light"] .sec:not(.dark) .sec-head .eyebrow { color: #175863; }

@@ -44,7 +44,7 @@ export function Carousel({ children, label, dark = false }: { children: ReactNod
 
   return (
     <div className={`carousel ${dark ? "on-dark" : ""}`} role="region" aria-roledescription="carrusel" aria-label={label}>
-      <div className="carousel-track" ref={track}>
+      <div className="carousel-track" ref={track} tabIndex={0} role="region" aria-label="Carrusel: usa las flechas para desplazarte">
         {children}
       </div>
       <div className="carousel-foot">

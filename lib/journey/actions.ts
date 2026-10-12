@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
-import { getViewer, requireRole, type Viewer } from "@/lib/admission/auth";
+import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
@@ -14,7 +14,7 @@ const MAX_UPLOAD_MB: Record<Bucket, number> = { content: 500, submissions: 50, c
 /* ───────── Participante actual ───────── */
 async function requireParticipant(): Promise<{ viewer: Viewer; candidate: { id: string; wave_id: string; journey_layer: Layer | null; status: string } }> {
   const viewer = await getViewer();
-  if (!viewer) throw new Error("Debes ingresar para continuar.");
+  if (!viewer) throw new Error(SESSION_EXPIRED);
   const db = await supabaseUser();
   const { data } = await db
     .from("candidates")
@@ -54,7 +54,7 @@ export async function requestUpload(bucket: Bucket, fileName: string, sizeBytes:
 export async function signedFileUrl(bucket: Bucket, path: string): Promise<Result<{ url: string }>> {
   try {
     const viewer = await getViewer();
-    if (!viewer) throw new Error("Debes ingresar.");
+    if (!viewer) throw new Error(SESSION_EXPIRED);
     const owner = path.split("/")[0];
     const db = await supabaseUser();
     let allowed = false;

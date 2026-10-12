@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseUser } from "@/lib/supabase/server";
-import { getViewer } from "@/lib/admission/auth";
+import { getViewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { todayChile, type ClassInput } from "./rules";
 
 export type Result = { ok: boolean; message: string };
@@ -13,7 +13,8 @@ const clean = (s: string) => s.trim() || null;
 export async function saveClass(input: ClassInput): Promise<Result> {
   try {
     const viewer = await getViewer();
-    if (!viewer || (viewer.role !== "profesor" && viewer.role !== "admin")) throw new Error("Solo el profesor registra clases.");
+    if (!viewer) throw new Error(SESSION_EXPIRED);
+    if (viewer.role !== "profesor" && viewer.role !== "admin") throw new Error("Solo el profesor registra clases.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.heldOn)) throw new Error("Indica la fecha de la clase.");
     if (input.heldOn > todayChile()) throw new Error("No puedes registrar una clase futura.");
     if (!input.topic.trim()) throw new Error("Indica el tema abordado.");

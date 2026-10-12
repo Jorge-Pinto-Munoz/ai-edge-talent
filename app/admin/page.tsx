@@ -57,7 +57,7 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
       <section className="adm-kpis">
         {[
           ["Candidatos", d.funnel[0].count, "users"],
-          ["Postularon", d.funnel[1].count, "spark"],
+          ["Postularon", d.funnel[1].count, "send"],
           ["Seleccionados", d.funnel[3].count, "check"],
           ["Inscritos", d.funnel[4].count, "flag"],
         ].map(([label, n, icon], i) => (

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 /** Cuenta regresiva al cierre. Se calcula solo en el navegador para no desalinear el render del servidor. */
-export function Countdown({ to, compact = false }: { to: string; compact?: boolean }) {
+/** `openPrefix` solo se muestra mientras la postulación sigue abierta (evita "abierta · cerrada"). */
+export function Countdown({ to, compact = false, openPrefix }: { to: string; compact?: boolean; openPrefix?: string }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
@@ -18,7 +19,7 @@ export function Countdown({ to, compact = false }: { to: string; compact?: boole
   const d = Math.floor(ms / 86_400_000);
   const h = Math.floor((ms % 86_400_000) / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (compact) return <span className="countdown">Cierra en {d > 0 ? `${d} d ${h} h` : `${h} h ${m} min`}</span>;
+  if (compact) return <span className="countdown">{openPrefix && <span className="cd-pre">{openPrefix}</span>}Cierra en {d > 0 ? `${d} d ${h} h` : `${h} h ${m} min`}</span>;
   return (
     <span className="countdown big" role="timer" aria-label={`Faltan ${d} días, ${h} horas y ${m} minutos`}>
       {[[d, "días"], [h, "horas"], [m, "min"]].map(([v, l]) => (

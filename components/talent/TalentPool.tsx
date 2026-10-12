@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { TalentRow } from "@/lib/talent/queries";
 import { FAMILIES, SERVICE_LABEL, retention, talentCsv, type ServiceStatus } from "@/lib/talent/rules";
 import { layerName, type Layer } from "@/lib/journey/rules";
-import { Badge } from "@/components/ui";
+import { Badge, fmtYmd } from "@/components/ui";
 
 const completed = (r: TalentRow) => r.participations.some((p) => p.journey_layer === "CLOSURE");
 const SERVICE_TONE: Record<ServiceStatus, "ok" | "warn" | "bad"> = { IN_SERVICE: "ok", BENCH: "warn", LEFT: "bad" };
@@ -91,7 +91,7 @@ export function TalentPool({ rows }: { rows: TalentRow[] }) {
         </div>
       </div>
 
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0}>
         <table>
           <thead><tr><th>Persona</th><th>Cluster</th><th>Cliente · Rol</th><th>Waves</th><th>Servicio</th><th>Próximo seguimiento</th></tr></thead>
           <tbody>
@@ -109,7 +109,7 @@ export function TalentPool({ rows }: { rows: TalentRow[] }) {
                   ))}
                 </td>
                 <td><Badge tone={SERVICE_TONE[r.service_status]}>{SERVICE_LABEL[r.service_status]}</Badge>{r.service_status_since && <><br /><small className="muted">desde {r.service_status_since}</small></>}</td>
-                <td>{r.nextFollowUp ? <small className={r.nextFollowUp.due_date <= today ? "pending-def" : ""}>{r.nextFollowUp.kind === "MONTH_1" ? "Mes 1" : r.nextFollowUp.kind === "MONTH_3" ? "Mes 3" : "Seguimiento"} · {r.nextFollowUp.due_date}</small> : <span className="muted">—</span>}</td>
+                <td>{r.nextFollowUp ? <small className={r.nextFollowUp.due_date <= today ? "pending-def" : ""}>{r.nextFollowUp.kind === "MONTH_1" ? "Mes 1" : r.nextFollowUp.kind === "MONTH_3" ? "Mes 3" : "Seguimiento"} · {fmtYmd(r.nextFollowUp.due_date)}</small> : <span className="muted">—</span>}</td>
               </tr>
             ))}
             {shown.length === 0 && <tr><td colSpan={6} className="muted">Sin resultados.</td></tr>}

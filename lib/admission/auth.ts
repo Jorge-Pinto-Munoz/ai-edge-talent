@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { supabaseUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
+/** Mensaje único cuando la sesión venció a mitad de una tarea (p. ej. un formulario largo). */
+export const SESSION_EXPIRED = "Tu sesión expiró. Abre otra pestaña, vuelve a ingresar y luego guarda de nuevo: lo que escribiste sigue aquí.";
+
 export type StaffRole = "admin" | "delivery";
 export type AppRole = "admin" | "delivery" | "kiber" | "client" | "mentor" | "profesor" | "hub";
 export interface Viewer {
@@ -35,7 +38,8 @@ export async function requireStaffPage(next: string): Promise<Viewer> {
 /** Acciones: lanza error (las acciones no deben redirigir silenciosamente). */
 export async function requireRole(roles: StaffRole[]): Promise<Viewer> {
   const v = await getViewer();
-  if (!v || !roles.includes(v.role as StaffRole)) throw new Error("No tienes permiso para esta acción.");
+  if (!v) throw new Error(SESSION_EXPIRED);
+  if (!roles.includes(v.role as StaffRole)) throw new Error("No tienes permiso para esta acción.");
   return v;
 }
 

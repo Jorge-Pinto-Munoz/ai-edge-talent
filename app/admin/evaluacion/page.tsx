@@ -60,7 +60,7 @@ export default async function Evaluacion() {
 
       <section className="adm-card">
         <div className="adm-card-head"><h2>Rúbrica oficial</h2><span className="muted">Cada dimensión de 1 a 5 según la evidencia textual</span></div>
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0}>
           <table>
             <thead><tr><th>Dimensión</th><th>Peso</th><th>Qué mide</th><th>Nivel alto</th></tr></thead>
             <tbody>

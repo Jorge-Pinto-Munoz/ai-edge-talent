@@ -64,6 +64,13 @@ export function fmtDay(iso: string) {
   return `${WEEKDAYS[p.weekday]}, ${p.d} de ${MONTHS[p.m - 1]} de ${p.y}`;
 }
 
+/** Fecha sin hora ("2026-11-10" → "10 de noviembre de 2026"). Se fija a mediodía UTC para que no cambie de día en Chile. */
+export function fmtYmd(ymd: string) {
+  const d = new Date(`${ymd.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return ymd;
+  return `${d.getUTCDate()} de ${MONTHS[d.getUTCMonth()]} de ${d.getUTCFullYear()}`;
+}
+
 /** "viernes, 16 de octubre de 2026 · 12:00 hrs" */
 export function fmtDeadline(iso: string) {
   return `${fmtDay(iso)} · ${santiagoParts(iso).time} hrs`;
