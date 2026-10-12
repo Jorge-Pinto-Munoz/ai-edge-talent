@@ -1,15 +1,15 @@
 /**
  * AI CERTs en AI Edge Talent: qué es, rutas por rol, qué recibes al aprobar y cómo te acompañamos después.
  * Fuente: blueprint del producto (certificación híbrida: Kibernum certifica mindset y ejecución práctica;
- * AI CERTs / AGI Search otorga el respaldo técnico externo). Los nombres de certificación por rol los confirma
- * el líder del servicio: se editan aquí y se actualizan en todas las vistas.
+ * AI CERTs / AGI Search otorga el respaldo técnico externo). Los nombres por rol vienen de lo usado en Waves 1 y 2;
+ * se editan aquí y se actualizan en todas las vistas.
  */
 export const AICERT = {
   what: "AI CERTs™ es una certificadora internacional especializada en inteligencia artificial. Sus certificaciones AI+ validan, con examen, el dominio técnico de la IA aplicada a un rol.",
   hybrid: "En AI Edge Talent la certificación es híbrida: Kibernum certifica tu mindset AI First y tu ejecución práctica en el AI Lab; AI CERTs certifica tu dominio técnico con un respaldo externo y verificable.",
   format: [
-    { k: "Ruta", v: "8 h de fundamentos + 40 h de especialización por rol" },
-    { k: "Ritmo", v: "Normalmente 3 a 4 semanas, con un profesor que acompaña" },
+    { k: "Ruta", v: "Curso introductorio + curso especialista de tu rol" },
+    { k: "Avance", v: "Por tramos (1 a 5) en la plataforma AI CERTs, con clase semanal del profesor" },
     { k: "Costo", v: "Kibernum financia el 100 %, incluidos hasta dos intentos de examen" },
   ],
   gate: "La certificación aprobada y verificada es la llave del AI Lab.",
@@ -18,16 +18,19 @@ export const AICERT = {
 export interface RolePath {
   family: string;
   roles: string;
-  profile: string; // perfil evolucionado
+  profile: string; // certificación especialista AI CERTs
   focus: string;
 }
 
-/** Rutas por familia de rol (la ruta exacta se define según tu cargo antes de inscribirte). */
+/**
+ * Certificaciones especialistas usadas en Wave 1 y Wave 2 (planilla de flujo de profesionales).
+ * Curso introductorio: fundamentos AI+ (en Wave 1, AI+ Prompt Engineer Level 2).
+ */
 export const ROLE_PATHS: RolePath[] = [
-  { family: "Ingeniería de software", roles: "Developer, Backend, Frontend", profile: "AI+ Developer™", focus: "IA en todo el ciclo de desarrollo: generación y revisión de código, refactorización y pruebas." },
-  { family: "Calidad y QA", roles: "QA Analyst, QA Automation", profile: "QA aumentado con IA", focus: "Testing generativo, datos sintéticos y calidad preventiva en lugar de validar al final." },
-  { family: "Agilidad y gestión", roles: "Scrum Master, Agile Coach, PO", profile: "Velocity Manager™", focus: "Métricas predictivas (throughput, lead time) y automatización de la gobernanza del equipo." },
-  { family: "Datos y BI", roles: "Data Analyst, BI, Data Engineer", profile: "Analista aumentado con IA", focus: "Storytelling asistido y detección proactiva de anomalías: de reportes a inteligencia accionable." },
+  { family: "Desarrollo de software", roles: "Developer, Backend, .NET, Java, infraestructura", profile: "AI+ Developer Practitioner™", focus: "IA en todo el ciclo de desarrollo: generación y revisión de código, refactorización y pruebas." },
+  { family: "Datos y analítica", roles: "Data Analyst, BI, Product Owner, analítica digital", profile: "AI+ Business Intelligence Practitioner™", focus: "Análisis asistido, storytelling con datos y detección proactiva de anomalías: de reportes a decisiones." },
+  { family: "Ingeniería full stack", roles: "Full Stack Engineer, desarrollador senior", profile: "AI+ Engineer™", focus: "Diseñar e integrar soluciones con modelos de IA dentro de productos y flujos de trabajo." },
+  { family: "Arquitectura", roles: "Arquitecto/a de soluciones o software", profile: "AI+ Architect™", focus: "Arquitecturas que incorporan IA de forma segura, escalable y gobernada." },
 ];
 
 /** Lo que recibe el profesional al aprobar. */

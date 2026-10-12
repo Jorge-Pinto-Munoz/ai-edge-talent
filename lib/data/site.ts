@@ -84,14 +84,14 @@ export const PUBLIC_STAGES: PublicStage[] = [
     icon: "badge",
     image: "trabajo-laptop",
     facts: [
-      { label: "Dedicación", value: "~40 horas" },
-      { label: "Duración", value: "3 a 4 semanas" },
+      { label: "Ruta", value: "Introductorio + especialista" },
+      { label: "Avance", value: "Por tramos (1 a 5)" },
       { label: "Intentos financiados", value: "Hasta dos" },
     ],
     intro:
       "Es la etapa de certificación técnica (AI CERTs) alineada a tu rol. Combinas autoestudio con un profesor y un canal de cohorte, y un AI Coach te acompaña con feedback semanal.",
     happens: [
-      { title: "Estudias a tu ritmo", body: "Contenido de certificación alineado a tu rol, con avance semanal visible." },
+      { title: "Estudias a tu ritmo", body: "Curso introductorio y luego el especialista de tu rol (por ejemplo, AI+ Developer Practitioner™), avanzando por tramos en la plataforma AI CERTs." },
       { title: "Te acompañan", body: "Profesor y canal de cohorte para dudas; AI Coach asignado que deja feedback cada semana." },
       { title: "Rindes tu examen", body: "Kibernum financia hasta dos intentos." },
       { title: "Registras tu certificación", body: "Subes el certificado a la plataforma y se verifica." },
@@ -109,9 +109,9 @@ export const PUBLIC_STAGES: PublicStage[] = [
     icon: "flask",
     image: "colaboracion",
     facts: [
-      { label: "Sesiones", value: "Dos de 90 minutos" },
-      { label: "Entregable", value: "Prototipo demostrable" },
-      { label: "Cierre", value: "Presentación al cliente" },
+      { label: "Clases", value: "Dos con el Hub AI" },
+      { label: "Entregable", value: "Demo sobre el caso real" },
+      { label: "Showcase", value: "15–20 min · máx. 8 slides" },
     ],
     intro:
       "Aplicas lo aprendido a un problema validado con tu cliente. Entre dos sesiones guiadas construyes un prototipo con evidencia de valor y, cuando está listo, lo presentas en el Showcase.",
@@ -119,7 +119,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
       { title: "Validas el problema", body: "Junto al cliente defines una necesidad real, su usuario y la fricción que quieres resolver." },
       { title: "Construyes", body: "Trabajo autónomo entre dos sesiones obligatorias de 90 minutos." },
       { title: "Llegas a READY FOR SHOWCASE", body: "Con un prototipo demostrable y evidencia suficiente." },
-      { title: "Presentas", body: "Problema, usuario, solución, demo, evidencia, valor, aprendizajes y siguiente experimento." },
+      { title: "Presentas", body: "El problema del negocio, tu enfoque con IA, la demo en vivo, el impacto en tiempo y el contraste: qué hubiese pasado sin esta mejora." },
     ],
     youDo: ["Asistir a las dos sesiones", "Construir entre sesiones", "Cuidar la confidencialidad del cliente"],
     youGet: ["Un caso real en tu portafolio", "Una conversación de continuidad con el cliente", "Visibilidad como talento AET"],

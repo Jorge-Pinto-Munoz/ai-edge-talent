@@ -15,6 +15,7 @@ import { fmtDate, fmtYmd } from "@/components/ui";
 import { Sheet } from "@/components/site/Sheet";
 import { openHelp } from "@/components/site/Help";
 import { AiCertSection } from "@/components/site/AiCertSection";
+import { ShowcaseGuide } from "@/components/site/ShowcaseGuide";
 import type { JourneyView } from "./types";
 
 /** Color de cada etapa (texto oscuro encima: contraste AA en todas). */
@@ -338,6 +339,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
         {status}
         <p>Sube la presentación con la que mostrarás tu caso en el Showcase (PPT, PDF o Keynote). Puedes reemplazarla cuando quieras antes de presentar.</p>
         {v.lab ? <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={!v.preview} myId={v.preview ? undefined : v.myId} /> : <p className="muted">Podrás subirla cuando el Hub AI registre tu proyecto.</p>}
+        <ShowcaseGuide compact />
       </div>
     );
   }
@@ -346,7 +348,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
     return (
       <div className="jr-sheet-stack">
         {status}
-        <p>Presentas el problema, la solución, la demo y la evidencia de valor frente al cliente y el equipo. Del Showcase sale una decisión sobre cómo sigue tu caso.</p>
+        <p>Muestras al cliente un proyecto de IA que resuelve un problema real de su negocio, en 15 a 20 minutos con demo en vivo. Del Showcase sale una decisión sobre cómo sigue tu caso.</p>
         {v.lab ? (
           <ul className="jr-list">
             <li><span>Fecha</span><strong>{v.lab.showcaseDate ? fmtYmd(v.lab.showcaseDate) : "Por definir"}</strong></li>
@@ -354,6 +356,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
           </ul>
         ) : null}
         {v.lab?.showcaseNotes && <div className="jr-feedback"><strong>Feedback del Showcase</strong><p>{v.lab.showcaseNotes}</p></div>}
+        <ShowcaseGuide />
       </div>
     );
   }

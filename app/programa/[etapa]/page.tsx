@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 import { PUBLIC_STAGES, stageBySlug } from "@/lib/data/site";
 import { AiCertSection } from "@/components/site/AiCertSection";
+import { ShowcaseGuide } from "@/components/site/ShowcaseGuide";
 import { certifiedRate } from "@/lib/aicert/stats";
 import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
@@ -139,6 +140,16 @@ export default async function EtapaPage({ params, searchParams }: { params: Prom
           </div>
         </div>
       </section>
+
+      {stage.slug === "ai-lab-showcase" && (
+        <section className="sec" id="guia-showcase" style={{ paddingTop: 0 }}>
+          <div className="sec-inner" style={{ maxWidth: 860 }}>
+            <div className="eyebrow">Guía del Showcase</div>
+            <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Cómo hacer que tu Showcase sea un éxito.</h2>
+            <ShowcaseGuide />
+          </div>
+        </section>
+      )}
 
       {stage.slug === "role-enablement" && (
         <section className="sec" id="certificacion" style={{ paddingTop: 0 }}>

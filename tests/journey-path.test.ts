@@ -63,3 +63,14 @@ describe("camino del profesional", () => {
     expect(p.percent).toBe(Math.round((3 / total) * 100));
   });
 });
+
+import { efficiency } from "@/lib/data/showcase";
+describe("calculadora de eficiencia del Showcase", () => {
+  it("reproduce el ejemplo de la guía: 8 h → 3 h, 4 veces al mes", () => {
+    expect(efficiency(8, 3, 4)).toEqual({ savedPerTime: 5, savedPerMonth: 20, pct: 63 });
+  });
+  it("no calcula con datos imposibles", () => {
+    expect(efficiency(0, 0, 4)).toBeNull();
+    expect(efficiency(3, 8, 4)).toBeNull();
+  });
+});
