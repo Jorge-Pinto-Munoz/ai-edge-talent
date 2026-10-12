@@ -52,7 +52,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
         ))}
       </div>
       <label className="help-search">
-        <Icon name="help" size={18} />
+        <Icon name="search" size={18} />
         <span className="sr-only">Buscar en preguntas frecuentes</span>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Escribe tu duda: rescate, AI CERT, costo…" data-autofocus />
       </label>

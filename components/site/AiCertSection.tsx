@@ -37,6 +37,7 @@ export function AiCertSection({ audience, stat, compact = false, id }: { audienc
           ))}
         </ol>
         <p className="aic-note">La ruta exacta se confirma según tu cargo antes de la inscripción. {AICERT.gate}</p>
+        <a className="more-link" href="/certificaciones">Ver todas las certificaciones y sus mallas <Icon name="arrowRight" size={16} /></a>
       </div>
 
       <div className="aic-block">

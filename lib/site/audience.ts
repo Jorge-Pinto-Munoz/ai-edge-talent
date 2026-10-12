@@ -10,15 +10,17 @@ export const AUDIENCES: Audience[] = ["profesional", "cliente", "equipo"];
 
 export const AUDIENCE: Record<
   Audience,
-  { label: string; short: string; home: string; nav: { href: string; label: string }[]; cta: { href: string; label: string } }
+  { label: string; short: string; home: string; navBefore?: { href: string; label: string }[]; nav: { href: string; label: string }[]; cta: { href: string; label: string } }
 > = {
   profesional: {
     label: "Soy profesional",
     short: "Profesional",
     home: "/",
+    navBefore: [{ href: "/#wave-3", label: "Wave 3" }],
     nav: [
-      { href: "/wave-3/postular", label: "Wave 3" },
-      { href: "/ayuda", label: "Preguntas" },
+      { href: "/#que-se-espera", label: "Qué se espera" },
+      { href: "/#mi-espacio", label: "Mi espacio" },
+      { href: "/#preguntas", label: "Preguntas" },
     ],
     cta: { href: "/wave-3/postular", label: "Postular" },
   },
@@ -29,6 +31,7 @@ export const AUDIENCE: Record<
     nav: [
       { href: "/clientes#como-funciona", label: "Cómo funciona" },
       { href: "/clientes#informacion", label: "Qué información recibes" },
+      { href: "/certificaciones", label: "Certificaciones" },
       { href: "/ayuda?rol=CLIENT", label: "Preguntas" },
     ],
     cta: { href: "/clientes#nominar", label: "Nominar" },

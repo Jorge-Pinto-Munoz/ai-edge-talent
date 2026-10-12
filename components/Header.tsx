@@ -98,7 +98,7 @@ export function Header() {
       ))}
     </nav>
   );
-  const isActive = (href: string) => path === href.split("#")[0];
+  const isActive = (href: string) => !href.includes("#") && path === href.split("?")[0];
 
   const roleSwitch = !live && (
     <div className="role-switch">
@@ -144,6 +144,9 @@ export function Header() {
         </Link>
 
         <nav className="sitenav-links" aria-label="Principal">
+          {(view.navBefore ?? []).map((l) => (
+            <Link key={l.href} href={l.href} onMouseEnter={closeMegaSoon}>{l.label}</Link>
+          ))}
           <div ref={megaRef} onMouseEnter={openMega}>
             <button type="button" aria-expanded={mega} aria-controls="mega-programa" onClick={() => setMega((v) => !v)}>
               {aud === "profesional" ? "Programa" : "Etapas"} <Icon name="chevronDown" size={16} />
@@ -157,7 +160,7 @@ export function Header() {
         <div className="sitenav-actions">
           {roleSwitch && <div className="hide-m">{roleSwitch}</div>}
           <Link href={view.cta.href} className="pill accent hide-m">{view.cta.label}</Link>
-          {live && aud !== "equipo" && <Link href="/inicio" className="pill ghost hide-m">Mi espacio</Link>}
+          {live && aud !== "equipo" && <Link href="/inicio" className="pill ghost hide-m">Ingresar</Link>}
         </div>
 
         <button type="button" className="burger" aria-label="Abrir menú" aria-expanded={sheet} aria-controls="menu-movil" onClick={() => setSheet(true)}>
@@ -200,6 +203,11 @@ export function Header() {
         </div>
         <div className="sheet-aud">{audBar}</div>
         <nav aria-label="Menú móvil">
+          {(view.navBefore ?? []).map((l) => (
+            <Link key={l.href} href={l.href} className="sheet-link" style={{ ["--i" as string]: 0 }} tabIndex={sheet ? 0 : -1} onClick={() => setSheet(false)}>
+              {l.label} <Icon name="arrowRight" />
+            </Link>
+          ))}
           <Link href="/programa" className="sheet-link" style={{ ["--i" as string]: 0 }} tabIndex={sheet ? 0 : -1}>
             {aud === "profesional" ? "Programa" : "Etapas"} <Icon name="arrowRight" />
           </Link>
@@ -211,7 +219,7 @@ export function Header() {
             ))}
           </div>
           {navLinks.map((l, i) => (
-            <Link key={l.href} href={l.href} className="sheet-link" style={{ ["--i" as string]: i + 1 }} tabIndex={sheet ? 0 : -1}>
+            <Link key={l.href} href={l.href} className="sheet-link" style={{ ["--i" as string]: i + 1 }} tabIndex={sheet ? 0 : -1} onClick={() => setSheet(false)}>
               {l.label} <Icon name="arrowRight" />
             </Link>
           ))}
@@ -219,7 +227,7 @@ export function Header() {
         </nav>
         <div className="sheet-foot">
           <Link href={view.cta.href} className="pill accent" tabIndex={sheet ? 0 : -1}>{aud === "profesional" ? "Postular a Wave 3" : view.cta.label}</Link>
-          {live && aud !== "equipo" && <Link href="/inicio" className="pill ghost" tabIndex={sheet ? 0 : -1}>Mi espacio</Link>}
+          {live && aud !== "equipo" && <Link href="/inicio" className="pill ghost" tabIndex={sheet ? 0 : -1}>Ingresar</Link>}
         </div>
       </div>
     </>

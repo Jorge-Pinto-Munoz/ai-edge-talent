@@ -6,17 +6,10 @@ import { Icon, type IconName } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
 import { StageCard } from "@/components/site/StageCard";
-import { Faq, IndexGrid, SecHead, type IndexTile } from "@/components/site/Blocks";
+import { Faq, SecHead } from "@/components/site/Blocks";
 
 export const metadata = { title: "Equipo Kibernum · AI Edge Talent" };
 
-const TILES: IndexTile[] = [
-  { href: "/inicio", title: "Entrar al portal", body: "Resumen con pendientes, admisión, journey y talento.", icon: "grid", tone: "dark", span: 2, mobileFull: true, image: "trabajo-laptop" },
-  { href: "/delivery/playbook", title: "Playbook por etapa", body: "Qué hacer, qué comunicar y cuándo escalar.", icon: "book", tone: "accent", mobileFull: true },
-  { href: "/responsabilidades", title: "Responsabilidades", body: "Quién decide qué en cada etapa (RACI).", icon: "users" },
-  { href: "/mentor", title: "Mentores", body: "Tus grupos y el feedback semanal.", icon: "chat" },
-  { href: "#preguntas", title: "Preguntas frecuentes", body: "Escalamiento, rescates y criticidad.", icon: "help" },
-];
 
 const TOOLS: { title: string; body: string; icon: IconName; size?: "wide" | "full" }[] = [
   { title: "Resumen con pendientes", body: "Lo que necesita acción hoy en cada Wave: evaluar, decidir, revisar entregas y verificar certificaciones.", icon: "grid", size: "wide" },
@@ -55,12 +48,6 @@ export default function EquipoPage() {
         </div>
       </section>
 
-      <section className="sec tight">
-        <div className="sec-inner">
-          <SecHead eyebrow="Para el equipo" title="¿Qué necesitas hoy?" />
-          <IndexGrid tiles={TILES} />
-        </div>
-      </section>
 
       <section className="sec dark bleed" id="etapas">
         <div className="sec-inner">

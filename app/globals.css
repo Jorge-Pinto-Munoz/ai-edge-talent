@@ -549,3 +549,4 @@ fieldset.preview-lock { border: 0; margin: 0; padding: 0; min-width: 0; display:
   .admin-side, .admin-top, .help-fab, .no-print, header.site-header, footer { display: none !important; }
   .report .card { break-inside: avoid; box-shadow: none; }
 }
+.help-search input { flex: 1; min-width: 0; width: 100%; }

@@ -8,17 +8,11 @@ import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
 import { StageCard } from "@/components/site/StageCard";
-import { Faq, IndexGrid, SecHead, type IndexTile } from "@/components/site/Blocks";
+import { CATALOG } from "@/lib/data/aicert-catalog";
+import { Faq, SecHead } from "@/components/site/Blocks";
 
 export const metadata = { title: "Para clientes · AI Edge Talent" };
 
-const TILES: IndexTile[] = [
-  { href: "#como-funciona", title: "Cómo funciona", body: "Cinco etapas y lo que se espera de tu empresa en cada una.", icon: "compass", tone: "dark", span: 2, mobileFull: true, image: "colaboracion" },
-  { href: "#nominar", title: "Nominar profesionales", body: "Cómo identificar a quién invitar junto a tu Delivery.", icon: "users", tone: "accent", mobileFull: true },
-  { href: "#informacion", title: "Qué información recibes", body: "Estado, avance, riesgos y resultados.", icon: "chat" },
-  { href: "#tiempo", title: "Tiempo que se necesita", body: "Disponibilidad coordinada, 2 a 3 horas por semana.", icon: "clock" },
-  { href: "#preguntas", title: "Preguntas frecuentes", body: "Lo que suelen preguntar los clientes.", icon: "help" },
-];
 
 const RECEIVE = [
   "Estado de la postulación de cada persona nominada (pendiente o completada)",
@@ -58,12 +52,6 @@ export default async function ClientesPage() {
         </div>
       </section>
 
-      <section className="sec tight">
-        <div className="sec-inner">
-          <SecHead eyebrow="Para tu empresa" title="¿Qué necesitas saber?" />
-          <IndexGrid tiles={TILES} />
-        </div>
-      </section>
 
       <section className="sec dark bleed" id="como-funciona">
         <div className="sec-inner">
@@ -97,6 +85,14 @@ export default async function ClientesPage() {
       <section className="sec" id="certificacion">
         <div className="sec-inner">
           <AiCertSection id="aic-clientes" audience="cliente" stat={await certifiedRate()} />
+          <Reveal className="cat-teaser">
+            <div>
+              <div className="eyebrow">Catálogo</div>
+              <h3>{CATALOG.length} certificaciones AI CERTs disponibles</h3>
+              <p>Consulte qué aprende cada una, para qué roles sirve y su malla por módulos.</p>
+            </div>
+            <Link className="pill accent lg" href="/certificaciones">Ver certificaciones <Icon name="arrowRight" size={18} /></Link>
+          </Reveal>
         </div>
       </section>
 

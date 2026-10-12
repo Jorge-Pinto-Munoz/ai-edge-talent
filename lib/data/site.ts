@@ -14,6 +14,7 @@ export interface PublicStage {
   tagline: string;
   icon: IconName;
   image: BrandImage;
+  /** Foco de la foto en tarjetas verticales (dónde están las caras). */
   photoPos?: string;
   facts: { label: string; value: string }[];
   intro: string;
@@ -32,7 +33,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
     tagline: "Cuéntanos cómo usas IA hoy en tu trabajo real.",
     icon: "spark",
     image: "retrato-perfil",
-    photoPos: "70% center",
+    photoPos: "36% 30%",
     facts: [
       { label: "Duración", value: "Hasta el cierre de postulación" },
       { label: "Formato", value: "Formulario personal en línea" },
@@ -58,6 +59,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
     tagline: "Rediseñas una actividad real de tu trabajo integrando IA con criterio.",
     icon: "brain",
     image: "profesional-tablet",
+    photoPos: "84% 30%",
     facts: [
       { label: "Formato", value: "Contenido e-learning + trabajo evaluado" },
       { label: "Aprobación", value: "≥ 75/100 y hard gates" },
@@ -83,6 +85,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
     tagline: "Te certificas en IA aplicada a tu rol, con profesor y AI Coach.",
     icon: "badge",
     image: "trabajo-laptop",
+    photoPos: "30% 30%",
     facts: [
       { label: "Ruta", value: "Introductorio + especialista" },
       { label: "Avance", value: "Por tramos (1 a 5)" },
@@ -108,6 +111,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
     tagline: "Construyes una solución para una necesidad real y la presentas al cliente.",
     icon: "flask",
     image: "colaboracion",
+    photoPos: "60% 30%",
     facts: [
       { label: "Clases", value: "Dos con el Hub AI" },
       { label: "Entregable", value: "Demo sobre el caso real" },
@@ -133,6 +137,7 @@ export const PUBLIC_STAGES: PublicStage[] = [
     tagline: "Cierras con evidencia y, si corresponde, tu caso sigue como piloto.",
     icon: "flag",
     image: "equipo",
+    photoPos: "70% 30%",
     facts: [
       { label: "Cierre", value: "Formal, con acciones" },
       { label: "Seguimiento", value: "Mes 1 y Mes 3" },
@@ -155,15 +160,40 @@ export const PUBLIC_STAGES: PublicStage[] = [
 
 export const stageBySlug = (slug: string) => PUBLIC_STAGES.find((s) => s.slug === slug);
 
-/** Índice inicial del home: todo lo que hay en la plataforma, de un vistazo. */
-export const SITE_INDEX: { href: string; title: string; body: string; icon: IconName; tone?: "dark" | "accent"; span?: 2; mobileFull?: boolean; image?: BrandImage }[] = [
-  { href: "/programa", title: "El programa", body: "Qué es AI Edge Talent, para quién es y cómo se evalúa.", icon: "compass", tone: "dark", span: 2, mobileFull: true, image: "colaboracion" },
-  { href: "/wave-3/postular", title: "Postular a Wave 3", body: "Cierra el viernes 16 de octubre a las 12:00.", icon: "spark", tone: "accent", mobileFull: true },
-  { href: "#etapas", title: "Las etapas", body: "Cinco pasos, de la postulación al cierre.", icon: "route" },
-  { href: "/programa#para-quien", title: "Qué se espera de ti", body: "Tu compromiso y lo que obtienes.", icon: "user" },
-  { href: "/programa#evaluacion", title: "Cómo se evalúa", body: "Una rúbrica conocida, con cinco dimensiones.", icon: "target" },
-  { href: "/ayuda", title: "Preguntas", body: "Lo que más nos preguntan los profesionales.", icon: "help" },
-  { href: "/inicio", title: "Mi espacio", body: "Tu etapa, tus tareas, tu certificación y lo que viene.", icon: "grid", span: 2, mobileFull: true },
+/** Cómo se evalúa y cómo avanzas en cada etapa (home y /programa). */
+export const STAGE_GATES: { stage: string; slug: string; how: string; pass: string }[] = [
+  { stage: "Postulación y Assessment", slug: "assessment", how: "Rúbrica conocida de cinco dimensiones sobre tus casos reales.", pass: "Selección por evidencia. Si quedas bajo el corte, una segunda oportunidad con video." },
+  { stage: "AI First Mindset", slug: "mindset", how: "Contenido e-learning y un pequeño trabajo evaluado sobre una actividad real.", pass: "75/100 o más, con dos intentos." },
+  { stage: "Role Enablement", slug: "role-enablement", how: "Curso introductorio y especialista de AI CERTs, avanzando por tramos.", pass: "Examen AI CERT aprobado y verificado. Hasta dos intentos financiados." },
+  { stage: "AI Lab & Showcase", slug: "ai-lab-showcase", how: "Dos clases con el Hub AI y un prototipo sobre un problema real del cliente.", pass: "Showcase con evidencia de valor. El cliente decide si continúa." },
+  { stage: "Cierre y continuidad", slug: "cierre", how: "Cierre formal con evidencia y seguimiento al mes 1 y al mes 3.", pass: "Adopción sostenida e impacto medido antes y después." },
+];
+
+/** Qué se espera de ti, en concreto, y qué recibes a cambio. */
+export const EXPECTATIONS: { commit: { title: string; body: string; icon: IconName }[]; get: { title: string; body: string; icon: IconName }[] } = {
+  commit: [
+    { title: "2 a 3 horas por semana", body: "Espacios coordinados con tu Delivery dentro de la jornada, más tu tiempo de estudio.", icon: "clock" },
+    { title: "Unas 40 horas de certificación", body: "Curso introductorio y especialista a tu ritmo, en 3 a 4 semanas.", icon: "book" },
+    { title: "Asistir y participar", body: "Clases con tu profesor y las dos sesiones del AI Lab con el Hub AI.", icon: "users" },
+    { title: "Entregar con evidencia propia", body: "Tu trabajo de Mindset y tu caso del AI Lab, con antes, después y por qué funciona.", icon: "upload" },
+    { title: "Cuidar al cliente", body: "Confidencialidad de la información con la que trabajas.", icon: "lock" },
+    { title: "Contarnos cómo vas", body: "Pulsos de 2 minutos al cerrar cada etapa. No son evaluaciones.", icon: "chat" },
+  ],
+  get: [
+    { title: "100 % financiado", body: "Habilitación, certificación (hasta dos intentos) y AI Lab.", icon: "check" },
+    { title: "Certificado AI CERTs y badge", body: "Diploma oficial verificable y badge para LinkedIn.", icon: "badge" },
+    { title: "AI Coach y profesor", body: "Feedback semanal y apoyo para destrabarte.", icon: "chat" },
+    { title: "Un caso real en tu portafolio", body: "Presentado al cliente en el Showcase.", icon: "presentation" },
+    { title: "Banca de talento", body: "Quedas visible como talento habilitado en IA.", icon: "star" },
+  ],
+};
+
+/** Mi espacio: el portal del profesional, contado en el home. */
+export const MI_ESPACIO: { title: string; body: string; icon: IconName }[] = [
+  { title: "Siempre sabes tu siguiente paso", body: "Tu camino por etapas, con lo que está listo, lo que viene y lo que está en revisión.", icon: "route" },
+  { title: "Materiales y entregas en un lugar", body: "Descargas guías y plantillas, ves los videos y subes tus entregas desde el celular.", icon: "download" },
+  { title: "Tu avance AI CERT por tramos", body: "Ves en qué curso y tramo vas, y la fecha de tu examen.", icon: "badge" },
+  { title: "Ayuda en un clic", body: "Preguntas frecuentes y un canal directo con el equipo.", icon: "help" },
 ];
 
 export const BENEFITS: { title: string; body: string; icon: IconName; size?: "wide" | "full" }[] = [
@@ -178,7 +208,8 @@ export const WAVE3_TIMELINE: { when: string; title: string; body: string; done?:
   { when: "Ahora", title: "Postulación abierta", body: "Responde el Assessment con tus experiencias reales." },
   { when: "Vie 16 oct · 12:00", title: "Cierre de postulación", body: "Después de esa hora no se reciben postulaciones." },
   { when: "Después del cierre", title: "Resultados", body: "Recibes tu resultado por correo y en tu espacio." },
-  { when: "Al inscribirte", title: "Compromiso y onboarding", body: "Aceptas tus condiciones y comienza AI First Mindset." },
+  { when: "Al inscribirte", title: "Compromiso y onboarding", body: "Aceptas formalmente tus condiciones y se activa tu espacio personal." },
+  { when: "Semana 1", title: "Comienza AI First Mindset", body: "Accedes al contenido e-learning y preparas tu primer trabajo con IA." },
 ];
 
 export const WAVE3_DEADLINE = "2026-10-16T12:00:00-03:00";
