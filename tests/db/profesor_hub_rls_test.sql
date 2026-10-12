@@ -10,28 +10,33 @@ insert into wave_staff (wave_id, email, role) values ('wave-3', 'profe@kibernum.
 select 'perfiles con rol nuevo', count(*) = 3 from profiles where role in ('profesor', 'hub');
 
 set role authenticated;
--- Profesor: ve participantes de su Wave y cierra su semana
+-- Profesor: ve participantes de su Wave y registra su clase con asistencia
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f1';
 select 'PROFESOR ve su Wave', count(*) > 0 from candidates where wave_id = 'wave-3';
 select 'PROFESOR no ve otras Waves', count(*) = 0 from candidates where wave_id <> 'wave-3';
-insert into teacher_weekly_reports (wave_id, week_start, general_feedback) values ('wave-3', date '2026-10-12', 'Buen ritmo general');
-insert into teacher_weekly_entries (report_id, candidate_id, status, progress, flag, note)
-  select r.id, c.id, 'EN_RIESGO', 30, 'CONCERN', 'Sin avance esta semana' from teacher_weekly_reports r, candidates c where c.full_name = 'Ana Kiber' limit 1;
-select 'PROFESOR registró su semana', count(*) = 1 from teacher_weekly_entries;
--- Otro profesor (otra Wave): no puede escribir en wave-3 ni leer el reporte ajeno
+insert into teacher_classes (wave_id, held_on, objective, topic) values ('wave-3', date '2026-10-14', 'Prompting para pruebas', 'Casos de prueba con IA');
+insert into teacher_class_attendance (class_id, candidate_id, attended)
+  select t.id, c.id, false from teacher_classes t, candidates c where c.full_name = 'Ana Kiber' limit 1;
+select 'PROFESOR registró asistencia', count(*) = 1 from teacher_class_attendance;
+do $$ begin
+  begin insert into teacher_class_attendance (class_id, candidate_id, attended)
+    select t.id, c.id, true from teacher_classes t, candidates c where c.wave_id <> 'wave-3' limit 1;
+    if found then raise notice 'MAL: asistencia de otra Wave'; end if;
+  exception when others then raise notice 'asistencia solo de su Wave OK'; end; end $$;
+-- Otro profesor (otra Wave): no puede escribir en wave-3 ni leer clases ajenas
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f3';
 do $$ begin
-  begin insert into teacher_weekly_reports (wave_id, week_start) values ('wave-3', date '2026-10-12'); raise notice 'MAL: profesor escribió en Wave ajena';
+  begin insert into teacher_classes (wave_id, held_on) values ('wave-3', date '2026-10-14'); raise notice 'MAL: profesor escribió en Wave ajena';
   exception when others then raise notice 'profesor solo en su Wave OK'; end; end $$;
-select 'OTRO PROFESOR no lee reportes ajenos', count(*) = 0 from teacher_weekly_reports;
--- Delivery lee los cierres (casos preocupantes y destacados)
+select 'OTRO PROFESOR no lee clases ajenas', count(*) = 0 from teacher_classes;
+-- Delivery lee clases y asistencia
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
-select 'DELIVERY ve casos preocupantes', count(*) = 1 from teacher_weekly_entries where flag = 'CONCERN';
--- Kiber y cliente no ven cierres del profesor
+select 'DELIVERY ve inasistencias', count(*) = 1 from teacher_class_attendance where not attended;
+-- Kiber y cliente no ven el registro del profesor
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000b1';
-select 'KIBER no ve cierres del profesor', count(*) = 0 from teacher_weekly_entries;
+select 'KIBER no ve asistencia', count(*) = 0 from teacher_class_attendance;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
-select 'CLIENTE no ve cierres del profesor', count(*) = 0 from teacher_weekly_reports;
+select 'CLIENTE no ve clases del profesor', count(*) = 0 from teacher_classes;
 
 -- Hub: clases, proyectos e integrantes
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f2';

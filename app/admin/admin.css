@@ -126,37 +126,44 @@
 .apply-link small { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
 .apply-link code { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ───── Profesor: cierre semanal ───── */
-.week-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin-bottom: 8px; }
-.week-nav strong { text-align: center; }
-.teacher-list { display: grid; gap: 10px; }
-.teacher-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 10px 16px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--bg); border: 1px solid var(--border); border-left: 4px solid transparent; transition: border-color 180ms ease; }
-.teacher-row.flag-concern { border-left-color: var(--st-bad); }
-.teacher-row.flag-highlight { border-left-color: var(--cyan); }
-.teacher-row .who { display: grid; gap: 2px; min-width: 0; }
-.teacher-row .ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: flex-end; }
-.teacher-row .note { grid-column: 1 / -1; }
-.teacher-row select { width: auto; }
-.mini { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin: 0; }
-.mini input[type="number"] { width: 76px; }
-.mini.check input { width: auto; margin: 0; }
+/* ───── Profesor: registro de clase ───── */
 .seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 999px; background: var(--surface-2); }
 .seg-btn { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; font: inherit; font-size: 0.85rem; font-weight: 700; color: var(--muted); cursor: pointer; transition: background 160ms ease, color 160ms ease; }
-.seg-btn:disabled { cursor: default; }
 .seg-btn.on { background: var(--surface); color: var(--text); box-shadow: var(--e1); }
-.seg-btn.on.ok { background: var(--ok-soft); }
-.seg-btn.on.warn { background: var(--warn-soft); color: var(--warn-text); }
-.seg-btn.on.bad { background: var(--bad-soft); color: var(--bad-text); }
-.quote-box { padding: 14px 16px; border-radius: 14px; background: var(--surface-2); display: grid; gap: 4px; }
+.class-form { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: start; }
+.class-col { min-width: 0; }
+.class-actions { grid-column: 1 / -1; display: grid; gap: 10px; }
+@media (max-width: 900px) { .class-form { grid-template-columns: 1fr; } }
+.attend-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.attend-head small { display: block; }
+.attend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.attend { width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface); font: inherit; text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; }
+.attend .mark { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; }
+.attend .who { display: grid; min-width: 0; }
+.attend .who small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attend .state { font-size: 0.82rem; font-weight: 700; }
+.attend.in { border-color: rgba(61, 201, 212, 0.45); }
+.attend.in .mark { background: var(--ok-soft); color: #2f8a57; }
+.attend.in .state { color: #2f8a57; }
+.attend.out { background: var(--bad-soft); border-color: transparent; }
+.attend.out .mark { background: var(--surface); color: var(--bad-text); }
+.attend.out .state { color: var(--bad-text); }
+.attend:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(61, 201, 212, 0.35); }
+.class-list { display: grid; gap: 10px; }
+.class-card { padding: 16px; border-radius: 16px; background: var(--bg); border: 1px solid var(--border); display: grid; gap: 10px; }
+.class-topic { font-size: 1.05rem; }
+.class-dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+.class-dl dt { font-weight: 700; color: var(--muted); font-size: 0.85rem; }
+.class-dl dd { margin: 0; }
+@media (max-width: 600px) { .class-dl { grid-template-columns: 1fr; } .class-dl dd { margin-bottom: 6px; } }
+.attend-matrix th, .attend-matrix td { text-align: center; white-space: nowrap; }
+.attend-matrix th:first-child, .attend-matrix td:first-child { text-align: left; }
+.attend-matrix td.in { color: #2f8a57; font-weight: 800; }
+.attend-matrix td.out { color: var(--bad-text); background: var(--bad-soft); font-weight: 800; }
+.attend-matrix td.na { color: var(--muted); }
 .pending.follow .ico { background: var(--bad-soft); color: var(--bad-text); }
-.pending.follow.done { opacity: 1; }
-.pending.follow.done .ico { background: var(--brand-soft); color: var(--brand); }
-@media (max-width: 760px) {
-  .teacher-row { grid-template-columns: 1fr; }
-  .teacher-row .ctrl { justify-content: flex-start; }
-  .week-nav { grid-template-columns: 1fr 1fr; }
-  .week-nav strong { grid-column: 1 / -1; grid-row: 1; }
-}
+.pending.follow.lvl-medium .ico { background: var(--warn-soft); color: var(--warn-text); }
+.pending.follow.lvl-low .ico { background: var(--surface-2); color: var(--muted); }
 
 /* ───── Equipo de la Wave ───── */
 .staff-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
@@ -180,5 +187,4 @@
 .adm .label { display: block; font-weight: 600; margin-bottom: 6px; }
 .adm-grid.even { grid-template-columns: 1fr 1fr; }
 @media (max-width: 1100px) { .adm-grid.even { grid-template-columns: 1fr; } }
-.mini input[type="number"] { width: 84px; padding: 7px 9px; }
 .pending.follow .txt small { display: block; }

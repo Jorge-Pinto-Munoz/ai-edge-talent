@@ -1,20 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { shiftWeek, weekLabel, statusLabel, flagLabel } from "@/lib/teacher/rules";
+import { attendanceByPerson, classDateLabel } from "@/lib/teacher/rules";
 import { labDecisionLabel, labStatusLabel } from "@/lib/hub/rules";
 import { advanceGate } from "@/lib/journey/rules";
 
-describe("cierre semanal del profesor", () => {
-  it("mueve semanas de lunes a lunes", () => {
-    expect(shiftWeek("2026-10-12", -1)).toBe("2026-10-05");
-    expect(shiftWeek("2026-10-26", 1)).toBe("2026-11-02");
+describe("registro de clases del profesor", () => {
+  const classes = [
+    { id: "c1", held_on: "2026-09-30" },
+    { id: "c2", held_on: "2026-10-07" },
+    { id: "c3", held_on: "2026-10-14" },
+    { id: "c4", held_on: "2026-10-21" },
+  ];
+  const mark = (cand: string, pattern: string) => pattern.split("").map((x, i) => ({ class_id: classes[i].id, candidate_id: cand, attended: x === "1" }));
+  const rows = [...mark("ana", "1100"), ...mark("beto", "0101"), ...mark("caro", "1110"), ...mark("dani", "1111")];
+  const by = (id: string) => attendanceByPerson([...classes].reverse(), rows, ["ana", "beto", "caro", "dani", "eva"]).find((p) => p.candidateId === id)!;
+
+  it("dos clases seguidas sin asistir es alerta alta", () => {
+    expect(by("ana").streak).toBe(2);
+    expect(by("ana").alert).toEqual({ level: "high", reason: "2 clases seguidas sin asistir" });
   });
-  it("rotula la semana", () => {
-    expect(weekLabel("2026-10-12")).toBe("12 – 18 oct");
-    expect(weekLabel("2026-10-26")).toBe("26 oct – 1 nov");
+  it("asistencia bajo 75% con 3+ clases es alerta media", () => {
+    expect(by("beto").rate).toBe(0.5);
+    expect(by("beto").alert?.level).toBe("medium");
   });
-  it("traduce estado y marca", () => {
-    expect(statusLabel("EN_RIESGO")).toBe("En riesgo");
-    expect(flagLabel("CONCERN")).toBe("Preocupante");
+  it("faltar solo a la última es aviso leve", () => {
+    expect(by("caro").alert).toEqual({ level: "low", reason: "No asistió a la última clase" });
+  });
+  it("asistencia completa o sin registro no alerta", () => {
+    expect(by("dani").alert).toBeNull();
+    expect(by("eva")).toMatchObject({ recorded: 0, rate: null, alert: null });
+  });
+  it("rotula la fecha de la clase", () => {
+    expect(classDateLabel("2026-10-14")).toBe("mié 14 oct");
   });
 });
 

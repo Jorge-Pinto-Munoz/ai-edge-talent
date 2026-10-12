@@ -1,5 +1,6 @@
 import "server-only";
 import { supabaseUser } from "@/lib/supabase/server";
+import { attendanceByPerson } from "@/lib/teacher/rules";
 
 const PRE_SUBMIT = ["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED"];
 const EVALUATED = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED", "NOT_SELECTED", "SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
@@ -37,19 +38,18 @@ export async function waveDashboard(waveId: string, isAdmin: boolean): Promise<W
   const reached = (layer: string) => cs.filter((c) => c.journey_layer && LAYERS.indexOf(c.journey_layer) >= LAYERS.indexOf(layer)).length;
   const today = new Date().toISOString().slice(0, 10);
 
-  const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
   const [subs, certs, fus, events, reports, ready] = await Promise.all([
     ids.length ? db.from("submissions").select("id", { count: "exact", head: true }).in("candidate_id", ids).in("status", ["SUBMITTED", "HUMAN_REVIEW"]) : Promise.resolve({ count: 0 }),
     ids.length ? db.from("certifications").select("id", { count: "exact", head: true }).in("candidate_id", ids).eq("status", "PENDING_REVIEW") : Promise.resolve({ count: 0 }),
     db.from("follow_ups").select("id", { count: "exact", head: true }).eq("wave_id", waveId).is("done_at", null).lt("due_date", today),
     ids.length ? db.from("admission_events").select("candidate_id, to_status, actor_label, at").in("candidate_id", ids).order("at", { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
-    db.from("teacher_weekly_reports").select("id").eq("wave_id", waveId).not("closed_at", "is", null).gte("week_start", twoWeeksAgo),
+    db.from("teacher_classes").select("id, held_on").eq("wave_id", waveId),
     db.from("lab_projects").select("id", { count: "exact", head: true }).eq("wave_id", waveId).eq("status", "READY"),
   ]);
-  const reportIds = (reports.data ?? []).map((r) => r.id);
-  const concerns = reportIds.length
-    ? await db.from("teacher_weekly_entries").select("candidate_id", { count: "exact", head: true }).in("report_id", reportIds).eq("flag", "CONCERN")
-    : { count: 0 };
+  // Alertas de asistencia (2 clases seguidas sin asistir o bajo 75%), calculadas desde el registro del profesor.
+  const classes = reports.data ?? [];
+  const { data: att } = classes.length ? await db.from("teacher_class_attendance").select("class_id, candidate_id, attended").in("class_id", classes.map((c) => c.id)) : { data: [] };
+  const concerns = { count: attendanceByPerson(classes, att ?? [], ids).filter((a) => a.alert && a.alert.level !== "low").length };
 
   const pending: PendingItem[] = [
     { key: "evaluate", label: "Postulaciones por evaluar", hint: "Enviadas y sin evaluación de IA", count: byStatus(["APPLICATION_SUBMITTED"]), href: `/admin/admision/${waveId}?estado=APPLICATION_SUBMITTED`, adminOnly: true },
@@ -57,7 +57,7 @@ export async function waveDashboard(waveId: string, isAdmin: boolean): Promise<W
     { key: "conditions", label: "Compromisos sin aceptar", hint: "Seleccionados que aún no firman", count: byStatus(["SELECTED", "CONDITIONS_PENDING"]), href: `/admin/admision/${waveId}?vista=columnas` },
     { key: "submissions", label: "Entregas por revisar", hint: "Tareas de Mindset enviadas", count: subs.count ?? 0, href: `/admin/journey/${waveId}?tab=entregas` },
     { key: "certs", label: "Certificaciones por verificar", hint: "AI CERT subidas por participantes", count: certs.count ?? 0, href: `/admin/journey/${waveId}?tab=certificaciones` },
-    { key: "concerns", label: "Casos preocupantes del profesor", hint: "Marcados en el cierre semanal (últimas 2 semanas)", count: concerns.count ?? 0, href: `/admin/profesor/${waveId}` },
+    { key: "concerns", label: "Alertas de asistencia", hint: "Dos clases seguidas sin asistir o asistencia bajo 75%", count: concerns.count ?? 0, href: `/admin/profesor/${waveId}` },
     { key: "showcase", label: "Proyectos listos para Showcase", hint: "AI Lab: presentación lista, falta presentar", count: ready.count ?? 0, href: `/admin/lab/${waveId}?tab=showcase` },
     { key: "followups", label: "Seguimientos vencidos", hint: "Mes 1 o Mes 3 sin registrar", count: fus.count ?? 0, href: "/admin/talento" },
   ].filter((p) => isAdmin || !p.adminOnly);

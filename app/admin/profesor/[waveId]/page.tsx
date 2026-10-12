@@ -1,21 +1,23 @@
 import Link from "next/link";
 import { myStaffWaves, requireAnyRolePage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
-import { layerIndex, weekStart, type Layer } from "@/lib/journey/rules";
-import { flagLabel, shiftWeek, statusLabel, statusTone, weekLabel, type TeacherEntry } from "@/lib/teacher/rules";
-import { TeacherWeekForm } from "@/components/teacher/TeacherWeekForm";
+import { layerName, type Layer } from "@/lib/journey/rules";
+import { attendanceByPerson, classDateLabel, todayChile, type AttendanceRow } from "@/lib/teacher/rules";
+import { ClassForm } from "@/components/teacher/ClassForm";
 import { WaveStaffManager } from "@/components/admin/WaveStaffManager";
-import { Icon } from "@/components/site/Icon";
-import { Badge, fmtDate } from "@/components/ui";
+import { Icon, type IconName } from "@/components/site/Icon";
+import { Badge } from "@/components/ui";
 
-export const metadata = { title: "Cierre semanal · Portal AET" };
+export const metadata = { title: "Clases · Portal AET" };
 export const dynamic = "force-dynamic";
 
-type Entry = { report_id: string; candidate_id: string; status: string; progress: number | null; attended: boolean | null; note: string | null; flag: string };
+type Cls = { id: string; held_on: string; author: string; objective: string | null; topic: string | null; highlights: string | null; next_steps: string | null; comments: string | null };
+const ALERT_TONE = { high: "bad", medium: "warn", low: "review" } as const;
+const MATRIX_COLS = 8;
 
-export default async function ProfesorWave({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ semana?: string }> }) {
+export default async function ProfesorWave({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ clase?: string }> }) {
   const { waveId } = await params;
-  const { semana } = await searchParams;
+  const { clase } = await searchParams;
   const viewer = await requireAnyRolePage(`/admin/profesor/${waveId}`, ["admin", "delivery", "profesor"]);
   const isTeacher = viewer.role === "profesor";
   const db = await supabaseUser();
@@ -24,131 +26,107 @@ export default async function ProfesorWave({ params, searchParams }: { params: P
   if (!wave) {
     return (
       <div className="adm">
-        <header className="adm-head"><div><div className="eyebrow">Profesor</div><h1>Cierre semanal</h1></div></header>
+        <header className="adm-head"><div><div className="eyebrow">Profesor</div><h1>Clases</h1></div></header>
         <section className="adm-card"><div className="empty"><Icon name="layers" size={28} /><strong>Aún no tienes una Wave asignada.</strong><span>El equipo AI Edge Talent te asignará como profesor/a de una Wave.</span></div></section>
       </div>
     );
   }
 
-  const current = weekStart(new Date());
-  const week = semana && /^\d{4}-\d{2}-\d{2}$/.test(semana) && semana <= current ? weekStart(new Date(`${semana}T12:00:00Z`)) : current;
   const { data: cands } = await db
     .from("candidates")
     .select("id, full_name, role_title, client_name, journey_layer")
     .eq("wave_id", waveId)
     .in("status", ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"])
     .order("full_name");
-  // Primero quienes están en Role Enablement (la etapa del curso), luego el resto por etapa.
-  const people = [...(cands ?? [])].sort((a, b) => Number(b.journey_layer === "ROLE_ENABLEMENT") - Number(a.journey_layer === "ROLE_ENABLEMENT") || layerIndex(b.journey_layer as Layer) - layerIndex(a.journey_layer as Layer));
-  const nameOf = (id: string) => cands?.find((c) => c.id === id)?.full_name ?? "—";
+  const people = cands ?? [];
+  const nameOf = (id: string) => people.find((c) => c.id === id)?.full_name ?? "—";
 
-  const { data: reports } = await db.from("teacher_weekly_reports").select("id, week_start, author, general_feedback, closed_at, updated_at").eq("wave_id", waveId).order("week_start", { ascending: false });
-  const reportIds = (reports ?? []).map((r) => r.id);
-  const { data: entries } = reportIds.length ? await db.from("teacher_weekly_entries").select("*").in("report_id", reportIds) : { data: [] as Entry[] };
-  const authors = [...new Set((reports ?? []).map((r) => r.author))];
+  const { data: clsData } = await db.from("teacher_classes").select("id, held_on, author, objective, topic, highlights, next_steps, comments").eq("wave_id", waveId).order("held_on", { ascending: false });
+  const classes = (clsData ?? []) as Cls[];
+  const { data: att } = classes.length ? await db.from("teacher_class_attendance").select("class_id, candidate_id, attended").in("class_id", classes.map((c) => c.id)) : { data: [] as AttendanceRow[] };
+  const rows = (att ?? []) as AttendanceRow[];
+  const summary = attendanceByPerson(classes, rows, people.map((p) => p.id));
+  const alerts = summary.filter((s) => s.alert).sort((a, b) => "hml".indexOf(a.alert!.level[0]) - "hml".indexOf(b.alert!.level[0]));
+  const totalMarks = rows.length;
+  const avg = totalMarks ? Math.round((rows.filter((r) => r.attended).length / totalMarks) * 100) : null;
+
+  const authors = [...new Set(classes.map((c) => c.author))];
   const { data: profs } = !isTeacher && authors.length ? await db.from("profiles").select("id, full_name, email").in("id", authors) : { data: [] };
   const authorName = (id: string) => (id === viewer.id ? "Tú" : profs?.find((p) => p.id === id)?.full_name ?? profs?.find((p) => p.id === id)?.email ?? "Profesor/a");
 
-  const weekNav = (
-    <nav className="week-nav" aria-label="Semana">
-      <Link className="btn ghost small" href={`?semana=${shiftWeek(week, -1)}`}><Icon name="arrowLeft" size={16} /> Anterior</Link>
-      <strong>Semana {weekLabel(week)}{week === current && <small className="muted"> · esta semana</small>}</strong>
-      {week < current ? <Link className="btn ghost small" href={`?semana=${shiftWeek(week, 1)}`}>Siguiente <Icon name="arrowRight" size={16} /></Link> : <span />}
-    </nav>
-  );
+  const canWrite = isTeacher || viewer.role === "admin";
+  const editing = clase && clase !== "nueva" ? classes.find((c) => c.id === clase && (c.author === viewer.id || viewer.role === "admin")) : null;
+  const showForm = isTeacher ? true : clase === "nueva" || Boolean(editing);
+  const today = todayChile();
+  const formPeople = people.map((p) => ({ id: p.id, name: p.full_name, detail: [p.role_title, p.client_name, layerName(p.journey_layer as Layer | null)].filter(Boolean).join(" · ") }));
 
-  /* ───── Vista del profesor: registra y cierra su semana ───── */
-  if (isTeacher) {
-    const mine = (reports ?? []).filter((r) => r.author === viewer.id);
-    const report = mine.find((r) => r.week_start === week);
-    const existing: TeacherEntry[] = (entries ?? [])
-      .filter((e) => e.report_id === report?.id)
-      .map((e) => ({ candidateId: e.candidate_id, status: e.status, progress: e.progress, attended: e.attended, note: e.note ?? "", flag: e.flag }));
-    return (
-      <div className="adm">
-        <header className="adm-head">
-          <div>
-            <div className="eyebrow">{wave.name} · Profesor</div>
-            <h1>Cierre semanal</h1>
-            <p className="muted" style={{ maxWidth: 720 }}>Cada semana deja el avance de cada participante, un feedback general de la clase y marca los casos preocupantes o destacados. Al cerrar la semana, Delivery los ve para darles seguimiento.</p>
-          </div>
-          <div className="adm-deadline"><small>Semanas cerradas</small><strong>{mine.filter((r) => r.closed_at).length}</strong></div>
-        </header>
-        <section className="adm-card">
-          {weekNav}
-          <div className="row" style={{ gap: 8, margin: "4px 0 16px" }}>
-            {report?.closed_at ? <Badge tone="ok">Cerrada el {fmtDate(report.closed_at)}</Badge> : report ? <Badge tone="warn">Borrador sin cerrar</Badge> : <Badge>Sin registro</Badge>}
-          </div>
-          <TeacherWeekForm
-            key={`${week}-${report?.closed_at ?? "open"}`}
-            waveId={waveId}
-            week={week}
-            people={people.map((p) => ({ id: p.id, name: p.full_name, role: p.role_title, client: p.client_name, layer: p.journey_layer as Layer | null }))}
-            existing={existing}
-            generalFeedback={report?.general_feedback ?? ""}
-            closedAt={report?.closed_at ?? null}
-          />
-        </section>
-        {mine.length > 0 && (
-          <section className="adm-card">
-            <div className="adm-card-head"><h2>Tus semanas</h2></div>
-            <div className="pending-list">
-              {mine.map((r) => (
-                <Link key={r.id} href={`?semana=${r.week_start}`} className={`pending ${r.closed_at ? "done" : ""}`}>
-                  <span className="ico"><Icon name={r.closed_at ? "check" : "clock"} size={20} /></span>
-                  <span className="txt"><strong>Semana {weekLabel(r.week_start)}</strong><small>{r.closed_at ? "Cerrada" : "Borrador"} · {(entries ?? []).filter((e) => e.report_id === r.id && e.flag !== "NONE").length} caso(s) marcados</small></span>
-                  <span />
-                  <Icon name="arrowRight" size={18} className="go" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-    );
-  }
-
-  /* ───── Vista de admin y Delivery: lectura y seguimiento ───── */
-  const closed = (reports ?? []).filter((r) => r.closed_at);
-  const recent = closed.filter((r) => r.week_start >= shiftWeek(current, -4)).map((r) => r.id);
-  const followUp = (entries ?? [])
-    .filter((e) => recent.includes(e.report_id) && (e.flag !== "NONE" || e.status === "ATRASADO"))
-    .map((e) => ({ ...e, report: closed.find((r) => r.id === e.report_id)! }))
-    .sort((a, b) => b.report.week_start.localeCompare(a.report.week_start) || Number(b.flag === "CONCERN") - Number(a.flag === "CONCERN"));
-  const weekReports = (reports ?? []).filter((r) => r.week_start === week);
-  const { data: staff } = viewer.role === "admin" ? await db.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "profesor") : { data: [] };
-  const staffEmails = (staff ?? []).map((s) => s.email);
-  const { data: staffProfiles } = staffEmails.length ? await db.from("profiles").select("email, full_name").in("email", staffEmails) : { data: [] };
+  const kpis: [string, string, IconName][] = [
+    ["Clases registradas", String(classes.length), "book"],
+    ["Asistencia promedio", avg === null ? "—" : `${avg}%`, "users"],
+    ["Para seguimiento", String(alerts.filter((a) => a.alert!.level !== "low").length), "alert"],
+    ["Última clase", classes[0] ? classDateLabel(classes[0].held_on) : "—", "clock"],
+  ];
+  const matrix = [...classes].slice(0, MATRIX_COLS).reverse();
 
   return (
     <div className="adm">
       <header className="adm-head">
         <div>
-          <div className="eyebrow">{wave.name} · Seguimiento</div>
-          <h1>Cierre semanal del profesor</h1>
-          <p className="muted" style={{ maxWidth: 720 }}>El avance de cada participante, el feedback general de la clase y los casos que el profesor marcó como preocupantes o destacados, para que Delivery les dé seguimiento.</p>
+          <div className="eyebrow">{wave.name} · {isTeacher ? "Profesor" : "Seguimiento"}</div>
+          <h1>{isTeacher ? "Tus clases" : "Clases y asistencia"}</h1>
+          <p className="muted" style={{ maxWidth: 720 }}>
+            {isTeacher
+              ? "Después de cada clase (normalmente una por semana) registra de qué se trató y marca quién asistió. Delivery recibe automáticamente las alertas de inasistencia."
+              : "Lo que registra el profesor en cada clase y la asistencia. Las alertas se calculan solas: dos clases seguidas sin asistir o asistencia bajo 75%."}
+          </p>
         </div>
-        <div className="adm-deadline"><small>Semanas cerradas</small><strong>{closed.length}</strong></div>
+        {!isTeacher && canWrite && !showForm && <Link className="btn secondary" href="?clase=nueva">Registrar una clase</Link>}
       </header>
 
+      <section className="adm-kpis">
+        {kpis.map(([label, n, icon]) => (
+          <div key={label} className="adm-kpi">
+            <span className="ico"><Icon name={icon} size={20} /></span>
+            <strong>{n}</strong>
+            <small>{label}</small>
+          </div>
+        ))}
+      </section>
+
+      {showForm && canWrite && (
+        <section className="adm-card">
+          <div className="adm-card-head">
+            <h2>{editing ? `Editar clase del ${classDateLabel(editing.held_on)}` : "Registrar clase"}</h2>
+            {editing ? <Link href={`/admin/profesor/${waveId}`} className="muted">← Registrar otra clase</Link> : <span className="muted">Toma 2 minutos</span>}
+          </div>
+          <ClassForm
+            key={editing?.id ?? "nueva"}
+            waveId={waveId}
+            people={formPeople}
+            initial={
+              editing
+                ? { id: editing.id, heldOn: editing.held_on, objective: editing.objective ?? "", topic: editing.topic ?? "", highlights: editing.highlights ?? "", nextSteps: editing.next_steps ?? "", comments: editing.comments ?? "" }
+                : { heldOn: today, objective: "", topic: "", highlights: "", nextSteps: "", comments: "" }
+            }
+            attended={editing ? Object.fromEntries(rows.filter((r) => r.class_id === editing.id).map((r) => [r.candidate_id, r.attended])) : null}
+          />
+        </section>
+      )}
+
       <section className="adm-card">
-        <div className="adm-card-head"><h2>Para seguimiento de Delivery</h2><span className="muted">Últimas 4 semanas cerradas</span></div>
-        {followUp.length === 0 ? (
-          <div className="empty"><Icon name="check" size={24} /><span>Sin casos marcados ni atrasos en las últimas semanas.</span></div>
+        <div className="adm-card-head"><h2>Para seguimiento de Delivery</h2><span className="muted">Calculado desde la asistencia</span></div>
+        {alerts.length === 0 ? (
+          <div className="empty"><Icon name="check" size={24} /><span>{classes.length ? "Sin alertas de asistencia." : "Aparecerán aquí cuando haya clases registradas."}</span></div>
         ) : (
           <div className="pending-list">
-            {followUp.map((e) => (
-              <div key={`${e.report_id}-${e.candidate_id}`} className={`pending follow ${e.flag === "HIGHLIGHT" ? "done" : ""}`} style={{ cursor: "default" }}>
-                <span className="ico"><Icon name={e.flag === "HIGHLIGHT" ? "star" : "alert"} size={20} /></span>
+            {alerts.map((s) => (
+              <div key={s.candidateId} className={`pending follow lvl-${s.alert!.level}`} style={{ cursor: "default" }}>
+                <span className="ico"><Icon name={s.alert!.level === "low" ? "clock" : "alert"} size={20} /></span>
                 <span className="txt">
-                  <strong>{nameOf(e.candidate_id)}</strong>
-                  <small>{e.note ?? "Sin nota"}</small>
-                  <small>Semana {weekLabel(e.report.week_start)} · {authorName(e.report.author)}</small>
+                  <strong>{nameOf(s.candidateId)}</strong>
+                  <small>Asistió a {s.attended} de {s.recorded} clase(s)</small>
                 </span>
-                <span className="row" style={{ gap: 6 }}>
-                  {e.flag !== "NONE" && <Badge tone={e.flag === "CONCERN" ? "bad" : "brand"}>{flagLabel(e.flag)}</Badge>}
-                  <Badge tone={statusTone(e.status)}>{statusLabel(e.status)}</Badge>
-                </span>
+                <Badge tone={ALERT_TONE[s.alert!.level]}>{s.alert!.reason}</Badge>
                 <span />
               </div>
             ))}
@@ -157,43 +135,71 @@ export default async function ProfesorWave({ params, searchParams }: { params: P
       </section>
 
       <section className="adm-card">
-        {weekNav}
-        {weekReports.length === 0 ? (
-          <div className="empty"><Icon name="clock" size={24} /><span>Sin registro del profesor para esta semana.</span></div>
+        <div className="adm-card-head"><h2>Clases registradas</h2><span className="muted">{classes.length}</span></div>
+        {classes.length === 0 ? (
+          <div className="empty"><Icon name="book" size={24} /><span>Aún no hay clases registradas.</span></div>
         ) : (
-          weekReports.map((r) => {
-            const rows = (entries ?? []).filter((e) => e.report_id === r.id);
-            return (
-              <div key={r.id} className="stack" style={{ gap: 12, marginTop: 12 }}>
-                <div className="row" style={{ gap: 8 }}>
-                  <strong>{authorName(r.author)}</strong>
-                  {r.closed_at ? <Badge tone="ok">Cerrada el {fmtDate(r.closed_at)}</Badge> : <Badge tone="warn">Borrador sin cerrar</Badge>}
-                </div>
-                <div className="quote-box"><small className="muted">Feedback general de la clase</small><p style={{ margin: 0 }}>{r.general_feedback ?? "—"}</p></div>
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Participante</th><th>Estado</th><th>Avance</th><th>Asistió</th><th>Marca</th><th>Nota</th></tr></thead>
-                    <tbody>
-                      {rows.map((e) => (
-                        <tr key={e.candidate_id}>
-                          <td><strong>{nameOf(e.candidate_id)}</strong></td>
-                          <td><Badge tone={statusTone(e.status)}>{statusLabel(e.status)}</Badge></td>
-                          <td>{e.progress === null ? "—" : `${e.progress}%`}</td>
-                          <td>{e.attended === null ? "—" : e.attended ? "Sí" : "No"}</td>
-                          <td>{e.flag === "NONE" ? "—" : <Badge tone={e.flag === "CONCERN" ? "bad" : "brand"}>{flagLabel(e.flag)}</Badge>}</td>
-                          <td>{e.note ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })
+          <div className="class-list">
+            {classes.map((c) => {
+              const mine = rows.filter((r) => r.class_id === c.id);
+              const absent = mine.filter((r) => !r.attended).map((r) => nameOf(r.candidate_id));
+              return (
+                <article key={c.id} className="class-card">
+                  <div className="spread" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <div>
+                      <div className="eyebrow" style={{ margin: 0 }}>{classDateLabel(c.held_on)}{!isTeacher && ` · ${authorName(c.author)}`}</div>
+                      <strong className="class-topic">{c.topic ?? "Sin tema"}</strong>
+                    </div>
+                    <div className="row" style={{ gap: 8 }}>
+                      <Badge tone={absent.length ? "warn" : "ok"}>{mine.length - absent.length}/{mine.length} asistieron</Badge>
+                      {(c.author === viewer.id || viewer.role === "admin") && <Link className="btn ghost small" href={`?clase=${c.id}`}>Editar</Link>}
+                    </div>
+                  </div>
+                  <dl className="class-dl">
+                    {c.objective && <><dt>Objetivo</dt><dd>{c.objective}</dd></>}
+                    {c.highlights && <><dt>A destacar</dt><dd>{c.highlights}</dd></>}
+                    {c.next_steps && <><dt>Próximos pasos</dt><dd>{c.next_steps}</dd></>}
+                    {c.comments && <><dt>Comentarios</dt><dd>{c.comments}</dd></>}
+                    {absent.length > 0 && <><dt>No asistieron</dt><dd>{absent.join(", ")}</dd></>}
+                  </dl>
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
 
-      {viewer.role === "admin" && <WaveStaffManager waveId={waveId} role="profesor" people={staffEmails.map((email) => ({ email, name: staffProfiles?.find((p) => p.email === email)?.full_name ?? null }))} />}
+      {matrix.length > 0 && (
+        <section className="adm-card">
+          <div className="adm-card-head"><h2>Asistencia por persona</h2><span className="muted">Últimas {matrix.length} clases</span></div>
+          <div className="table-wrap">
+            <table className="attend-matrix">
+              <thead>
+                <tr><th>Participante</th>{matrix.map((c) => <th key={c.id}>{classDateLabel(c.held_on).replace(/^\S+ /, "")}</th>)}<th>Total</th></tr>
+              </thead>
+              <tbody>
+                {summary.map((s) => (
+                  <tr key={s.candidateId}>
+                    <td><strong>{nameOf(s.candidateId)}</strong></td>
+                    {matrix.map((c) => {
+                      const r = rows.find((x) => x.class_id === c.id && x.candidate_id === s.candidateId);
+                      return <td key={c.id} className={r ? (r.attended ? "in" : "out") : "na"} aria-label={r ? (r.attended ? "Asistió" : "No asistió") : "Sin registro"}>{r ? (r.attended ? "✓" : "✗") : "·"}</td>;
+                    })}
+                    <td><strong>{s.rate === null ? "—" : `${Math.round(s.rate * 100)}%`}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {viewer.role === "admin" && (await (async () => {
+        const { data: staff } = await db.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "profesor");
+        const emails = (staff ?? []).map((s) => s.email);
+        const { data: sp } = emails.length ? await db.from("profiles").select("email, full_name").in("email", emails) : { data: [] };
+        return <WaveStaffManager waveId={waveId} role="profesor" people={emails.map((email) => ({ email, name: sp?.find((p) => p.email === email)?.full_name ?? null }))} />;
+      })())}
     </div>
   );
 }
