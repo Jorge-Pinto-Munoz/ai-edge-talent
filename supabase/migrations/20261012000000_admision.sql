@@ -11,9 +11,12 @@
 create extension if not exists pgcrypto;
 
 -- ───────────── Roles y perfiles ─────────────
-create type public.app_role as enum ('admin', 'delivery', 'kiber', 'client');
+do $t$ begin
+  create type public.app_role as enum ('admin', 'delivery', 'kiber', 'client');
+exception when duplicate_object then null;
+end $t$;
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null unique,
   full_name text,
@@ -23,7 +26,7 @@ create table public.profiles (
 );
 
 -- Lista de correos con rol asignado por un admin antes de su primer ingreso.
-create table public.role_grants (
+create table if not exists public.role_grants (
   email text primary key check (email = lower(email)),
   role public.app_role not null,
   client_name text,
@@ -60,10 +63,13 @@ begin
 end $$;
 
 -- ───────────── Waves ─────────────
-create type public.wave_status as enum
+do $t$ begin
+  create type public.wave_status as enum
   ('DRAFT', 'PREPARING', 'OPEN_FOR_NOMINATION', 'ASSESSMENT', 'ACTIVE', 'LAB_SHOWCASE', 'CLOSING', 'CLOSED');
+exception when duplicate_object then null;
+end $t$;
 
-create table public.waves (
+create table if not exists public.waves (
   id text primary key,
   name text not null,
   wave_type text not null default 'REGULAR',
@@ -80,13 +86,16 @@ create table public.waves (
 );
 
 -- ───────────── Candidatos ─────────────
-create type public.admission_status as enum (
+do $t$ begin
+  create type public.admission_status as enum (
   'NOMINATED', 'INVITED', 'IDENTIFIED', 'APPLICATION_STARTED', 'APPLICATION_SUBMITTED',
   'ASSESSMENT_EVALUATED', 'HUMAN_REVIEW', 'RESCUE_REQUIRED', 'NOT_SELECTED', 'SELECTED',
   'CONDITIONS_PENDING', 'CONDITIONS_ACCEPTED', 'ENROLLED', 'MINDSET_READY'
 );
+exception when duplicate_object then null;
+end $t$;
 
-create table public.candidates (
+create table if not exists public.candidates (
   id uuid primary key default gen_random_uuid(),
   wave_id text not null references public.waves (id) on delete restrict,
   full_name text not null,
@@ -104,11 +113,11 @@ create table public.candidates (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index candidates_wave_email on public.candidates (wave_id, lower(corporate_email));
-create index candidates_wave_status on public.candidates (wave_id, status);
+create unique index if not exists candidates_wave_email on public.candidates (wave_id, lower(corporate_email));
+create index if not exists candidates_wave_status on public.candidates (wave_id, status);
 
 -- ───────────── Formulario propio ─────────────
-create table public.application_questions (
+create table if not exists public.application_questions (
   id uuid primary key default gen_random_uuid(),
   wave_id text not null references public.waves (id) on delete cascade,
   position int not null,
@@ -120,7 +129,7 @@ create table public.application_questions (
   unique (wave_id, position)
 );
 
-create table public.applications (
+create table if not exists public.applications (
   id uuid primary key default gen_random_uuid(),
   candidate_id uuid not null unique references public.candidates (id) on delete cascade,
   answers jsonb not null default '{}'::jsonb,   -- { question_id: answer }
@@ -131,7 +140,7 @@ create table public.applications (
 );
 
 -- Confirmación informada previa (≠ Carta de Compromiso). Append-only.
-create table public.acknowledgements (
+create table if not exists public.acknowledgements (
   id uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   wave_id text not null references public.waves (id),
@@ -141,7 +150,7 @@ create table public.acknowledgements (
 );
 
 -- ───────────── Evaluación IA (propuesta) y decisión humana ─────────────
-create table public.ai_evaluations (
+create table if not exists public.ai_evaluations (
   id uuid primary key default gen_random_uuid(),
   application_id uuid not null references public.applications (id) on delete cascade,
   model text not null,
@@ -155,9 +164,9 @@ create table public.ai_evaluations (
   created_by uuid references auth.users (id),
   created_at timestamptz not null default now()
 );
-create index ai_evaluations_app on public.ai_evaluations (application_id, created_at desc);
+create index if not exists ai_evaluations_app on public.ai_evaluations (application_id, created_at desc);
 
-create table public.decisions (
+create table if not exists public.decisions (
   id uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   outcome text not null check (outcome in ('SELECTED', 'RESCUE_REQUIRED', 'NOT_SELECTED', 'HUMAN_REVIEW')),
@@ -169,7 +178,7 @@ create table public.decisions (
 );
 
 -- Historial de estados (append-only).
-create table public.admission_events (
+create table if not exists public.admission_events (
   id bigint generated always as identity primary key,
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   from_status public.admission_status,
@@ -181,8 +190,11 @@ create table public.admission_events (
 );
 
 -- Carta de compromiso: versionada, sin sobreescritura.
-create type public.acceptance_status as enum ('NOT_PRESENTED', 'PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'SUPERSEDED');
-create table public.commitment_acceptances (
+do $t$ begin
+  create type public.acceptance_status as enum ('NOT_PRESENTED', 'PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED', 'SUPERSEDED');
+exception when duplicate_object then null;
+end $t$;
+create table if not exists public.commitment_acceptances (
   id uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   wave_id text not null references public.waves (id),
@@ -196,7 +208,7 @@ create table public.commitment_acceptances (
 );
 
 -- ───────────── Correos ─────────────
-create table public.email_messages (
+create table if not exists public.email_messages (
   id uuid primary key default gen_random_uuid(),
   wave_id text references public.waves (id),
   candidate_id uuid references public.candidates (id) on delete set null,
@@ -215,7 +227,9 @@ create table public.email_messages (
 -- ───────────── Triggers ─────────────
 create or replace function public.touch_updated_at() returns trigger language plpgsql as $$
 begin new.updated_at = now(); return new; end $$;
+drop trigger if exists candidates_touch on public.candidates;
 create trigger candidates_touch before update on public.candidates for each row execute function public.touch_updated_at();
+drop trigger if exists applications_touch on public.applications;
 create trigger applications_touch before update on public.applications for each row execute function public.touch_updated_at();
 
 -- Registrar cada cambio de estado del candidato.
@@ -229,14 +243,18 @@ begin
   end if;
   return new;
 end $$;
+drop trigger if exists candidates_status_log on public.candidates;
 create trigger candidates_status_log after insert or update of status on public.candidates
   for each row execute function public.log_status_change();
 
 -- Append-only: impedir UPDATE/DELETE en tablas de auditoría.
 create or replace function public.forbid_mutation() returns trigger language plpgsql as $$
 begin raise exception 'Tabla append-only: % no permite %', tg_table_name, tg_op; end $$;
+drop trigger if exists decisions_append_only on public.decisions;
 create trigger decisions_append_only before update or delete on public.decisions for each row execute function public.forbid_mutation();
+drop trigger if exists events_append_only on public.admission_events;
 create trigger events_append_only before update or delete on public.admission_events for each row execute function public.forbid_mutation();
+drop trigger if exists acks_append_only on public.acknowledgements;
 create trigger acks_append_only before update or delete on public.acknowledgements for each row execute function public.forbid_mutation();
 
 -- Compromiso: solo se permite cambiar status/superseded_by/aceptación; nunca versión ni fechas pasadas.
@@ -254,9 +272,12 @@ begin
   end if;
   return new;
 end $$;
+drop trigger if exists commitments_guard on public.commitment_acceptances;
 create trigger commitments_guard before update on public.commitment_acceptances for each row execute function public.guard_commitment();
+drop trigger if exists commitments_no_delete on public.commitment_acceptances;
 create trigger commitments_no_delete before delete on public.commitment_acceptances for each row execute function public.forbid_mutation();
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 
 -- ───────────── Vista para clientes (sin evaluación) ─────────────
@@ -292,43 +313,64 @@ alter table public.commitment_acceptances enable row level security;
 alter table public.email_messages enable row level security;
 
 -- Perfiles: cada uno ve el suyo; staff ve todos; solo admin cambia roles.
+drop policy if exists profiles_self on public.profiles;
 create policy profiles_self on public.profiles for select using (id = auth.uid() or public.is_staff());
+drop policy if exists profiles_admin on public.profiles;
 create policy profiles_admin on public.profiles for update using (public.is_admin()) with check (public.is_admin());
+drop policy if exists grants_admin on public.role_grants;
 create policy grants_admin on public.role_grants for all using (public.is_admin()) with check (public.is_admin());
 
 -- Waves y preguntas: lectura para cualquier usuario autenticado; escritura admin.
+drop policy if exists waves_read on public.waves;
 create policy waves_read on public.waves for select using (auth.uid() is not null);
+drop policy if exists waves_write on public.waves;
 create policy waves_write on public.waves for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists questions_read on public.application_questions;
 create policy questions_read on public.application_questions for select using (auth.uid() is not null);
+drop policy if exists questions_write on public.application_questions;
 create policy questions_write on public.application_questions for all using (public.is_admin()) with check (public.is_admin());
 
 -- Candidatos: staff todo; el Kiber solo su propio registro (lectura).
+drop policy if exists candidates_staff on public.candidates;
 create policy candidates_staff on public.candidates for all using (public.is_staff()) with check (public.is_staff());
+drop policy if exists candidates_self on public.candidates;
 create policy candidates_self on public.candidates for select using (user_id = auth.uid());
 
 -- Postulación: staff lee; el Kiber lee la suya. La escritura del candidato pasa por el servidor (token).
+drop policy if exists applications_staff on public.applications;
 create policy applications_staff on public.applications for select using (public.is_staff());
+drop policy if exists applications_self on public.applications;
 create policy applications_self on public.applications for select
   using (candidate_id in (select id from public.candidates where user_id = auth.uid()));
 
+drop policy if exists acks_staff on public.acknowledgements;
 create policy acks_staff on public.acknowledgements for select using (public.is_staff());
+drop policy if exists acks_self on public.acknowledgements;
 create policy acks_self on public.acknowledgements for select
   using (candidate_id in (select id from public.candidates where user_id = auth.uid()));
 
 -- Evaluación IA y decisiones: SOLO admin (liderazgo del servicio). Ni Kiber, ni cliente, ni Delivery
 -- ven puntajes ni ranking; Delivery ve el estado del candidato.
+drop policy if exists ai_eval_admin on public.ai_evaluations;
 create policy ai_eval_admin on public.ai_evaluations for select using (public.is_admin());
+drop policy if exists decisions_admin_read on public.decisions;
 create policy decisions_admin_read on public.decisions for select using (public.is_admin());
+drop policy if exists decisions_admin_insert on public.decisions;
 create policy decisions_admin_insert on public.decisions for insert with check (public.is_admin() and decided_by = auth.uid());
 
+drop policy if exists events_staff on public.admission_events;
 create policy events_staff on public.admission_events for select using (public.is_staff());
+drop policy if exists events_self on public.admission_events;
 create policy events_self on public.admission_events for select
   using (candidate_id in (select id from public.candidates where user_id = auth.uid()));
 
+drop policy if exists commitments_staff on public.commitment_acceptances;
 create policy commitments_staff on public.commitment_acceptances for select using (public.is_staff());
+drop policy if exists commitments_self on public.commitment_acceptances;
 create policy commitments_self on public.commitment_acceptances for select
   using (candidate_id in (select id from public.candidates where user_id = auth.uid()));
 
+drop policy if exists emails_staff on public.email_messages;
 create policy emails_staff on public.email_messages for select using (public.is_staff());
 
 grant select on public.client_candidate_status to authenticated;

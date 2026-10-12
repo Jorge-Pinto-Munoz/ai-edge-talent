@@ -6,11 +6,14 @@
 -- Archivos (videos, materiales, entregas, certificados) viven en Supabase Storage en buckets PRIVADOS.
 -- Todo acceso pasa por el servidor, que valida permisos y entrega URLs firmadas de corta duración.
 
-create type public.journey_layer as enum ('ASSESSMENT', 'AI_MINDSET', 'ROLE_ENABLEMENT', 'AI_LAB_SHOWCASE', 'CLOSURE');
+do $t$ begin
+  create type public.journey_layer as enum ('ASSESSMENT', 'AI_MINDSET', 'ROLE_ENABLEMENT', 'AI_LAB_SHOWCASE', 'CLOSURE');
+exception when duplicate_object then null;
+end $t$;
 
 alter table public.candidates
-  add column journey_layer public.journey_layer,
-  add column journey_layer_since timestamptz;
+  add column if not exists journey_layer public.journey_layer,
+  add column if not exists journey_layer_since timestamptz;
 
 -- ───────────── Funciones de acceso ─────────────
 create or replace function public.is_mentor() returns boolean
@@ -34,7 +37,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- ───────────── Guías por etapa (video explicativo) ─────────────
-create table public.stage_guides (
+create table if not exists public.stage_guides (
   wave_id text not null references public.waves (id) on delete cascade,
   layer public.journey_layer not null,
   title text not null,
@@ -48,7 +51,7 @@ create table public.stage_guides (
 );
 
 -- ───────────── Micro-cápsulas ─────────────
-create table public.capsules (
+create table if not exists public.capsules (
   id uuid primary key default gen_random_uuid(),
   wave_id text not null references public.waves (id) on delete cascade,
   layer public.journey_layer not null,
@@ -67,9 +70,9 @@ create table public.capsules (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create index capsules_wave_layer on public.capsules (wave_id, layer, position);
+create index if not exists capsules_wave_layer on public.capsules (wave_id, layer, position);
 
-create table public.capsule_progress (
+create table if not exists public.capsule_progress (
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   capsule_id uuid not null references public.capsules (id) on delete cascade,
   completed_at timestamptz not null default now(),
@@ -78,7 +81,7 @@ create table public.capsule_progress (
 
 -- ───────────── Entregas de tareas ─────────────
 -- Resultado de revisión: APPROVED / NOT_APPROVED / HUMAN_REVIEW. REVISIÓN HUMANA no consume intento.
-create table public.submissions (
+create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   capsule_id uuid not null references public.capsules (id) on delete cascade,
@@ -95,7 +98,7 @@ create table public.submissions (
 );
 
 -- ───────────── Certificación AI CERT ─────────────
-create table public.certifications (
+create table if not exists public.certifications (
   id uuid primary key default gen_random_uuid(),
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   kind text not null default 'AI_CERT',
@@ -112,7 +115,7 @@ create table public.certifications (
 );
 
 -- ───────────── Movimientos de etapa (append-only) ─────────────
-create table public.journey_events (
+create table if not exists public.journey_events (
   id bigint generated always as identity primary key,
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   from_layer public.journey_layer,
@@ -122,11 +125,12 @@ create table public.journey_events (
   actor uuid references auth.users (id),
   at timestamptz not null default now()
 );
+drop trigger if exists journey_events_append_only on public.journey_events;
 create trigger journey_events_append_only before update or delete on public.journey_events
   for each row execute function public.forbid_mutation();
 
 -- ───────────── Grupos, mentores y feedback semanal ─────────────
-create table public.wave_groups (
+create table if not exists public.wave_groups (
   id uuid primary key default gen_random_uuid(),
   wave_id text not null references public.waves (id) on delete cascade,
   name text not null,
@@ -134,12 +138,12 @@ create table public.wave_groups (
   created_at timestamptz not null default now(),
   unique (wave_id, name)
 );
-create table public.group_members (
+create table if not exists public.group_members (
   group_id uuid not null references public.wave_groups (id) on delete cascade,
   candidate_id uuid not null references public.candidates (id) on delete cascade,
   primary key (group_id, candidate_id)
 );
-create table public.group_mentors (
+create table if not exists public.group_mentors (
   group_id uuid not null references public.wave_groups (id) on delete cascade,
   mentor_id uuid not null references public.profiles (id) on delete cascade,
   primary key (group_id, mentor_id)
@@ -158,7 +162,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- Feedback semanal del mentor sobre cada persona (week_start = lunes de la semana).
-create table public.weekly_feedback (
+create table if not exists public.weekly_feedback (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references public.wave_groups (id) on delete cascade,
   candidate_id uuid not null references public.candidates (id) on delete cascade,
@@ -173,7 +177,7 @@ create table public.weekly_feedback (
   unique (mentor_id, candidate_id, week_start)
 );
 -- Feedback semanal del mentor sobre el curso / acompañamiento del grupo.
-create table public.group_weekly_notes (
+create table if not exists public.group_weekly_notes (
   group_id uuid not null references public.wave_groups (id) on delete cascade,
   mentor_id uuid not null references public.profiles (id),
   week_start date not null check (extract(isodow from week_start) = 1),
@@ -184,8 +188,11 @@ create table public.group_weekly_notes (
   primary key (group_id, mentor_id, week_start)
 );
 
+drop trigger if exists capsules_touch on public.capsules;
 create trigger capsules_touch before update on public.capsules for each row execute function public.touch_updated_at();
+drop trigger if exists feedback_touch on public.weekly_feedback;
 create trigger feedback_touch before update on public.weekly_feedback for each row execute function public.touch_updated_at();
+drop trigger if exists notes_touch on public.group_weekly_notes;
 create trigger notes_touch before update on public.group_weekly_notes for each row execute function public.touch_updated_at();
 
 -- ───────────── Vista general para clientes (agregada, sin datos de evaluación) ─────────────
@@ -222,50 +229,76 @@ alter table public.weekly_feedback enable row level security;
 alter table public.group_weekly_notes enable row level security;
 
 -- Contenido: staff lo gestiona; participantes y mentores leen lo publicado de su Wave.
+drop policy if exists guides_read on public.stage_guides;
 create policy guides_read on public.stage_guides for select
   using (public.is_staff() or public.is_participant_of(wave_id) or public.is_mentor());
+drop policy if exists guides_write on public.stage_guides;
 create policy guides_write on public.stage_guides for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists capsules_read on public.capsules;
 create policy capsules_read on public.capsules for select
   using (public.is_staff() or ((public.is_participant_of(wave_id) or public.is_mentor()) and published));
+drop policy if exists capsules_write on public.capsules;
 create policy capsules_write on public.capsules for all using (public.is_admin()) with check (public.is_admin());
 
 -- Progreso: el Kiber marca lo suyo; staff y mentores leen.
+drop policy if exists progress_self on public.capsule_progress;
 create policy progress_self on public.capsule_progress for all
   using (candidate_id in (select public.my_candidate_ids())) with check (candidate_id in (select public.my_candidate_ids()));
+drop policy if exists progress_staff on public.capsule_progress;
 create policy progress_staff on public.capsule_progress for select using (public.is_staff() or public.mentors_candidate(candidate_id));
 
 -- Entregas: el Kiber lee las suyas (la creación pasa por el servidor, que valida intentos);
 -- staff lee y revisa; el mentor lee las de su grupo.
+drop policy if exists subs_self on public.submissions;
 create policy subs_self on public.submissions for select using (candidate_id in (select public.my_candidate_ids()));
+drop policy if exists subs_staff on public.submissions;
 create policy subs_staff on public.submissions for all using (public.is_staff()) with check (public.is_staff());
+drop policy if exists subs_mentor on public.submissions;
 create policy subs_mentor on public.submissions for select using (public.mentors_candidate(candidate_id));
 
+drop policy if exists certs_self on public.certifications;
 create policy certs_self on public.certifications for select using (candidate_id in (select public.my_candidate_ids()));
+drop policy if exists certs_staff on public.certifications;
 create policy certs_staff on public.certifications for all using (public.is_staff()) with check (public.is_staff());
+drop policy if exists certs_mentor on public.certifications;
 create policy certs_mentor on public.certifications for select using (public.mentors_candidate(candidate_id));
 
+drop policy if exists jevents_staff on public.journey_events;
 create policy jevents_staff on public.journey_events for select using (public.is_staff());
+drop policy if exists jevents_self on public.journey_events;
 create policy jevents_self on public.journey_events for select using (candidate_id in (select public.my_candidate_ids()));
+drop policy if exists jevents_insert on public.journey_events;
 create policy jevents_insert on public.journey_events for insert with check (public.is_admin() and actor = auth.uid());
 
 -- Grupos: admin gestiona; Delivery lee; mentor lee los suyos.
+drop policy if exists groups_admin on public.wave_groups;
 create policy groups_admin on public.wave_groups for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists groups_read on public.wave_groups;
 create policy groups_read on public.wave_groups for select using (public.is_staff() or public.mentors_group(id));
+drop policy if exists members_admin on public.group_members;
 create policy members_admin on public.group_members for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists members_read on public.group_members;
 create policy members_read on public.group_members for select using (public.is_staff() or public.mentors_group(group_id));
+drop policy if exists mentors_admin on public.group_mentors;
 create policy mentors_admin on public.group_mentors for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists mentors_read on public.group_mentors;
 create policy mentors_read on public.group_mentors for select using (public.is_staff() or mentor_id = auth.uid());
 
 -- El mentor ve a las personas de sus grupos (datos básicos; nunca la evaluación de admisión).
+drop policy if exists candidates_mentor on public.candidates;
 create policy candidates_mentor on public.candidates for select using (public.mentors_candidate(id));
 
 -- Feedback semanal: el mentor escribe y edita lo suyo solo para personas de sus grupos; staff lee; el Kiber no.
+drop policy if exists wf_mentor on public.weekly_feedback;
 create policy wf_mentor on public.weekly_feedback for all
   using (mentor_id = auth.uid())
   with check (mentor_id = auth.uid() and public.mentors_group(group_id) and public.mentors_candidate(candidate_id));
+drop policy if exists wf_staff on public.weekly_feedback;
 create policy wf_staff on public.weekly_feedback for select using (public.is_staff());
+drop policy if exists notes_mentor on public.group_weekly_notes;
 create policy notes_mentor on public.group_weekly_notes for all
   using (mentor_id = auth.uid()) with check (mentor_id = auth.uid() and public.mentors_group(group_id));
+drop policy if exists notes_staff on public.group_weekly_notes;
 create policy notes_staff on public.group_weekly_notes for select using (public.is_staff());
 
 -- ───────────── Storage (buckets privados) ─────────────
