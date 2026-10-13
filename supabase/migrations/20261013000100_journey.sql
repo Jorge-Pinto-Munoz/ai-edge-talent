@@ -207,7 +207,9 @@ group by c.wave_id, w.name, w.status, coalesce(c.journey_layer::text, 'ADMISSION
 grant select on public.client_wave_overview to authenticated;
 
 -- Extiende la vista de estado por persona con la etapa del journey (sigue sin evaluación).
-create or replace view public.client_candidate_journey with (security_invoker = false) as
+-- Se recrea (no "or replace"): migraciones posteriores le agregan columnas y este archivo se vuelve a ejecutar.
+drop view if exists public.client_candidate_journey;
+create view public.client_candidate_journey with (security_invoker = false) as
 select c.id, c.wave_id, c.full_name, c.role_title, c.client_name, c.journey_layer, c.journey_layer_since
 from public.candidates c
 where c.status in ('CONDITIONS_ACCEPTED', 'ENROLLED', 'MINDSET_READY')
