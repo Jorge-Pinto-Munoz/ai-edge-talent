@@ -79,7 +79,7 @@ Con Supabase configurado, la app deja de ser solo demo para la admisión:
 1. **Base de datos:** en Supabase → SQL Editor, ejecuta `supabase/migrations/20261012000000_admision.sql` y luego `supabase/seed.sql`. Con la CLI, `supabase db push` hace lo mismo.
 2. **Auth:** en Authentication → URL Configuration, define la Site URL con la URL pública de la app y agrega `https://TU-APP/auth/callback` en Redirect URLs.
 3. **Primer admin:** ejecuta en SQL: `insert into role_grants (email, role) values ('tu.correo@kibernum.com', 'admin');`. Luego ingresa por `/login`.
-4. **Variables de entorno** (ver `.env.example`): configúralas en el hosting (Vercel u otro) o en `.env.local`, nunca en el repositorio. Sin `ANTHROPIC_API_KEY` no hay evaluación IA. Sin correo configurado (`SMTP_USER`/`SMTP_PASS` de una cuenta Gmail dedicada, o `RESEND_*`) los correos quedan registrados como fallidos.
+4. **Variables de entorno** (ver `.env.example`): configúralas en el hosting (Vercel u otro) o en `.env.local`, nunca en el repositorio. Sin `ANTHROPIC_API_KEY` no hay evaluación IA. Sin `RESEND_API_KEY` los correos quedan registrados como fallidos; con el remitente de prueba de Resend todo se redirige a `RESEND_TEST_TO`.
 5. **Preguntas del formulario:** el seed carga las 9 preguntas del formulario AET estándar. Product Lead debe validarlas antes de abrir la postulación.
 
 ### Pruebas
@@ -214,7 +214,7 @@ presentación con su estado). Atajos por etapa y botón "Ir a mi paso actual" pa
 
 - **AI CERT por rol** (`components/site/AiCertSection.tsx`, contenido en `lib/data/aicert.ts`): qué es AI CERTs, ruta por familia de rol, certificado oficial y badge, acompañamiento después (mes 1, mes 3, Coursera, banca de talento) e impacto buscado. Aparece en la etapa Role Enablement (vista profesional o cliente), en `/clientes`, en el portal del cliente y en el hito de certificación de Mi journey. El **% de ingresados que se certificó** se calcula solo con datos reales de Waves cerradas (`lib/aicert/stats.ts`, mínimo 5 personas); mientras no haya datos, no se muestra un número.
 - **Carga histórica** (Talento → Cargar Waves pasadas): acepta la columna `Certificación AI CERT` (Sí/No) y archivos guardados desde Excel.
-- **Ayuda en un clic**: botón flotante en todo el sitio y pestaña en Mi journey. FAQ con búsqueda (incluye el video de rescate y el segundo intento de AI CERT) y formulario de contacto. Cada pregunta se guarda en **Soporte** (`/admin/soporte`, solo admin) y se envía por correo a `SUPPORT_EMAIL` (o a los admin) con respuesta directa a quien preguntó. Requiere correo configurado (SMTP o Resend); sin ellos, las preguntas igual quedan en la bandeja.
+- **Ayuda en un clic**: botón flotante en todo el sitio y pestaña en Mi journey. FAQ con búsqueda (incluye el video de rescate y el segundo intento de AI CERT) y formulario de contacto. Cada pregunta se guarda en **Soporte** (`/admin/soporte`, solo admin) y se envía por correo a `SUPPORT_EMAIL` (o a los admin) con respuesta directa a quien preguntó. Requiere `RESEND_API_KEY`; sin ellos, las preguntas igual quedan en la bandeja.
 - **Ver como** (`/admin/vista`, solo admin): abre la vista exacta de un profesional (su journey), un candidato (su postulación), un cliente o un AI Coach, en solo lectura. Delivery, Hub AI y AI Coach no tienen esta opción.
 - El rol `mentor` se muestra como **AI Coach** en toda la plataforma.
 

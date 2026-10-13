@@ -1,25 +1,40 @@
-/** Proveedor de correo según variables de entorno (solo servidor). Sin dependencias para poder probarlo. */
-export type EmailProvider =
-  | { kind: "smtp"; host: string; port: number; user: string; pass: string; from: string }
-  | { kind: "resend"; apiKey: string; from: string }
-  | { kind: "none" };
+/** Configuración de correo (Resend por API REST). Solo servidor; sin dependencias para poder probarla. */
+export const RESEND_TEST_FROM = "AI Edge Talent <onboarding@resend.dev>";
 
-export function emailProvider(env: Record<string, string | undefined> = process.env): EmailProvider {
-  const user = env.SMTP_USER?.trim();
-  const pass = env.SMTP_PASS?.replace(/\s+/g, ""); // Google muestra la contraseña de aplicación en grupos con espacios.
-  if (user && pass) {
-    const port = Number(env.SMTP_PORT) || 465;
-    // Gmail exige que el remitente sea la misma cuenta: el nombre visible sí se puede elegir.
-    const from = env.EMAIL_FROM?.trim() || `${env.EMAIL_FROM_NAME?.trim() || "AI Edge Talent"} <${user}>`;
-    return { kind: "smtp", host: env.SMTP_HOST?.trim() || "smtp.gmail.com", port, user, pass, from };
-  }
-  if (env.RESEND_API_KEY && env.RESEND_FROM) return { kind: "resend", apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM };
-  return { kind: "none" };
+export type EmailConfig =
+  | { ok: true; apiKey: string; from: string; testMode: boolean; testTo: string | null }
+  | { ok: false; error: string };
+
+export function emailConfig(env: Record<string, string | undefined> = process.env): EmailConfig {
+  const apiKey = env.RESEND_API_KEY?.trim();
+  if (!apiKey) return { ok: false, error: "Envío de correos no configurado (falta RESEND_API_KEY)." };
+  const from = env.RESEND_FROM?.trim() || RESEND_TEST_FROM;
+  // Con el remitente de prueba de Resend, solo se entrega al correo dueño de la cuenta de Resend.
+  const testMode = /@resend\.dev>?$/i.test(from);
+  const testTo = env.RESEND_TEST_TO?.trim().toLowerCase() || null;
+  if (testMode && !testTo) return { ok: false, error: "Modo de prueba de Resend: falta RESEND_TEST_TO (el correo de tu cuenta de Resend)." };
+  return { ok: true, apiKey, from, testMode, testTo };
+}
+
+/**
+ * En modo de prueba todo correo se redirige al dueño de la cuenta, indicando a quién iba dirigido.
+ * Así el flujo completo se puede probar sin que Resend rechace a otros destinatarios.
+ */
+export function routeMessage(cfg: Extract<EmailConfig, { ok: true }>, to: string[], subject: string, text: string, html?: string) {
+  if (!cfg.testMode) return { to, subject, text, html };
+  const original = to.join(", ");
+  const note = `[Prueba] Este correo iba dirigido a: ${original}`;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  return {
+    to: [cfg.testTo!],
+    subject: `[Prueba → ${original}] ${subject}`,
+    text: `${note}\n\n${text}`,
+    html: html ? html.replace(/<body([^>]*)>/i, `<body$1><div style="padding:10px 14px;background:#fff4d6;font-family:Arial,sans-serif;font-size:13px;color:#5a4300">${esc(note)}</div>`) : undefined,
+  };
 }
 
 /** Descripción sin secretos, para diagnóstico. */
-export function describeProvider(p: EmailProvider): string {
-  if (p.kind === "smtp") return `SMTP ${p.host}:${p.port} · remitente ${p.from}`;
-  if (p.kind === "resend") return `Resend · remitente ${p.from}`;
-  return "FALTA (SMTP_USER/SMTP_PASS o RESEND_API_KEY/RESEND_FROM)";
+export function describeEmail(cfg: EmailConfig): string {
+  if (!cfg.ok) return `FALTA · ${cfg.error}`;
+  return cfg.testMode ? `Resend (modo prueba) · remitente ${cfg.from} · todo se entrega a ${cfg.testTo}` : `Resend · remitente ${cfg.from}`;
 }
