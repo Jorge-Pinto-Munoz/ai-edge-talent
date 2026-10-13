@@ -46,6 +46,8 @@
 .team-head p { margin: 0; color: var(--muted); font-size: 1.05rem; max-width: 620px; }
 .team-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .team-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.team-kpis.k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .team-kpis.k4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .team-res h2 { font-size: 1.2rem; margin: 8px 0 12px; }
 .team-res-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .team-note { margin: 0; color: var(--muted); font-size: 0.82rem; }

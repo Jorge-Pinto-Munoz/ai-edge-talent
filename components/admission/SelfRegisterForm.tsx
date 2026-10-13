@@ -6,7 +6,7 @@ import { Callout } from "@/components/ui";
 import Link from "next/link";
 import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
-export function SelfRegisterForm({ waveId }: { waveId: string }) {
+export function SelfRegisterForm({ waveId, deliveries }: { waveId: string; deliveries: { email: string; name: string }[] }) {
   const [state, action, pending] = useActionState(selfRegister, null);
   if (state?.ok) {
     return (
@@ -48,6 +48,15 @@ export function SelfRegisterForm({ waveId }: { waveId: string }) {
           <input id={name} name={name} type={type} required={label.endsWith("*")} autoComplete={ac} />
         </div>
       ))}
+      <div className="field">
+        <label htmlFor="delivery">Tu Delivery *</label>
+        <select id="delivery" name="delivery" required defaultValue="" aria-describedby="delivery-help">
+          <option value="" disabled>Elige a tu Delivery</option>
+          {deliveries.map((d) => <option key={d.email} value={d.email}>{d.name}</option>)}
+          <option value="none">No lo sé</option>
+        </select>
+        <small id="delivery-help" className="muted">La persona de Kibernum que te acompaña en tu cliente. Te acompañará también en el programa.</small>
+      </div>
       <label className="consent">
         <input type="checkbox" name="community" value="1" />
         <span>

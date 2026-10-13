@@ -174,3 +174,24 @@ begin
   values ('STAGE_RULES', 'CIERRE-ETAPAS-2026-10-v1', 'Demo: entiende cómo funciona el cierre de cada etapa.', 'valentina.demo@demo-aet.invalid', va, ca);
 end
 $demo$;
+
+-- ═══════════════ Delivery (equipo de operación) ═══════════════
+-- Quedan autorizados como Delivery y asignados a Wave 3: el profesional los elige al registrarse y así se
+-- vinculan de inmediato. No cambia el rol de quien ya tenga otro (p. ej. admin). Re-ejecutable.
+insert into public.role_grants (email, role, full_name) values
+  ('marcela.aguilera@kibernum.com', 'delivery', 'Marcela Aguilera'),
+  ('mariela.villanueva@kibernum.com', 'delivery', 'Mariela Villanueva'),
+  ('nathaly.amigo@kibernum.com', 'delivery', 'Nathaly Amigo'),
+  ('vanessa.carrillo@kibernum.com', 'delivery', 'Vanessa Carrillo'),
+  ('manuel.orellana@kibernum.com', 'delivery', 'Manuel Orellana'),
+  ('bruno.bergamin@kibernum.com', 'delivery', 'Bruno Bergamin'),
+  ('mdelabarra@kibernum.com', 'delivery', 'Mariela de la Barra'),
+  ('rodolfo.montoya@kibernum.com', 'delivery', 'Rodolfo Montoya')
+on conflict (email) do update set full_name = coalesce(public.role_grants.full_name, excluded.full_name);
+-- Cuentas que ya existían como profesional por error pasan a Delivery (nunca se baja a un admin).
+update public.profiles p set role = 'delivery', full_name = coalesce(p.full_name, g.full_name)
+from public.role_grants g
+where g.email = p.email and g.role = 'delivery' and p.role = 'kiber';
+insert into public.wave_staff (wave_id, email, role)
+select 'wave-3', email, 'delivery' from public.role_grants where role = 'delivery' and email like '%@kibernum.com'
+on conflict do nothing;

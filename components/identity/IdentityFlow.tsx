@@ -98,9 +98,10 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
         <p className="muted">Ingresa con tu correo y tu código personal de 4 dígitos.</p>
         <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => loginWithPin(email, pin, next)); }}>
           {emailField}
-          <Digits n={4} value={pin} onChange={setPin} label="Código personal" secret aside={<button type="button" className="link-btn" onClick={() => go("forgot")}>Olvidé mi código</button>} />
+          <Digits n={4} value={pin} onChange={setPin} label="Código personal" secret />
           {err}
           <button className="btn auth-btn" disabled={pending || pin.length !== 4}>{pending ? "Ingresando…" : "Ingresar"} <Icon name="arrowRight" size={18} /></button>
+          <button type="button" className="link-btn auth-forgot" onClick={() => go("forgot")}>Olvidé mi código</button>
         </form>
         <div className="auth-new">
           <span>¿No tienes cuenta?</span>

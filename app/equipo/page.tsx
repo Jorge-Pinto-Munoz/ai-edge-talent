@@ -12,6 +12,8 @@ import { sortWaves } from "@/lib/waves/order";
 import { loadWavePeople } from "@/lib/pulse/experience-data";
 import { experience, operational } from "@/lib/pulse/experience";
 import { ExperienceByStage, ExperienceDetail } from "@/components/pulse/WaveExperience";
+import { admissionStep, STALLED_DAYS } from "@/lib/admission/delivery-progress";
+import type { AdmissionStatus } from "@/lib/domain/types";
 
 export const metadata = { title: "Acompañamiento · Equipo AI Edge Talent" };
 export const dynamic = "force-dynamic";
@@ -73,6 +75,26 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
   }
   const mineOps = mine ? operational(mine) : null;
 
+  // Postulación de tus profesionales: quién se registró, quién responde sin enviar, quién envió y quién falta que firme.
+  type Applicant = { id: string; name: string; client: string | null; status: AdmissionStatus; registered: string; submitted: string | null; last: string };
+  let applicants: Applicant[] | null = null;
+  if (wave && viewer.role === "delivery") {
+    const svc = supabaseService();
+    const { data: assigned } = await svc.from("delivery_assignments").select("candidate_id").eq("wave_id", wave.id).eq("delivery_email", viewer.email);
+    const ids = (assigned ?? []).map((a) => a.candidate_id);
+    if (ids.length) {
+      const { data: rows } = await svc.from("candidates").select("id, full_name, client_name, status, created_at, updated_at, applications(submitted_at, updated_at)").in("id", ids);
+      applicants = (rows ?? []).map((r) => {
+        const app = (Array.isArray(r.applications) ? r.applications[0] : r.applications) as { submitted_at: string | null; updated_at: string } | null;
+        const last = [r.updated_at, app?.updated_at].filter(Boolean).sort().at(-1)!;
+        return { id: r.id, name: r.full_name, client: r.client_name, status: r.status as AdmissionStatus, registered: r.created_at, submitted: app?.submitted_at ?? null, last };
+      });
+    } else applicants = [];
+  }
+  const now = new Date();
+  const fmtDate = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+  const steps = (applicants ?? []).map((a) => ({ a, s: admissionStep(a.status, new Date(a.last), now) })).sort((x, y) => x.s.order - y.s.order || x.a.name.localeCompare(y.a.name, "es"));
+
   return (
     <div className="team">
       <header className="team-head">
@@ -95,6 +117,42 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
 
       <DeliveryJourney stages={DELIVERY_STAGES} live={live} waveId={wave?.id ?? null} />
 
+      {applicants && (
+        <section className="team-exp stack" aria-labelledby="adm-t">
+          <div>
+            <h2 id="adm-t" style={{ margin: 0 }}>Postulación de tus profesionales</h2>
+            <p className="muted" style={{ margin: "6px 0 0" }}>Quienes te eligieron como Delivery al registrarse en esta Wave. Te avisamos por correo cuando cada uno envía su Assessment.</p>
+          </div>
+          {applicants.length === 0 ? (
+            <p className="muted">Aún nadie te ha elegido como Delivery en esta Wave. Cuando un profesional se registre y te elija, aparecerá aquí.</p>
+          ) : (
+            <>
+              <div className="team-kpis k4">
+                <Kpi label="Registrados" value={applicants.length} />
+                <Kpi label="Sin enviar" value={steps.filter((x) => x.a.status === "IDENTIFIED" || x.a.status === "APPLICATION_STARTED").length} hint={steps.some((x) => x.s.stalled) ? `${steps.filter((x) => x.s.stalled).length} sin avance hace más de ${STALLED_DAYS} días` : "Recuérdales enviar antes del cierre"} />
+                <Kpi label="Assessment enviado" value={applicants.filter((a) => a.submitted).length} />
+                <Kpi label="Falta firmar" value={steps.filter((x) => x.a.status === "SELECTED" || x.a.status === "CONDITIONS_PENDING").length} />
+              </div>
+              <div className="table-wrap" tabIndex={0}>
+                <table className="rtable">
+                  <thead><tr><th>Profesional</th><th>Estado</th><th>Envió el Assessment</th><th>Último movimiento</th></tr></thead>
+                  <tbody>
+                    {steps.map(({ a, s }) => (
+                      <tr key={a.id}>
+                        <td className="rt-title">{a.name}<br /><small className="muted">{[a.client, `registro ${fmtDate(a.registered)}`].filter(Boolean).join(" · ")}</small></td>
+                        <td data-label="Estado"><span className={`ds-status s-${s.tone}`}>{s.label}</span><br /><small className="muted">{s.detail}</small>{s.stalled && <><br /><small className="error">Sin avance hace más de {STALLED_DAYS} días</small></>}</td>
+                        <td data-label="Envió el Assessment">{a.submitted ? fmtDate(a.submitted) : <span className="muted">—</span>}</td>
+                        <td data-label="Último movimiento">{fmtDate(a.last)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
       {mine && mineOps && (
         <section className="team-exp stack" aria-labelledby="exp-t">
           <div>
@@ -108,7 +166,7 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
             <p className="muted">Aún no tienes profesionales asignados en esta Wave. Si debieras tenerlos, avísale al Líder de Servicio.</p>
           ) : (
             <>
-              <div className="team-kpis">
+              <div className={`team-kpis${shared ? " k4" : ""}`}>
                 <Kpi label="Asignados" value={mineOps.enrolled} hint={mineOps.neverSignedIn ? `${mineOps.neverSignedIn} sin primer ingreso` : "Todos ingresaron"} />
                 <Kpi label="Pulsos de cierre pendientes" value={mineOps.pulsePending} hint={mineOps.pulsePending ? "Recuérdales responderlo: sin él no avanzan" : "Al día"} />
                 <Kpi label="Requieren atención" value={mineOps.attention} />

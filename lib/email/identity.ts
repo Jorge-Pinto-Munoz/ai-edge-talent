@@ -4,7 +4,7 @@
  */
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
-  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED";
+  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -15,6 +15,7 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACCESS_UPDATED: "Acceso habilitado",
   PULSE_REMINDER: "Recordatorio de pulso",
   APPLICATION_RECEIVED: "Postulación recibida",
+  DELIVERY_APPLICATION_SUBMITTED: "Aviso a Delivery: postulación enviada",
   DELIVERY_PULSE_ALERT: "Alerta a Delivery",
   ACCESS_REQUEST_ADMIN: "Solicitud de acceso especial",
   ACCESS_REQUEST_APPROVED: "Solicitud aprobada",
@@ -38,7 +39,7 @@ ${opts.foot ? `<p style="margin:18px 0 0;font-size:12px;color:#4b5763">${esc(opt
 </td></tr></table></td></tr></table></body></html>`;
 }
 
-export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string }): Rendered {
+export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string }): Rendered {
   const hi = c.name ? `Hola ${c.name.split(" ")[0]}:` : "Hola:";
   switch (t) {
     case "ACTIVATION": {
@@ -88,6 +89,21 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
         subject: "AI Edge Talent | Recibimos tu postulación",
         text: [...p, ...(c.code ? ["", c.code] : []), "", `Ingresar a mi portal: ${c.link}`, ...(foot ? ["", foot] : [])].join("\n"),
         html: layout("Recibimos tu postulación", p, { code: c.code, cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" }, foot }),
+      };
+    }
+    case "DELIVERY_APPLICATION_SUBMITTED": {
+      // extra = nombre del profesional; when = fecha y hora de envío (hora de Chile).
+      const p = [
+        hi,
+        `Tu profesional ${c.extra} respondió el Assessment de ${c.stage ?? "AI Edge Talent"} el ${c.when}.`,
+        "Ya puedes acceder a tu vista de equipo para ver el progreso de tus profesionales: quién se registró, quién está respondiendo, quién envió y en qué etapa va cada uno.",
+        c.code ? "Tu acceso ya está habilitado. Ingresa con tu correo y este código temporal:" : "Ingresa con tu correo y tu código personal de 4 dígitos.",
+      ];
+      const foot = c.code ? `El código vence en ${Math.round((c.minutes ?? 2880) / 60)} horas. Al ingresar por primera vez crearás tu propio código de 4 dígitos.` : undefined;
+      return {
+        subject: `AI Edge Talent | ${c.extra} respondió el Assessment`,
+        text: [...p, ...(c.code ? ["", c.code] : []), "", `Ver el progreso de mi equipo: ${c.link}`, ...(foot ? ["", foot] : [])].join("\n"),
+        html: layout(`${c.extra} respondió el Assessment`, p, { code: c.code, cta: { label: "VER EL PROGRESO DE MI EQUIPO", href: c.link ?? "" }, foot }),
       };
     }
     case "PULSE_REMINDER": {

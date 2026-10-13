@@ -1,7 +1,7 @@
 "use server";
 
 import { provisionParticipant } from "@/lib/identity/provision";
-import { CODE_TTL, ensureAccount, issueCode, portalLink, sendIdentityEmail } from "@/lib/identity/service";
+import { CODE_TTL, audit, ensureAccount, issueCode, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { normalizeCLMobile } from "@/lib/identity/pin";
 import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
@@ -13,6 +13,7 @@ import { evaluateOne } from "./evaluate-one";
 import { getDocument } from "@/lib/content";
 import type { AdmissionStatus } from "@/lib/domain/types";
 import { isAcceptableVideoUrl } from "./rescue";
+import { deliveryDirectory } from "@/lib/identity/directory";
 
 /**
  * Acciones del postulante. Se identifican con su enlace personal (token aleatorio de 144 bits): al registrarse
@@ -57,6 +58,11 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
     return { ok: false, message: "Completa nombre, correo electrónico, cliente y rol." };
   }
   if (!data.phone) return { ok: false, message: "Revisa tu teléfono: +56 9 y 8 dígitos." };
+  const deliveryPick = String(form.get("delivery") ?? "").trim().toLowerCase();
+  if (!deliveryPick) return { ok: false, message: "Elige a tu Delivery (o «No lo sé»)." };
+  // Solo se acepta un Delivery del directorio: el valor llega del navegador y no se confía en él.
+  const delivery = deliveryPick === "none" ? null : (await deliveryDirectory()).find((d) => d.email === deliveryPick) ?? null;
+  if (deliveryPick !== "none" && !delivery) return { ok: false, message: "Elige a tu Delivery de la lista." };
   const community = form.get("community") === "1";
   const svc = supabaseService();
   const { data: wave } = await svc.from("waves").select("id, name, application_deadline, status").eq("id", waveId).single();
@@ -69,6 +75,7 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
     (await svc.from("candidates").insert({ ...data, wave_id: waveId, source: "self", status: "IDENTIFIED" }).select("id, invite_token, full_name").single()).data;
   if (!row) return { ok: false, message: "No pudimos registrar tu postulación. Intenta nuevamente." };
   if (existing) await svc.from("candidates").update({ phone: data.phone }).eq("id", row.id);
+  if (delivery) await linkDelivery(svc, row.id, waveId, delivery);
   // Consentimiento opcional y trazable (texto y versión exactos).
   if (community) {
     await svc.from("consents").insert({ kind: "COMMUNITY", version: COMMUNITY_CONSENT.version, text_snapshot: `${COMMUNITY_CONSENT.text} ${COMMUNITY_CONSENT.detail}`, email: data.corporate_email, candidate_id: row.id });
@@ -89,6 +96,44 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
         ? `Ya tienes una postulación con ${data.corporate_email}. Te enviamos un código a ese correo para continuar desde tu portal.`
         : `Ya tienes una postulación con ${data.corporate_email}. Ingresa en "Ingresar" y toca "Olvidé mi código" para recibir tu acceso.`,
   };
+}
+
+/** Vincula al profesional con el Delivery que eligió: asignación, responsable visible y Delivery de la Wave. */
+async function linkDelivery(svc: ReturnType<typeof supabaseService>, candidateId: string, waveId: string, d: { email: string; name: string }) {
+  const { data: prev } = await svc.from("delivery_assignments").select("delivery_email").eq("candidate_id", candidateId).maybeSingle();
+  if (prev?.delivery_email === d.email) return;
+  await Promise.all([
+    svc.from("delivery_assignments").upsert({ candidate_id: candidateId, wave_id: waveId, delivery_email: d.email, assigned_at: new Date().toISOString() }, { onConflict: "candidate_id" }),
+    svc.from("candidates").update({ delivery_owner: d.name }).eq("id", candidateId),
+    svc.from("wave_staff").upsert({ wave_id: waveId, email: d.email, role: "delivery" }, { onConflict: "wave_id,email,role", ignoreDuplicates: true }),
+    audit("delivery.self_assigned", { candidateId, waveId, targetEmail: d.email, details: { previous: prev?.delivery_email ?? null } }, svc),
+  ]);
+}
+
+/**
+ * Aviso al Delivery asignado: su profesional envió el Assessment. Le habilita el acceso a su vista de equipo
+ * (crea su cuenta con el rol de role_grants si no existe) y, si aún no tiene código personal, incluye uno temporal.
+ */
+async function notifyDelivery(svc: ReturnType<typeof supabaseService>, candidateId: string, waveId: string, waveName: string, professional: string, submittedAt: Date) {
+  try {
+    const { data: a } = await svc.from("delivery_assignments").select("delivery_email").eq("candidate_id", candidateId).maybeSingle();
+    if (!a) return;
+    const email = a.delivery_email;
+    const name = (await deliveryDirectory()).find((d) => d.email === email)?.name ?? null;
+    const { userId } = await ensureAccount(email, name, svc);
+    const when = new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(submittedAt).replace(",", " a las") + " (hora de Chile)";
+    const next = `/equipo?wave=${waveId}`;
+    const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
+    const meta = { userId, candidateId, waveId };
+    if (cred?.pin_hash) {
+      await sendIdentityEmail("DELIVERY_APPLICATION_SUBMITTED", email, { name: name ?? undefined, stage: waveName, extra: professional, when, link: portalLink("ingresar", email, next) }, meta, svc);
+      return;
+    }
+    const code = await issueCode(email, "ACTIVATION", null, 4, svc);
+    await sendIdentityEmail("DELIVERY_APPLICATION_SUBMITTED", email, { name: name ?? undefined, stage: waveName, extra: professional, when, code, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email, next) }, meta, svc);
+  } catch (e) {
+    console.error("[postulación] aviso a Delivery", e instanceof Error ? e.message : e);
+  }
 }
 
 /**
@@ -148,11 +193,14 @@ export async function saveAnswers(token: string, answers: Record<string, string>
       const missing = qs.filter((q) => q.required && !clean[q.id].trim()).length;
       if (missing) return { ok: false, message: `Faltan ${missing} respuesta(s) obligatoria(s).` };
     }
-    await svc.from("applications").update({ answers: clean, ...(submit ? { submitted_at: new Date().toISOString() } : {}) }).eq("id", app.id);
+    const now = new Date();
+    await svc.from("applications").update({ answers: clean, ...(submit ? { submitted_at: now.toISOString() } : {}) }).eq("id", app.id);
     if (submit) {
       await moveTo(svc, c.id, "APPLICATION_STARTED", "APPLICATION_SUBMITTED");
       // Gracias por postular + credenciales del portal para seguir el estado.
       await sendPortalAccess(svc, c.id, c.corporate_email, c.full_name, c.wave_id, c.waves.name);
+      // Aviso a su Delivery (si eligió uno al registrarse) con acceso a su vista de equipo.
+      await notifyDelivery(svc, c.id, c.wave_id, c.waves.name, c.full_name, now);
       // Evaluación inmediata con IA después de responder (no bloquea al postulante). Es una propuesta: decide una persona.
       if (process.env.ANTHROPIC_API_KEY) after(async () => void (await evaluateOne(supabaseService(), c.id, null)));
     }
