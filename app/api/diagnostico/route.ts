@@ -31,5 +31,9 @@ export async function GET() {
     authAdminConSecret: await check("/auth/v1/admin/users?per_page=1", secret),
     anthropic: serverEnv().anthropicConfigured ? "configurada" : "FALTA",
     correo: describeEmail(emailConfig()),
-  });
+    // Solo si existen (nunca su valor), para saber si este deploy ya tomó las variables.
+    variablesCorreo: { RESEND_API_KEY: Boolean(process.env.RESEND_API_KEY?.trim()), RESEND_TEST_TO: Boolean(process.env.RESEND_TEST_TO?.trim()), RESEND_FROM: Boolean(process.env.RESEND_FROM?.trim()) },
+    entorno: process.env.VERCEL_ENV ?? "local",
+    deploy: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+  }, { headers: { "Content-Type": "application/json; charset=utf-8" } });
 }
