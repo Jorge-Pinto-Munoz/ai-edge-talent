@@ -229,7 +229,7 @@ html, body { overflow-x: clip; }
 /* Línea de tiempo: cada tramo une el centro de un punto con el siguiente (no sobresale arriba ni abajo). */
 .timeline { --dot: 18px; --gap: 28px; list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; position: relative; }
 .timeline li { position: relative; padding: calc(var(--dot) + 22px) 20px 0 0; margin: 0; }
-.timeline li::before { content: ""; position: absolute; z-index: 1; top: 0; left: 0; width: var(--dot); height: var(--dot); border-radius: 999px; background: var(--obsidian); border: 3px solid var(--cyan); }
+.timeline li::before { content: ""; box-sizing: border-box; position: absolute; z-index: 1; top: 0; left: 0; width: var(--dot); height: var(--dot); border-radius: 999px; background: var(--obsidian); border: 3px solid var(--cyan); }
 .timeline li:first-child::before { background: var(--cyan); box-shadow: 0 0 0 6px rgba(61, 201, 212, 0.2); }
 .timeline li:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--dot) / 2 - 1px); left: var(--dot); right: 0; height: 2px; background: linear-gradient(90deg, var(--cyan), var(--magenta)); opacity: 0.6; }
 .timeline .when { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cyan); line-height: var(--dot); }
