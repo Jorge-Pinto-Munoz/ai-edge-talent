@@ -151,6 +151,9 @@ create table if not exists public.stage_closures (
   delivery_alerted_at timestamptz,
   primary key (candidate_id, layer)
 );
+alter table public.stage_closures add column if not exists requirements_by_exception boolean not null default false;
+alter table public.stage_closures add column if not exists exception_note text;
+alter table public.stage_closures add column if not exists updated_at timestamptz not null default now();
 create index if not exists stage_closures_pending on public.stage_closures (requirements_met_at) where pulse_submitted_at is null;
 alter table public.stage_closures enable row level security;
 drop policy if exists closures_read on public.stage_closures;

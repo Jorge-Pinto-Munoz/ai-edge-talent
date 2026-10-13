@@ -66,7 +66,7 @@ export async function journeyForCandidate(candidateId: string) {
 type Cand = { id: string; wave_id: string; full_name: string; client_name: string | null; role_title: string | null; delivery_owner: string | null; status: string; journey_layer: string | null; journey_layer_since: string | null };
 
 async function loadJourney(db: Db, cand: Cand) {
-  const [wave, guides, capsules, progress, subs, certs, events, aicert, pulses] = await Promise.all([
+  const [wave, guides, capsules, progress, subs, certs, events, aicert, pulses, closures, rules] = await Promise.all([
     db.from("waves").select("id, name, start_date, estimated_close_date").eq("id", cand.wave_id).single(),
     db.from("stage_guides").select("*").eq("wave_id", cand.wave_id),
     db.from("capsules").select("*").eq("wave_id", cand.wave_id).eq("published", true).order("position"),
@@ -76,6 +76,8 @@ async function loadJourney(db: Db, cand: Cand) {
     db.from("journey_events").select("from_layer, to_layer, at").eq("candidate_id", cand.id).order("at"),
     db.from("aicert_progress").select("course, tramo, percent, intro_course, specialist_course, exam_date, note, updated_at").eq("candidate_id", cand.id).maybeSingle(),
     db.from("pulse_responses").select("pulse").eq("candidate_id", cand.id),
+    db.from("stage_closures").select("layer, requirements_met_at, requirements_by_exception, pulse_submitted_at, closed_at").eq("candidate_id", cand.id),
+    db.from("consents").select("version, accepted_at").eq("candidate_id", cand.id).eq("kind", "STAGE_RULES").is("revoked_at", null).limit(1),
   ]);
   // Proyecto del AI Lab (RLS: el integrante ve su proyecto, sus compañeros y sus archivos).
   let lab: LabProjectView | null = null;
@@ -103,5 +105,7 @@ async function loadJourney(db: Db, cand: Cand) {
     events: events.data ?? [],
     aicert: (aicert.data ?? null) as AiCertProgress | null,
     answeredPulses: (pulses.data ?? []).map((p) => p.pulse as string),
+    closures: (closures.data ?? []) as { layer: Layer; requirements_met_at: string | null; requirements_by_exception: boolean; pulse_submitted_at: string | null; closed_at: string | null }[],
+    stageRulesAccepted: Boolean(rules.data?.length),
   };
 }

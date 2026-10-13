@@ -282,3 +282,8 @@
 .as-bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; padding: 10px 12px; border-radius: 14px; background: var(--info-soft); }
 .as-bulk select { width: auto; min-height: 40px; }
 .pp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } @media (max-width: 560px) { .pp-grid { grid-template-columns: 1fr; } }
+
+/* Estados de etapa (lib/journey/closure.ts STAGE_STATUS) */
+.ds-status.s-muted { background: var(--surface-2); color: var(--muted); }
+.ds-status.s-info { background: var(--info-soft); color: var(--brand); }
+.ds-status.s-review { background: var(--surface-2); color: var(--text); border: 1px dashed var(--border); }

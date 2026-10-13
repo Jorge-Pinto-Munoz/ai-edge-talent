@@ -10,13 +10,21 @@ describe("pulsos: cuándo aparecen", () => {
   it("al inicio pide el pulso de inicio", () => {
     expect(duePulse({ layer: "AI_MINDSET", layerSince: daysAgo(2), labStatus: null, answered: [], now: NOW })).toBe("INICIO");
   });
-  it("al pasar a Role Enablement pide el de Mindset; el intermedio a los 14 días", () => {
+  it("el pulso de cierre de Mindset se habilita solo con los requisitos cumplidos", () => {
+    expect(duePulses({ layer: "AI_MINDSET", layerSince: daysAgo(2), labStatus: null, answered: ["INICIO"], now: NOW })).toEqual([]);
+    expect(duePulses({ layer: "AI_MINDSET", layerSince: daysAgo(2), labStatus: null, answered: ["INICIO"], requirementsMet: true, now: NOW })).toEqual(["MINDSET"]);
+  });
+  it("Role Enablement: el cierre se habilita con la AI CERT verificada; el intermedio no compite con él", () => {
+    expect(duePulses({ layer: "ROLE_ENABLEMENT", layerSince: daysAgo(20), labStatus: null, answered: ["INICIO", "MINDSET"], requirementsMet: true, now: NOW })).toEqual(["HAB_CIERRE"]);
+  });
+  it("quien pasó de etapa antes de esta regla aún puede responder el pulso pendiente (sin bloquear)", () => {
     expect(duePulses({ layer: "ROLE_ENABLEMENT", layerSince: daysAgo(3), labStatus: null, answered: ["INICIO"], now: NOW })).toEqual(["MINDSET"]);
     expect(duePulses({ layer: "ROLE_ENABLEMENT", layerSince: daysAgo(15), labStatus: null, answered: ["INICIO", "MINDSET"], now: NOW })).toEqual(["HAB_INTERMEDIO"]);
   });
   it("en AI Lab pide el cierre de habilitación y, tras el Showcase, el del Lab", () => {
     expect(duePulses({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "BUILDING", answered: ["INICIO", "MINDSET"], now: NOW })).toEqual(["HAB_CIERRE"]);
-    expect(duePulse({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE"], now: NOW })).toBe("LAB");
+    expect(duePulse({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE"], now: NOW })).toBeNull();
+    expect(duePulse({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE"], requirementsMet: true, now: NOW })).toBe("LAB");
   });
   it("en Cierre pide el final; el de inicio ya no se ofrece", () => {
     expect(duePulses({ layer: "CLOSURE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE", "LAB"], now: NOW })).toEqual(["FINAL"]);
@@ -39,6 +47,16 @@ describe("pulsos: validación", () => {
     expect(() => validateAnswers(def, { ai_freq: "Siempre", hours: 4 })).toThrow();
     expect(() => validateAnswers(def, { ai_freq: "Todos los días", hours: 200 })).toThrow(/80/);
     expect(() => validateAnswers(pulseDef("MINDSET")!, { m_expectativas: 6 })).toThrow();
+  });
+  it("pulsos de cierre: las cinco preguntas base son obligatorias; textos vacíos o con espacios no cuentan", () => {
+    const fin = pulseDef("FINAL")!;
+    const ok = { satisfaccion: 5, aprendizaje: "A usar agentes", valioso: "El Lab", mejorar: "Nada por ahora", aplicacion: "Automatizar reportes", ai_freq: "Todos los días", hours: 3, nps: 10 };
+    expect(validateAnswers(fin, ok)).toMatchObject({ satisfaccion: 5, mejorar: "Nada por ahora" });
+    expect(() => validateAnswers(fin, { ...ok, aprendizaje: "   " })).toThrow(/Falta responder/);
+    expect(() => validateAnswers(fin, { ...ok, valioso: "ok" })).toThrow(/un poco más/);
+    expect(() => validateAnswers(fin, { ...ok, satisfaccion: 0 })).toThrow();
+    const { mejorar: _m, ...sinMejorar } = ok;
+    expect(() => validateAnswers(fin, sinMejorar)).toThrow(/mejorar/);
   });
 });
 

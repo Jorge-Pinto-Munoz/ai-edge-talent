@@ -6,7 +6,9 @@ import type { JourneyView } from "@/components/journey/path/types";
 import type { myJourney } from "./queries";
 import { overallProgress, progressLabel } from "@/lib/aicert/progress";
 import { pulseDef } from "@/lib/pulse/definitions";
-import { duePulse } from "@/lib/pulse/rules";
+import { duePulses } from "@/lib/pulse/rules";
+import { CLOSING_PULSE, STAGE_STATUS, stageRequirements, stageStatus, type StageStatus } from "./closure";
+import { LAYERS } from "./rules";
 
 type Journey = NonNullable<Awaited<ReturnType<typeof myJourney>>>;
 
@@ -24,11 +26,57 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
   const lastFeedback = (capsuleId: string) =>
     [...j.submissions].filter((s) => s.capsule_id === capsuleId && s.feedback).sort((a, b) => b.attempt - a.attempt)[0]?.feedback ?? null;
 
-  const due = duePulse({ layer: j.candidate.journey_layer, layerSince: j.candidate.journey_layer_since, labStatus: j.lab?.status ?? null, answered: j.answeredPulses });
+  // Cierre de etapa: requisitos académicos (o excepción) → pulso de cierre → etapa cerrada.
+  const layer = path.currentLayer;
+  const reqInput = {
+    capsules: j.capsules,
+    submissions: j.submissions,
+    certifications: j.certifications,
+    labStatus: j.lab?.status ?? null,
+    byException: j.closures.some((c) => c.layer === layer && c.requirements_by_exception),
+  };
+  const req = stageRequirements(layer, reqInput);
+  const dues = duePulses({ layer: j.candidate.journey_layer, layerSince: j.candidate.journey_layer_since, labStatus: j.lab?.status ?? null, answered: j.answeredPulses, requirementsMet: req.met });
+  const closingKey = CLOSING_PULSE[layer];
+  const closingDue = closingKey && dues.includes(closingKey) && j.candidate.journey_layer === layer ? closingKey : null;
+  const otherDue = dues.find((k) => k !== closingDue) ?? null;
+  const closureOf = (l: Layer) => j.closures.find((c) => c.layer === l);
+  const started = (l: Layer) =>
+    j.capsules.some((c) => c.layer === l && (j.completed.has(c.id) || j.submissions.some((s) => s.capsule_id === c.id))) ||
+    (l === "ROLE_ENABLEMENT" && (j.certifications.length > 0 || Boolean(j.aicert))) ||
+    (l === "AI_LAB_SHOWCASE" && Boolean(j.lab));
+  const statusOf = (l: Layer): StageStatus => {
+    const met = closureOf(l)?.requirements_met_at;
+    return stageStatus({
+      ...reqInput,
+      byException: Boolean(closureOf(l)?.requirements_by_exception),
+      current: j.candidate.journey_layer,
+      layer: l,
+      answered: j.answeredPulses,
+      started: started(l),
+      closedAt: closureOf(l)?.closed_at ?? null,
+      pulseWaitDays: met ? (Date.now() - new Date(met).getTime()) / 86_400_000 : null,
+    });
+  };
+  const status = statusOf(layer);
+  const stageCaps = j.capsules.filter((c) => c.layer === layer);
   const view: JourneyView = {
     myId: viewerId,
     waveId: j.candidate.wave_id,
-    pulse: due ? pulseDef(due) : null,
+    pulse: otherDue ? pulseDef(otherDue) : null,
+    closing: closingDue ? { def: pulseDef(closingDue)!, layer } : null,
+    stage: {
+      layer,
+      status,
+      label: STAGE_STATUS[status].label,
+      tone: STAGE_STATUS[status].tone,
+      requirements: req.items,
+      byException: req.byException,
+      activities: stageCaps.length ? { done: stageCaps.filter((c) => j.completed.has(c.id) || j.submissions.some((s) => s.capsule_id === c.id && s.status === "APPROVED")).length, total: stageCaps.length } : null,
+      pulse: closingKey ? { title: pulseDef(closingKey)!.title, state: j.answeredPulses.includes(closingKey) ? "done" : req.met ? "due" : "locked" } : null,
+    },
+    stageStatuses: Object.fromEntries(LAYERS.map((l) => [l.id, statusOf(l.id)])) as Record<Layer, StageStatus>,
+    showStageRules: !preview && !j.stageRulesAccepted && !path.notStarted,
     aicert: j.aicert
       ? {
           label: progressLabel(j.aicert),

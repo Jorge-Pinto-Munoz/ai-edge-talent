@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { PulseDef, Question } from "@/lib/pulse/definitions";
 import { submitPulse, type PulseResult } from "@/lib/pulse/actions";
 import { Icon } from "@/components/site/Icon";
@@ -12,15 +13,17 @@ export function PulseForm({ def, waveId, preview = false, onDone }: { def: Pulse
   const [a, setA] = useState<Record<string, string | number | boolean>>({});
   const [res, setRes] = useState<PulseResult | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
   const set = (id: string, v: string | number | boolean) => setA((x) => ({ ...x, [id]: v }));
   const required = def.questions.filter((q) => !q.optional);
-  const done = required.filter((q) => a[q.id] !== undefined && a[q.id] !== "").length;
+  const filled = (q: Question) => a[q.id] !== undefined && a[q.id] !== "" && !(q.type === "text" && q.minLength && String(a[q.id]).trim().length < q.minLength);
+  const done = required.filter(filled).length;
 
   if (res?.ok) {
     return (
       <div className="help-done" role="status">
         <Icon name="check" size={26} />
-        <div><strong>{res.message}</strong><p>Con tus respuestas ajustamos el acompañamiento.</p>{onDone && <button type="button" className="btn small ghost" onClick={onDone}>Cerrar</button>}</div>
+        <div><strong>{res.message}</strong><p>{def.closes ? "Tu experiencia nos ayuda a mejorar el programa para ti y para quienes vienen." : "Con tus respuestas ajustamos el acompañamiento."}</p>{onDone && <button type="button" className="btn small ghost" onClick={onDone}>Cerrar</button>}</div>
       </div>
     );
   }
@@ -30,7 +33,11 @@ export function PulseForm({ def, waveId, preview = false, onDone }: { def: Pulse
       onSubmit={(e) => {
         e.preventDefault();
         if (preview) return;
-        start(async () => setRes(await submitPulse(def.key, waveId, a)));
+        start(async () => {
+          const r = await submitPulse(def.key, waveId, a);
+          setRes(r);
+          if (r.ok) router.refresh();
+        });
       }}
     >
       <p className="muted" style={{ marginTop: 0 }}>{def.intro}</p>
@@ -53,7 +60,14 @@ function Field({ q, n, value, onChange }: { q: Question; n: number; value: strin
         <label htmlFor={id}>{label}</label>
         {q.hint && <small className="muted" id={`${id}-h`}>{q.hint}</small>}
         {q.type === "text" ? (
-          <textarea id={id} rows={3} maxLength={1500} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} aria-describedby={q.hint ? `${id}-h` : undefined} />
+          <>
+            <textarea id={id} rows={3} maxLength={1500} value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} aria-describedby={q.hint ? `${id}-h` : undefined} />
+            {q.quick && (
+              <div className="pulse-quick">
+                {q.quick.map((t) => <button key={t} type="button" className={`btn small ${value === t ? "" : "ghost"}`} aria-pressed={value === t} onClick={() => onChange(t)}>{t}</button>)}
+              </div>
+            )}
+          </>
         ) : (
           <div className="pulse-hours">
             <input id={id} type="number" inputMode="decimal" min={0} max={80} step={0.5} value={(value as number | undefined) ?? ""} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} aria-describedby={q.hint ? `${id}-h` : undefined} />

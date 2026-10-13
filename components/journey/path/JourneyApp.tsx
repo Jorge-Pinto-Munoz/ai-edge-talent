@@ -19,6 +19,9 @@ import { ShowcaseGuide } from "@/components/site/ShowcaseGuide";
 import { PulseForm } from "@/components/pulse/PulseForm";
 import { AiCertProgressView } from "@/components/journey/AiCertProgressView";
 import type { JourneyView } from "./types";
+import { STAGE_STATUS } from "@/lib/journey/closure";
+import { STAGE_RULES } from "@/lib/data/consents";
+import { acceptStageRules } from "@/lib/identity/profile-actions";
 
 /** Color de cada etapa (texto oscuro encima: contraste AA en todas). */
 const STAGE_COLOR: Record<Layer, { c: string; d: string; icon: IconName }> = {
@@ -29,9 +32,9 @@ const STAGE_COLOR: Record<Layer, { c: string; d: string; icon: IconName }> = {
   CLOSURE: { c: "#f7c46c", d: "#c08a2c", icon: "flag" },
 };
 const UNLOCK: Partial<Record<Layer, string>> = {
-  ROLE_ENABLEMENT: "Se desbloquea al aprobar las tareas obligatorias de AI Mindset.",
-  AI_LAB_SHOWCASE: "Se desbloquea con tu certificación AI CERT aprobada y verificada.",
-  CLOSURE: "Llega después de tu Showcase.",
+  ROLE_ENABLEMENT: "Se desbloquea al aprobar tu desafío de AI Mindset y responder su pulso de cierre.",
+  AI_LAB_SHOWCASE: "Se desbloquea con tu AI CERT aprobada y verificada, y el pulso de cierre de Role Enablement.",
+  CLOSURE: "Llega después de tu Showcase y su pulso de cierre.",
 };
 /** Zigzag del camino (px), como una ruta que serpentea. */
 
@@ -57,6 +60,9 @@ export function JourneyApp({ v }: { v: JourneyView }) {
   const [tab, setTab] = useState<Tab>("camino");
   const [open, setOpen] = useState<Open>(null);
   const [pulseOpen, setPulseOpen] = useState(false);
+  const [closingOpen, setClosingOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  useEffect(() => { if (v.showStageRules) setRulesOpen(true); }, [v.showStageRules]);
   const close = useCallback(() => setOpen(null), []);
   const stageOf = (l: Layer) => v.path.stages.find((s) => s.layer === l)!;
   const next = v.path.next;
@@ -101,12 +107,17 @@ export function JourneyApp({ v }: { v: JourneyView }) {
               <button type="button" className="btn small" onClick={() => setPulseOpen(true)} aria-haspopup="dialog">Responder</button>
             </div>
           )}
-          <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => setOpen({ type: "node", node: n, stage: stageOf(next!.stage) })} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
+          {v.closing ? (
+            <ClosingCard v={v} onOpen={() => setClosingOpen(true)} />
+          ) : (
+            <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => setOpen({ type: "node", node: n, stage: stageOf(next!.stage) })} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
+          )}
+          {!v.path.notStarted && <StageStatusCard v={v} onRules={() => setRulesOpen(true)} />}
           {REMIND[v.path.currentLayer] && !v.path.notStarted && (
             <p className="jr-remind"><Icon name="alert" size={18} /><span><strong>Recuerda:</strong> en esta etapa {REMIND[v.path.currentLayer]}</span></p>
           )}
           <StageChips stages={v.path.stages} />
-          <PathView stages={v.path.stages} onNode={(node, stage) => setOpen({ type: "node", node, stage })} onGuide={(stage) => setOpen({ type: "guide", stage })} />
+          <PathView v={v} stages={v.path.stages} onNode={(node, stage) => setOpen({ type: "node", node, stage })} onGuide={(stage) => setOpen({ type: "guide", stage })} />
         </>
       )}
       {tab === "materiales" && <Materials v={v} onGuide={(stage) => setOpen({ type: "guide", stage })} />}
@@ -121,6 +132,14 @@ export function JourneyApp({ v }: { v: JourneyView }) {
       >
         {open?.type === "node" && <NodeContent v={v} node={open.node} stage={open.stage} />}
         {open?.type === "guide" && <GuideContent v={v} stage={open.stage} />}
+      </Sheet>
+      {v.closing && (
+        <Sheet open={closingOpen} onClose={() => setClosingOpen(false)} accent={STAGE_COLOR[v.closing.layer].c} eyebrow="Pulso de cierre · obligatorio" title={v.closing.def.title}>
+          <PulseForm def={v.closing.def} waveId={v.waveId} preview={Boolean(v.preview)} onDone={() => setClosingOpen(false)} />
+        </Sheet>
+      )}
+      <Sheet open={rulesOpen} onClose={() => setRulesOpen(false)} eyebrow="Cómo se cierra cada etapa" title={STAGE_RULES.title}>
+        <StageRules accepted={!v.showStageRules} preview={Boolean(v.preview)} onDone={() => setRulesOpen(false)} />
       </Sheet>
       {v.pulse && (
         <Sheet open={pulseOpen} onClose={() => setPulseOpen(false)} eyebrow="Pulso" title={v.pulse.title}>
@@ -206,6 +225,100 @@ function NextStep({ v, reviewing, onOpen, onGuide }: { v: JourneyView; reviewing
   );
 }
 
+/* ───────── Cierre de etapa: requisitos cumplidos → pulso → siguiente etapa ───────── */
+function ClosingCard({ v, onOpen }: { v: JourneyView; onOpen: () => void }) {
+  const st = v.path.stages.find((s) => s.layer === v.closing!.layer)!;
+  const next = v.path.stages[v.path.stages.indexOf(st) + 1];
+  return (
+    <section className="jr-next jr-closing" style={stageVars(st.layer)} aria-labelledby="jr-close-t">
+      <div className="jr-next-ico"><Icon name="star" size={26} /></div>
+      <div className="jr-next-txt">
+        <span className="jr-next-eyebrow">{st.name}</span>
+        <h2 id="jr-close-t">¡Completaste esta etapa!</h2>
+        <p>
+          {v.stage.byException ? "Tus requisitos quedaron validados por el equipo. " : "Cumpliste los requisitos académicos. "}
+          Para cerrarla{next ? ` y desbloquear ${next.name}` : ""}, cuéntanos tu experiencia: {v.closing!.def.minutes ?? 3} minutos aprox.
+        </p>
+      </div>
+      <button type="button" className="jr-cta" onClick={onOpen} aria-haspopup="dialog">Compartir mi experiencia y continuar <Icon name="arrowRight" size={18} /></button>
+    </section>
+  );
+}
+
+/** Estado de la etapa actual: actividades, evaluación, pulso y estado general, por separado. */
+function StageStatusCard({ v, onRules }: { v: JourneyView; onRules: () => void }) {
+  const s = v.stage;
+  const evalDone = s.requirements.length > 0 && s.requirements.every((r) => r.done);
+  const evalReview = s.requirements.some((r) => r.review && !r.done);
+  const rows: { k: string; label: string; value: string; state: "done" | "pending" | "review" | "locked" }[] = [];
+  if (s.activities) rows.push({ k: "act", label: "Actividades", value: `${s.activities.done} de ${s.activities.total}`, state: s.activities.done >= s.activities.total ? "done" : "pending" });
+  if (s.requirements.length) {
+    rows.push({
+      k: "eval",
+      label: "Evaluación",
+      value: evalDone ? "Aprobada" : s.byException ? "Validada por el equipo" : evalReview ? "En revisión" : s.requirements.map((r) => r.label).join(" · "),
+      state: evalDone || s.byException ? "done" : evalReview ? "review" : "pending",
+    });
+  }
+  if (s.pulse) rows.push({ k: "pulse", label: "Pulso de cierre", value: s.pulse.state === "done" ? "Respondido" : s.pulse.state === "due" ? "Pendiente: ya puedes responderlo" : "Se habilita al cumplir la evaluación", state: s.pulse.state === "done" ? "done" : s.pulse.state === "due" ? "pending" : "locked" });
+  const icon = { done: "check", pending: "clock", review: "clock", locked: "lock" } as const;
+  return (
+    <section className="jr-status" aria-labelledby="jr-st-t">
+      <div className="spread">
+        <h2 id="jr-st-t">Estado de tu etapa</h2>
+        <span className={`ds-status s-${s.tone}`}>{s.label}</span>
+      </div>
+      <ul>
+        {rows.map((r) => (
+          <li key={r.k} className={r.state}>
+            <Icon name={icon[r.state]} size={16} />
+            <span className="lbl">{r.label}</span>
+            <span className="val">{r.value}</span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="linklike" onClick={onRules}>¿Cómo se cierra cada etapa?</button>
+    </section>
+  );
+}
+
+/** Explicación del cierre de etapas: se confirma una vez y queda registrada con su versión. */
+function StageRules({ accepted, preview, onDone }: { accepted: boolean; preview: boolean; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <div className="stack">
+      {STAGE_RULES.paras.map((p) => <p key={p} style={{ margin: 0 }}>{p}</p>)}
+      <ol className="jr-rules-flow" aria-label="Cómo se cierra una etapa">
+        <li>Cumples los requisitos de la etapa</li>
+        <li>Se habilita tu pulso de cierre</li>
+        <li>Respondes: 5 preguntas sobre tu experiencia</li>
+        <li>La etapa se cierra y se desbloquea la siguiente</li>
+      </ol>
+      <p className="muted" style={{ margin: 0 }}><small>{STAGE_RULES.who}</small></p>
+      {err && <p className="error" role="alert">{err}</p>}
+      {accepted ? (
+        <button type="button" className="btn secondary" onClick={onDone}>Cerrar</button>
+      ) : (
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || preview}
+          onClick={async () => {
+            setBusy(true);
+            const r = await acceptStageRules();
+            setBusy(false);
+            if (r.ok) onDone();
+            else setErr(r.message);
+          }}
+        >
+          {preview ? "Vista previa" : busy ? "Guardando…" : STAGE_RULES.confirm.replace(/\.$/, "")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ───────── Atajos a cada etapa (para no perderse en el camino) ───────── */
 function StageChips({ stages }: { stages: PathStage[] }) {
   return (
@@ -221,7 +334,7 @@ function StageChips({ stages }: { stages: PathStage[] }) {
 }
 
 /* ───────── El camino ───────── */
-function PathView({ stages, onNode, onGuide }: { stages: PathStage[]; onNode: (n: PathNode, s: PathStage) => void; onGuide: (s: PathStage) => void }) {
+function PathView({ v, stages, onNode, onGuide }: { v: JourneyView; stages: PathStage[]; onNode: (n: PathNode, s: PathStage) => void; onGuide: (s: PathStage) => void }) {
   const currentRef = useRef<HTMLLIElement>(null);
   const [away, setAway] = useState<"up" | "down" | null>(null);
 
@@ -241,7 +354,7 @@ function PathView({ stages, onNode, onGuide }: { stages: PathStage[]; onNode: (n
           <div className="jr-unit-banner">
             <div className="jr-unit-ico"><StageIcon slug={s.slug} fallback={STAGE_COLOR[s.layer].icon} size={24} /></div>
             <div className="jr-unit-txt">
-              <span>Etapa {s.n} · {s.state === "done" ? "Lograda" : s.state === "current" ? "En curso" : "Próxima"}</span>
+              <span>Etapa {s.n} · {s.layer === "ASSESSMENT" ? "Lograda" : STAGE_STATUS[v.stageStatuses[s.layer]].label}</span>
               <h2 id={`u-${s.slug}`}>{s.name}</h2>
               {s.state === "locked" ? <small>{UNLOCK[s.layer] ?? ""}</small> : <small>{s.done} de {s.total} hitos</small>}
             </div>

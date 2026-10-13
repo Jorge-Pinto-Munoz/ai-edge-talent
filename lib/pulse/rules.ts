@@ -7,7 +7,7 @@ export type Answers = Record<string, string | number | boolean>;
 export function validateAnswers(def: PulseDef, raw: Record<string, unknown>): Answers {
   const out: Answers = {};
   for (const q of def.questions) {
-    const v = raw[q.id];
+    const v = typeof raw[q.id] === "string" ? (raw[q.id] as string).trim() : raw[q.id];
     const empty = v === undefined || v === null || v === "";
     if (empty) {
       if (!q.optional) throw new Error(`Falta responder: "${q.label}"`);
@@ -37,7 +37,8 @@ export function validateAnswers(def: PulseDef, raw: Record<string, unknown>): An
         out[q.id] = String(v);
         break;
       case "text":
-        out[q.id] = String(v).trim().slice(0, 1500);
+        if (!q.optional && q.minLength && String(v).length < q.minLength) throw new Error(`Cuéntanos un poco más en "${q.label}".`);
+        out[q.id] = String(v).slice(0, 1500);
         break;
     }
   }
@@ -48,17 +49,23 @@ export function validateAnswers(def: PulseDef, raw: Record<string, unknown>): An
 const KIBER_ORDER = ["INICIO", "MINDSET", "HAB_INTERMEDIO", "HAB_CIERRE", "LAB", "FINAL"] as const;
 export const MID_DAYS = 14;
 
-/** ¿Qué pulso le toca al profesional ahora? Se activa solo al pasar de etapa (o a los 14 días de Role Enablement). */
-export function duePulses(ctx: { layer: Layer | null; layerSince: string | null; labStatus: string | null; answered: string[]; now?: Date }): string[] {
+/**
+ * ¿Qué pulsos le tocan al profesional ahora?
+ * - El pulso de cierre de la etapa actual se habilita solo al cumplir sus requisitos académicos (`requirementsMet`).
+ * - El de una etapa ya pasada sigue disponible (personas que avanzaron antes de esta regla), sin bloquear.
+ * - El intermedio aparece a los 14 días de Role Enablement; el de inicio, al comenzar.
+ */
+export function duePulses(ctx: { layer: Layer | null; layerSince: string | null; labStatus: string | null; answered: string[]; requirementsMet?: boolean; now?: Date }): string[] {
   const i = layerIndex(ctx.layer);
   const iRE = layerIndex("ROLE_ENABLEMENT");
   const days = ctx.layerSince ? ((ctx.now ?? new Date()).getTime() - new Date(ctx.layerSince).getTime()) / 86_400_000 : 0;
+  const closing = (l: Layer) => (ctx.layer === l && Boolean(ctx.requirementsMet)) || i > layerIndex(l);
   const due: Record<(typeof KIBER_ORDER)[number], boolean> = {
     INICIO: i <= iRE,
-    MINDSET: i >= iRE,
-    HAB_INTERMEDIO: ctx.layer === "ROLE_ENABLEMENT" && days >= MID_DAYS,
-    HAB_CIERRE: i > iRE,
-    LAB: ctx.layer === "CLOSURE" || ctx.labStatus === "PRESENTED",
+    MINDSET: closing("AI_MINDSET"),
+    HAB_INTERMEDIO: ctx.layer === "ROLE_ENABLEMENT" && days >= MID_DAYS && !ctx.requirementsMet,
+    HAB_CIERRE: closing("ROLE_ENABLEMENT"),
+    LAB: closing("AI_LAB_SHOWCASE"),
     FINAL: ctx.layer === "CLOSURE",
   };
   return KIBER_ORDER.filter((k) => due[k] && !ctx.answered.includes(k));

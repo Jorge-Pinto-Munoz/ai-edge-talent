@@ -7,6 +7,9 @@ import { myJourney } from "@/lib/journey/queries";
 import type { Layer } from "@/lib/journey/rules";
 import { pulseDef } from "./definitions";
 import { dueClientPulse, duePulses, validateAnswers } from "./rules";
+import { stageRequirements } from "@/lib/journey/closure";
+import { syncStageClosure } from "@/lib/journey/closure-sync";
+import { audit } from "@/lib/identity/service";
 
 export type PulseResult = { ok: boolean; message: string };
 
@@ -32,7 +35,9 @@ export async function submitPulse(key: string, waveId: string, raw: Record<strin
     if (def.respondent === "KIBER") {
       const j = await myJourney(viewer.id);
       if (!j || j.candidate.wave_id !== waveId) throw new Error("Este pulso no corresponde a tu journey.");
-      const due = duePulses({ layer: j.candidate.journey_layer as Layer | null, layerSince: j.candidate.journey_layer_since, labStatus: j.lab?.status ?? null, answered });
+      const layer = j.candidate.journey_layer as Layer | null;
+      const requirementsMet = layer ? stageRequirements(layer, { capsules: j.capsules, submissions: j.submissions, certifications: j.certifications, labStatus: j.lab?.status ?? null, byException: j.closures.some((c) => c.layer === layer && c.requirements_by_exception) }).met : false;
+      const due = duePulses({ layer, layerSince: j.candidate.journey_layer_since, labStatus: j.lab?.status ?? null, answered, requirementsMet });
       if (!due.includes(key)) throw new Error("Este pulso aún no está disponible.");
       row = { candidate_id: j.candidate.id, client_name: j.candidate.client_name };
     } else {
@@ -45,9 +50,16 @@ export async function submitPulse(key: string, waveId: string, raw: Record<strin
 
     const { error } = await svc.from("pulse_responses").insert({ wave_id: waveId, pulse: key, respondent: def.respondent, user_id: viewer.id, answers, ...row });
     if (error && error.code !== "23505") throw error;
+    let message = "¡Gracias! Tu respuesta quedó registrada.";
+    if (row.candidate_id) {
+      await audit("pulse.submitted", { actor: viewer.id, candidateId: row.candidate_id, waveId, details: { pulse: key }, eventKey: `pulse:${row.candidate_id}:${key}` });
+      // Si es el pulso de cierre de su etapa, cierra la etapa y desbloquea la siguiente.
+      const out = await syncStageClosure(row.candidate_id, viewer.id);
+      if (out.state === "closed" && def.closes) message = out.advancedTo ? "¡Gracias! Cerraste la etapa y la siguiente ya está desbloqueada." : "¡Gracias! Cerraste tu journey AI Edge Talent.";
+    }
     revalidatePath(def.respondent === "KIBER" ? "/mi-journey" : "/cliente");
     revalidatePath(`/admin/pulsos/${waveId}`);
-    return { ok: true, message: "¡Gracias! Tu respuesta quedó registrada." };
+    return { ok: true, message };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : "No pudimos guardar tu respuesta. Intenta de nuevo." };
   }

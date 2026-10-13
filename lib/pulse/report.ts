@@ -95,7 +95,7 @@ export async function waveReport(waveId: string, now = new Date()) {
     enablementMid: enab("HAB_INTERMEDIO"),
     enablementClose: enab("HAB_CIERRE"),
     lab: { n: of("LAB").length, nps: npsOf("LAB"), avg: ["l_problema", "l_sesiones", "l_confianza", "l_showcase"].map((k) => avgOf("LAB", k)) },
-    final: { n: of("FINAL").length, nps: npsOf("FINAL"), overall: avgOf("FINAL", "overall") },
+    final: { n: of("FINAL").length, nps: npsOf("FINAL"), overall: avgOf("FINAL", "satisfaccion") ?? avgOf("FINAL", "overall") },
     client: { n: of("CLIENTE_FINAL").length, nps: npsOf("CLIENTE_FINAL"), value: avgOf("CLIENTE_FINAL", "c_valor"), satisf: avgOf("CLIENTE_FINAL", "c_satisf"), continuity: of("CLIENTE_FINAL").map((r) => String(r.answers.continuity ?? "")) },
     efficiency: {
       kiber: pairEfficiency(rows, (r) => r.candidate_id, "INICIO", "FINAL"),

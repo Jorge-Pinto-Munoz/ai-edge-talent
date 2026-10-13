@@ -10,6 +10,10 @@ export interface Question {
   hint?: string;
   options?: readonly string[];
   optional?: boolean;
+  /** Respuestas rápidas que la persona puede elegir en vez de escribir (p. ej. "Nada por ahora"). */
+  quick?: readonly string[];
+  /** Largo mínimo de una respuesta de texto obligatoria. */
+  minLength?: number;
 }
 export type Respondent = "KIBER" | "CLIENT";
 export interface PulseDef {
@@ -20,6 +24,10 @@ export interface PulseDef {
   when: string;
   intro: string;
   questions: Question[];
+  /** Pulso obligatorio que cierra esta etapa (ver lib/journey/closure.ts). */
+  closes?: "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "CLOSURE";
+  /** Minutos estimados para responder. */
+  minutes?: number;
 }
 
 export const AI_FREQ = ["Casi nunca", "Algunas veces al mes", "Varias veces por semana", "Todos los días"] as const;
@@ -35,6 +43,22 @@ const HOURS_BEFORE: Question = {
 };
 const AI_USE: Question = { id: "ai_freq", type: "choice", label: "¿Con qué frecuencia usas IA en tu trabajo?", options: AI_FREQ };
 const COMMENT: Question = { id: "comment", type: "text", label: "¿Algo que quieras contarnos?", optional: true };
+
+export const NOTHING_YET = "Nada por ahora";
+/**
+ * Las cinco preguntas obligatorias de todo pulso de cierre, contextualizadas a la etapa. Son la fuente de la
+ * experiencia declarada (satisfacción, aprendizaje, valor, mejoras, aplicación): no miden adopción real.
+ */
+export const CORE_IDS = ["satisfaccion", "aprendizaje", "valioso", "mejorar", "aplicacion"] as const;
+export function coreQuestions(stage: string): Question[] {
+  return [
+    { id: "satisfaccion", type: "scale5", label: `¿Qué tan satisfecho/a quedaste con ${stage}?`, hint: "1 = nada satisfecho/a · 5 = muy satisfecho/a" },
+    { id: "aprendizaje", type: "text", label: `¿Qué aprendiste en ${stage}?`, minLength: 3 },
+    { id: "valioso", type: "text", label: "¿Qué fue lo más valioso para ti?", minLength: 3 },
+    { id: "mejorar", type: "text", label: "¿Qué podríamos mejorar?", hint: `Si no se te ocurre nada, elige «${NOTHING_YET}».`, quick: [NOTHING_YET], minLength: 3 },
+    { id: "aplicacion", type: "text", label: "¿Cómo vas a aplicar lo aprendido en tu trabajo?", minLength: 3 },
+  ];
+}
 
 /** Bloque de habilitación: se repite en el pulso intermedio (T0→T1) y en el de cierre. */
 const ENABLEMENT: Question[] = [
@@ -80,10 +104,13 @@ export const PULSES: PulseDef[] = [
   {
     key: "MINDSET",
     respondent: "KIBER",
-    title: "Pulso AI First Mindset",
-    when: "Al terminar AI First Mindset",
-    intro: "Cuéntanos cómo te fue con el contenido e-learning y el trabajo. Responde de 1 (muy en desacuerdo) a 5 (muy de acuerdo).",
+    title: "Pulso de cierre · AI First Mindset",
+    when: "Al cumplir los requisitos de AI First Mindset (cierra la etapa)",
+    intro: "Cuéntanos cómo te fue con el contenido e-learning y el desafío evaluado. Al enviarlo se cierra la etapa y se desbloquea Role Enablement.",
+    closes: "AI_MINDSET",
+    minutes: 5,
     questions: [
+      ...coreQuestions("AI First Mindset"),
       ...MINDSET_ITEMS.map((m) => ({ id: m.id, type: "scale5" as const, label: m.label })),
       { id: "nps", type: "nps", label: "¿Qué tan probable es que recomiendes AI First Mindset a un colega?", hint: "0 = nada probable · 10 = muy probable" },
       COMMENT,
@@ -100,18 +127,23 @@ export const PULSES: PulseDef[] = [
   {
     key: "HAB_CIERRE",
     respondent: "KIBER",
-    title: "Pulso de cierre de habilitación",
-    when: "Al terminar Role Enablement",
-    intro: "Cerraste la certificación. Las mismas preguntas del pulso intermedio, para ver cuánto avanzaste.",
-    questions: ENABLEMENT,
+    title: "Pulso de cierre · Role Enablement",
+    when: "Con la certificación AI CERT verificada (cierra la etapa)",
+    intro: "Cerraste tu certificación. Primero tu experiencia; después, las mismas preguntas del pulso intermedio para ver cuánto avanzaste. Al enviarlo se desbloquea AI Lab & Showcase.",
+    closes: "ROLE_ENABLEMENT",
+    minutes: 6,
+    questions: [...coreQuestions("Role Enablement y tu certificación AI CERT"), ...ENABLEMENT],
   },
   {
     key: "LAB",
     respondent: "KIBER",
-    title: "Pulso AI Lab & Showcase",
-    when: "Después del Showcase",
-    intro: "¿Cómo te fue construyendo y presentando tu caso? Responde de 1 a 5.",
+    title: "Pulso de cierre · AI Lab & Showcase",
+    when: "Después de presentar en el Showcase (cierra la etapa)",
+    intro: "¿Cómo te fue construyendo y presentando tu caso? Al enviarlo se desbloquea el Cierre.",
+    closes: "AI_LAB_SHOWCASE",
+    minutes: 4,
     questions: [
+      ...coreQuestions("el AI Lab y el Showcase"),
       { id: "l_problema", type: "scale5", label: "El problema que trabajé era real y relevante para el cliente." },
       { id: "l_sesiones", type: "scale5", label: "Las sesiones con el Hub AI me ayudaron a avanzar." },
       { id: "l_confianza", type: "scale5", label: "Confío en que mi solución aporta valor." },
@@ -123,13 +155,15 @@ export const PULSES: PulseDef[] = [
   {
     key: "FINAL",
     respondent: "KIBER",
-    title: "Pulso final",
-    when: "Al cierre del journey",
-    intro: "Último pulso. Repetimos las preguntas del inicio para medir tu antes y después.",
+    title: "Pulso de cierre · AI Edge Talent",
+    when: "En la etapa de Cierre (cierra tu journey)",
+    intro: "Último pulso. Tu experiencia con todo el programa y las mismas preguntas del inicio para medir tu antes y después.",
+    closes: "CLOSURE",
+    minutes: 4,
     questions: [
+      ...coreQuestions("AI Edge Talent"),
       AI_USE,
       { ...HOURS_BEFORE, label: "Las mismas tareas del inicio: ¿cuántas horas a la semana les dedicas hoy, con IA?", hint: "Una estimación basta." },
-      { id: "overall", type: "scale5", label: "En general, ¿cómo evalúas AI Edge Talent?", hint: "1 = muy mal · 5 = excelente" },
       { id: "nps", type: "nps", label: "¿Qué tan probable es que recomiendes AI Edge Talent a un colega?" },
       COMMENT,
     ],

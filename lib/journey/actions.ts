@@ -4,6 +4,10 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
+import { CLOSING_PULSE } from "./closure";
+import { markRequirementsByException, syncMany, syncStageClosure } from "./closure-sync";
+import { audit } from "@/lib/identity/service";
+import { provisionParticipant } from "@/lib/identity/provision";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
 const fail = (e: unknown): Result<never> => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
@@ -220,11 +224,15 @@ export async function reviewSubmission(id: string, status: "APPROVED" | "NOT_APP
   try {
     const viewer = await requireRole(["admin", "delivery"]);
     const db = await supabaseUser();
-    const { error } = await db
+    const { data: sub, error } = await db
       .from("submissions")
       .update({ status, score, feedback: feedback || null, reviewed_by: viewer.id, reviewed_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .select("candidate_id")
+      .maybeSingle();
     if (error) throw error;
+    // Aprobar el último desafío obligatorio habilita el pulso de cierre de la etapa.
+    if (sub) await syncMany([sub.candidate_id], viewer.id);
     revalidatePath("/admin/journey", "layout");
     return { ok: true, message: "Revisión registrada." };
   } catch (e) {
@@ -236,8 +244,14 @@ export async function reviewCertification(id: string, status: "VERIFIED" | "REJE
   try {
     const viewer = await requireRole(["admin", "delivery"]);
     const db = await supabaseUser();
-    const { error } = await db.from("certifications").update({ status, review_note: note || null, reviewed_by: viewer.id, reviewed_at: new Date().toISOString() }).eq("id", id);
+    const { data: cert, error } = await db
+      .from("certifications")
+      .update({ status, review_note: note || null, reviewed_by: viewer.id, reviewed_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("candidate_id")
+      .maybeSingle();
     if (error) throw error;
+    if (cert) await syncMany([cert.candidate_id], viewer.id);
     revalidatePath("/admin/journey", "layout");
     revalidateTag("aicert-rate");
     return { ok: true, message: status === "VERIFIED" ? "Certificación verificada." : "Registro rechazado." };
@@ -253,6 +267,7 @@ export async function advanceLayer(waveId: string, candidateIds: string[], to: L
     const db = await supabaseUser();
     const { data: required } = await db.from("capsules").select("id").eq("wave_id", waveId).eq("layer", "AI_MINDSET").eq("task_required", true).eq("published", true);
     const details: string[] = [];
+    const movedIds: string[] = [];
     let moved = 0;
     for (const id of candidateIds) {
       const { data: c } = await db.from("candidates").select("id, full_name, status, journey_layer").eq("id", id).single();
@@ -272,14 +287,32 @@ export async function advanceLayer(waveId: string, candidateIds: string[], to: L
         details.push(`${c.full_name}: ${gate.reason}`);
         continue;
       }
+      // Decisión de producto: el pulso de cierre es obligatorio para dejar una etapa, también con excepción.
+      // La excepción da por cumplidos los requisitos académicos y habilita el pulso; la etapa se cierra sola al responderlo.
+      const from = c.journey_layer as Layer | null;
+      const closing = from ? CLOSING_PULSE[from] : null;
+      if (closing) {
+        const { data: answered } = await supabaseService().from("pulse_responses").select("pulse").eq("candidate_id", id).eq("pulse", closing).maybeSingle();
+        if (!answered) {
+          if (exception) await markRequirementsByException(id, from!, exceptionNote.trim(), viewer.id);
+          await syncStageClosure(id, viewer.id);
+          details.push(`${c.full_name}: ${exception ? "requisitos dados por cumplidos por excepción. " : ""}Falta su pulso de cierre; quedó habilitado en su journey y la etapa se cerrará al responderlo.`);
+          continue;
+        }
+      }
       const { error: e1 } = await db.from("journey_events").insert({ candidate_id: id, from_layer: c.journey_layer, to_layer: to, exception, note: exception ? exceptionNote : null, actor: viewer.id });
       if (e1) throw e1;
       const patch: Record<string, unknown> = { journey_layer: to, journey_layer_since: new Date().toISOString() };
       if (to === "AI_MINDSET" && c.status === "ENROLLED") patch.status = "MINDSET_READY";
       const { error: e2 } = await db.from("candidates").update(patch).eq("id", id);
       if (e2) throw e2;
+      await audit("stage.transition.authorized", { actor: viewer.id, actorEmail: viewer.email, candidateId: id, waveId, details: { from, to, exception, note: exception ? exceptionNote : null } });
+      // Paso oficial de Assessment a AI First Mindset: activa (o actualiza) su portal. Idempotente.
+      if (to === "AI_MINDSET") await provisionParticipant(id, viewer.id).catch((e) => console.error("[activación]", id, e instanceof Error ? e.message : e));
+      movedIds.push(id);
       moved++;
     }
+    await syncMany(movedIds, viewer.id);
     revalidatePath(`/admin/journey/${waveId}`);
     return { ok: moved > 0, message: `${moved} persona(s) avanzaron a la nueva etapa.`, data: details };
   } catch (e) {

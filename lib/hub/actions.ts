@@ -5,6 +5,13 @@ import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { getViewer, myStaffWaves, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, type Layer } from "@/lib/journey/rules";
 import { LAB_DECISIONS, LAB_STATUS, type LabDecision, type LabMode, type LabStatus } from "./rules";
+import { syncMany } from "@/lib/journey/closure-sync";
+
+/** Integrantes de un proyecto: al presentarse en el Showcase se habilita su pulso de cierre. */
+async function syncProject(projectId: string, actor: string) {
+  const { data } = await supabaseService().from("lab_project_members").select("candidate_id").eq("project_id", projectId);
+  await syncMany((data ?? []).map((m) => m.candidate_id), actor);
+}
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
 const fail = (e: unknown): Result<never> => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
@@ -51,6 +58,15 @@ export async function passToLab(waveId: string, candidateIds: string[]): Promise
       if (!gate.ok) {
         details.push(`${c.full_name}: ${gate.reason}`);
         continue;
+      }
+      // Role Enablement se cierra con su pulso: sin él, la persona no avanza (y si ya respondió, avanzó sola).
+      if (c.journey_layer === "ROLE_ENABLEMENT") {
+        const { data: p } = await svc.from("pulse_responses").select("pulse").eq("candidate_id", id).eq("pulse", "HAB_CIERRE").maybeSingle();
+        if (!p) {
+          await syncMany([id], viewer.id);
+          details.push(`${c.full_name}: falta su pulso de cierre de Role Enablement (ya está habilitado en su journey).`);
+          continue;
+        }
       }
       const { error: e1 } = await svc.from("journey_events").insert({ candidate_id: id, from_layer: c.journey_layer, to_layer: "AI_LAB_SHOWCASE", exception: false, actor: viewer.id });
       if (e1) throw e1;
@@ -134,6 +150,7 @@ export async function saveLabProject(input: {
     await db.from("lab_project_members").delete().eq("project_id", p.id);
     const { error: e2 } = await db.from("lab_project_members").insert(input.memberIds.map((candidate_id) => ({ project_id: p.id, candidate_id })));
     if (e2) throw e2;
+    await syncMany(input.memberIds, viewer.id);
     done(input.waveId);
     return { ok: true, message: input.id ? "Proyecto actualizado." : "Proyecto creado.", data: { id: p.id } };
   } catch (e) {
@@ -161,12 +178,13 @@ export async function deleteLabProject(projectId: string): Promise<Result> {
 export async function saveShowcase(projectId: string, input: { date: string; decision: LabDecision | ""; notes: string }): Promise<Result> {
   try {
     const waveId = await projectWave(projectId);
-    await requireHub(waveId);
+    const viewer = await requireHub(waveId);
     if (input.decision && !LAB_DECISIONS.some((d) => d.id === input.decision)) throw new Error("Decisión no válida.");
     const patch: Record<string, unknown> = { showcase_date: input.date || null, showcase_decision: input.decision || null, showcase_notes: input.notes.trim() || null };
     if (input.decision) patch.status = "PRESENTED";
     const { error } = await (await supabaseUser()).from("lab_projects").update(patch).eq("id", projectId);
     if (error) throw error;
+    if (input.decision) await syncProject(projectId, viewer.id);
     done(waveId);
     return { ok: true, message: input.decision ? "Resultado del Showcase registrado." : "Showcase guardado." };
   } catch (e) {
