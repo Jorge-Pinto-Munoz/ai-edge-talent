@@ -1,0 +1,46 @@
+# Prueba de punta a punta: postula en el sitio publicado y revisa que salgan los correos (al postulante y a su
+# Delivery). Se ejecuta al cambiar .github/pruebas/postulacion.env en main, o a mano. ENVÍA CORREOS REALES.
+name: Prueba de postulación
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/pruebas/postulacion.env"]
+
+jobs:
+  postular:
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://ai-edge-talent.vercel.app
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGSSLMODE: require
+    steps:
+      - uses: actions/checkout@v4
+      - name: Datos de la prueba
+        run: grep -v '^#' .github/pruebas/postulacion.env | grep '=' >> $GITHUB_ENV
+      - name: Configuración de correo del sitio
+        run: |
+          C=$(curl -s $SITE/api/diagnostico | python3 -c "import sys,json;print(json.load(sys.stdin).get('correo'))")
+          echo "::notice title=Correo configurado::$C"
+      - name: Reiniciar la postulación anterior de ese correo
+        if: ${{ env.RESET == '1' && env.DB_URL != '' }}
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null 2>&1
+          N=$(psql "$DB_URL" -Atc "select count(*) from (select public.purge_candidate(id) from public.candidates where wave_id='wave-3' and lower(corporate_email)=lower('$EMAIL')) x")
+          echo "::notice title=Reinicio::Postulaciones anteriores borradas: $N"
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Navegador
+        run: npm i --no-save --no-package-lock playwright@1.56.1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+      - name: Postular
+        run: node .github/pruebas/postulacion.mjs
+      - name: Correos enviados
+        if: ${{ always() && env.DB_URL != '' }}
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null 2>&1
+          sleep 8
+          psql "$DB_URL" -At -F ' | ' -c "select m.template, m.to_email, m.status, coalesce(m.error,'') from public.email_messages m join public.candidates c on c.id = m.candidate_id where c.wave_id='wave-3' and lower(c.corporate_email)=lower('$EMAIL') order by m.created_at" | while read -r l; do echo "::notice title=Correo::$l"; done
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: falla, path: falla.png }
