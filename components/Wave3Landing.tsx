@@ -54,7 +54,7 @@ export function Wave3Landing() {
       <section className="grid grid-3">
         <div className="card signal">
           <strong>1. Te identificas</strong>
-          <p className="muted">Nombre, correo corporativo, cliente y rol.</p>
+          <p className="muted">Nombre, correo electrónico, teléfono, cliente y rol.</p>
         </div>
         <div className="card signal">
           <strong>2. Conoces el compromiso</strong>

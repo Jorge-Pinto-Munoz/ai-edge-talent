@@ -22,15 +22,32 @@ export async function getViewer(): Promise<Viewer | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase.from("profiles").select("role, full_name, email").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select("role, full_name, email, status, sessions_revoked_at").eq("id", user.id).single();
   if (!data) return null;
+  // Cuenta pausada, revocada o eliminada: sin acceso, aunque su token siga vigente.
+  if (data.status === "PAUSED" || data.status === "REVOKED" || data.status === "DELETED") return null;
+  // Sesiones cerradas por admin: se rechazan los tokens emitidos antes de esa hora.
+  if (data.sessions_revoked_at) {
+    const { data: s } = await supabase.auth.getSession();
+    const iat = tokenIssuedAt(s.session?.access_token);
+    if (!iat || iat * 1000 < new Date(data.sessions_revoked_at).getTime()) return null;
+  }
   return { id: user.id, email: data.email, role: data.role, fullName: data.full_name };
+}
+
+function tokenIssuedAt(jwt: string | undefined): number | null {
+  try {
+    const p = JSON.parse(Buffer.from((jwt ?? "").split(".")[1], "base64url").toString());
+    return typeof p.iat === "number" ? p.iat : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Páginas: redirige si no corresponde. */
 export async function requireStaffPage(next: string): Promise<Viewer> {
   const v = await getViewer();
-  if (!v) redirect(`/login?next=${encodeURIComponent(next)}`);
+  if (!v) redirect(`/ingresar?next=${encodeURIComponent(next)}`);
   if (v.role !== "admin" && v.role !== "delivery") redirect("/sin-acceso");
   return v;
 }
@@ -46,7 +63,7 @@ export async function requireRole(roles: StaffRole[]): Promise<Viewer> {
 /** Páginas compartidas entre el equipo interno y un rol de Wave (profesor u Hub). */
 export async function requireAnyRolePage(next: string, roles: AppRole[]): Promise<Viewer> {
   const v = await getViewer();
-  if (!v) redirect(`/login?next=${encodeURIComponent(next)}`);
+  if (!v) redirect(`/ingresar?next=${encodeURIComponent(next)}`);
   if (!roles.includes(v.role)) redirect("/sin-acceso");
   return v;
 }

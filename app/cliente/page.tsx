@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ClientePage() {
   const viewer = await getViewer();
-  if (!viewer) redirect("/login?next=/cliente");
+  if (!viewer) redirect("/ingresar?next=/cliente");
   if (viewer.role !== "client" && viewer.role !== "admin" && viewer.role !== "delivery") redirect("/inicio");
   return <ClientPortal />;
 }

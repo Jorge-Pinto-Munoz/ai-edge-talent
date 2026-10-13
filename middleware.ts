@@ -12,8 +12,9 @@ export async function middleware(request: NextRequest) {
   const legacy = legacyTarget(request.nextUrl.pathname);
   if (legacy) {
     const to = request.nextUrl.clone();
-    to.pathname = legacy;
-    to.search = legacy === "/postular/registro" ? "?wave=wave-3" : "";
+    const [path, query] = legacy.split("?");
+    to.pathname = path;
+    to.search = query ? `?${query}` : legacy === "/postular/registro" ? "?wave=wave-3" : "";
     return NextResponse.redirect(to);
   }
 
@@ -32,11 +33,11 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const PROTECTED = ["/admin/admision", "/admin/accesos", "/admin/journey", "/admin/contenido", "/admin/talento", "/admin/profesor", "/admin/lab", "/admin/vista", "/admin/soporte", "/admin/pulsos", "/mi-journey", "/ai-coach", "/cliente", "/inicio"];
+  const PROTECTED = ["/admin/admision", "/admin/accesos", "/admin/journey", "/admin/contenido", "/admin/talento", "/admin/profesor", "/admin/lab", "/admin/vista", "/admin/soporte", "/admin/pulsos", "/admin/usuarios", "/admin/asignaciones", "/mi-perfil", "/mi-journey", "/ai-coach", "/cliente", "/inicio"];
   const protectedPath = PROTECTED.some((p) => request.nextUrl.pathname.startsWith(p));
   if (protectedPath && !user) {
     const login = request.nextUrl.clone();
-    login.pathname = "/login";
+    login.pathname = "/ingresar";
     login.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(login);
   }
@@ -46,6 +47,7 @@ export async function middleware(request: NextRequest) {
 /** Rutas del modo demo y su equivalente real. */
 const LEGACY: [RegExp, string][] = [
   [/^\/mentor(\/|$)/, "/ai-coach"],
+  [/^\/equipo\/ingresar$/, "/ingresar?next=/equipo"],
   [/^\/delivery\/playbook(\/|$)/, "/equipo/playbook"],
   [/^\/kiber(\/|$)/, "/mi-journey"],
   [/^\/client(\/|$)/, "/cliente"],
@@ -59,7 +61,7 @@ function legacyTarget(path: string): string | null {
 
 export const config = {
   matcher: [
-    "/admin/admision/:path*", "/admin/accesos/:path*", "/admin/journey/:path*", "/admin/contenido/:path*", "/admin/talento/:path*", "/admin/profesor/:path*", "/admin/lab/:path*", "/admin/vista/:path*", "/admin/soporte/:path*", "/admin/pulsos/:path*",
+    "/admin/admision/:path*", "/admin/accesos/:path*", "/admin/journey/:path*", "/admin/contenido/:path*", "/admin/talento/:path*", "/admin/profesor/:path*", "/admin/lab/:path*", "/admin/vista/:path*", "/admin/soporte/:path*", "/admin/pulsos/:path*", "/admin/usuarios/:path*", "/admin/asignaciones/:path*", "/mi-perfil/:path*", "/equipo/ingresar",
     "/mi-journey/:path*", "/mentor/:path*", "/ai-coach/:path*",
     "/kiber/:path*", "/client/:path*", "/delivery/waves/:path*", "/delivery/onboarding", "/delivery/playbook", "/admin/waves/:path*", "/apply/:path*", "/cliente/:path*", "/inicio", "/auth/:path*", "/login",
   ],

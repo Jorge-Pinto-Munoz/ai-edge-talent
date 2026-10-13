@@ -243,7 +243,7 @@ function Identification({
         <input id="n" type="text" required value={f.participantName} onChange={set("participantName")} autoComplete="name" />
       </div>
       <div className="field">
-        <label htmlFor="e">Correo corporativo *</label>
+        <label htmlFor="e">Correo electrónico *</label>
         <input id="e" type="email" required value={f.corporateEmail} onChange={set("corporateEmail")} autoComplete="email" />
       </div>
       <div className="field">

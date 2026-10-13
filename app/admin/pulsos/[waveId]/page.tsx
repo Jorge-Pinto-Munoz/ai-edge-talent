@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
 import { waveReport } from "@/lib/pulse/report";
@@ -29,7 +29,8 @@ const IND = [
 
 export default async function PulsosReport({ params }: { params: Promise<{ waveId: string }> }) {
   const { waveId } = await params;
-  await requireStaffPage(`/admin/pulsos/${waveId}`);
+  const viewer = await requireStaffPage(`/admin/pulsos/${waveId}`);
+  if (viewer.role !== "admin") redirect("/sin-acceso");
   const db = await supabaseUser();
   const { data: wave } = await db.from("waves").select("id, name").eq("id", waveId).single();
   if (!wave) notFound();

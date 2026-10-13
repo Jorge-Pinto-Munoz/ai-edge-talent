@@ -34,7 +34,7 @@ create index if not exists candidates_talent on public.candidates (talent_id);
 
 -- Waves históricas: se pueden cargar participantes de Waves pasadas.
 alter table public.candidates drop constraint if exists candidates_source_check;
-alter table public.candidates add constraint candidates_source_check check (source in ('import', 'nomination', 'self', 'historical'));
+alter table public.candidates add constraint candidates_source_check check (source in ('import', 'nomination', 'self', 'historical', 'manual', 'special'));
 
 -- Familia de especialidad (misma regla que lib/talent/rules.ts).
 create or replace function public.specialty_family(p text) returns text

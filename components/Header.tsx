@@ -160,7 +160,7 @@ export function Header() {
         <div className="sitenav-actions">
           {roleSwitch && <div className="hide-m">{roleSwitch}</div>}
           <Link href={view.cta.href} className="pill accent hide-m">{view.cta.label}</Link>
-          {live && aud !== "equipo" && <Link href="/inicio" className="pill ghost hide-m">Ingresar</Link>}
+          {live && aud !== "equipo" && <Link href="/ingresar" className="pill ghost hide-m">Ingresar</Link>}
         </div>
 
         <button type="button" className="burger" aria-label="Abrir menú" aria-expanded={sheet} aria-controls="menu-movil" onClick={() => setSheet(true)}>
@@ -227,7 +227,7 @@ export function Header() {
         </nav>
         <div className="sheet-foot">
           <Link href={view.cta.href} className="pill accent" tabIndex={sheet ? 0 : -1}>{aud === "profesional" ? "Postular a Wave 3" : view.cta.label}</Link>
-          {live && aud !== "equipo" && <Link href="/inicio" className="pill ghost" tabIndex={sheet ? 0 : -1}>Ingresar</Link>}
+          {live && aud !== "equipo" && <Link href="/ingresar" className="pill ghost" tabIndex={sheet ? 0 : -1}>Ingresar</Link>}
         </div>
       </div>
     </>

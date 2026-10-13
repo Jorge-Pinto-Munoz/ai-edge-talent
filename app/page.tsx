@@ -155,7 +155,7 @@ export default function Home() {
                 <li key={f.title}><span className="ico"><Icon name={f.icon} size={22} /></span><div><strong>{f.title}</strong><p>{f.body}</p></div></li>
               ))}
             </ul>
-            <Link className="pill dark lg" href="/login?next=/inicio">Entrar a Mi espacio <Icon name="arrowRight" size={18} /></Link>
+            <Link className="pill dark lg" href="/ingresar">Entrar a Mi espacio <Icon name="arrowRight" size={18} /></Link>
           </Reveal>
           <Reveal delay={120}>
             <div className="phones" role="region" aria-label="Pantallas de Mi espacio (datos de ejemplo)" tabIndex={0}>

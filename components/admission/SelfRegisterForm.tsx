@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { selfRegister } from "@/lib/admission/candidate-actions";
 import { Callout } from "@/components/ui";
+import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
 export function SelfRegisterForm({ waveId }: { waveId: string }) {
   const [state, action, pending] = useActionState(selfRegister, null);
@@ -20,11 +21,23 @@ export function SelfRegisterForm({ waveId }: { waveId: string }) {
     <form action={action} className="card narrow">
       <div className="eyebrow">Paso 1 · Identificación</div>
       <h1>Identifícate</h1>
-      <p className="muted">Te enviaremos un enlace personal a tu correo corporativo para continuar. No solicitamos RUT.</p>
+      <p className="muted">Te enviaremos un enlace personal a tu correo para continuar. No solicitamos RUT.</p>
       <input type="hidden" name="wave" value={waveId} />
+      <div className="field">
+        <label htmlFor="full_name">Nombre completo *</label>
+        <input id="full_name" name="full_name" type="text" required autoComplete="name" />
+      </div>
+      <div className="field">
+        <label htmlFor="corporate_email">Correo electrónico *</label>
+        <input id="corporate_email" name="corporate_email" type="email" required autoComplete="email" aria-describedby="email-help" />
+        <small id="email-help" className="muted">Utilizaremos este correo para enviarte información importante sobre tu participación en AI Edge Talent y el acceso a tu portal.</small>
+      </div>
+      <div className="field">
+        <label htmlFor="phone">Teléfono *</label>
+        <div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="phone" name="phone" inputMode="numeric" pattern="[0-9 ]{8,9}" maxLength={9} required autoComplete="tel-national" placeholder="1234 5678" aria-describedby="phone-help" /></div>
+        <small id="phone-help" className="muted">Ingresa los 8 dígitos después de +56 9.</small>
+      </div>
       {[
-        ["full_name", "Nombre completo *", "text", "name"],
-        ["corporate_email", "Correo corporativo *", "email", "email"],
         ["client_name", "Cliente en el que trabajas *", "text", "organization"],
         ["role_title", "Rol / cargo *", "text", "organization-title"],
         ["team", "Unidad / equipo (opcional)", "text", "off"],
@@ -34,6 +47,13 @@ export function SelfRegisterForm({ waveId }: { waveId: string }) {
           <input id={name} name={name} type={type} required={label.endsWith("*")} autoComplete={ac} />
         </div>
       ))}
+      <label className="consent">
+        <input type="checkbox" name="community" value="1" />
+        <span>
+          {COMMUNITY_CONSENT.text} <span className="muted">(opcional)</span>
+          <small className="muted">{COMMUNITY_CONSENT.detail}</small>
+        </span>
+      </label>
       {state && !state.ok && <p className="error" role="alert">{state.message}</p>}
       <button className="btn" type="submit" disabled={pending}>
         {pending ? "Enviando…" : "Recibir mi enlace de postulación"}

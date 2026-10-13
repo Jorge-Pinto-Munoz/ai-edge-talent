@@ -325,7 +325,7 @@ export async function addGroupMentor(waveId: string, groupId: string, email: str
     const { data: profile } = await db.from("profiles").select("id, role").eq("email", e).maybeSingle();
     if (!profile) {
       await db.from("role_grants").upsert({ email: e, role: "mentor", granted_by: viewer.id });
-      return { ok: false, message: `${e} quedó habilitado/a como AI Coach. Pídele que ingrese una vez en /login y luego asígnalo/a al grupo.` };
+      return { ok: false, message: `${e} quedó habilitado/a como AI Coach. Pídele que active su cuenta en /ingresar y luego asígnalo/a al grupo.` };
     }
     if (profile.role !== "mentor") await db.from("profiles").update({ role: "mentor" }).eq("id", profile.id);
     const { error } = await db.from("group_mentors").upsert({ group_id: groupId, mentor_id: profile.id });

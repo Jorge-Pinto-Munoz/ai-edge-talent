@@ -7,7 +7,7 @@ import { signOut } from "@/app/login/actions";
 export function SignOut({ onDark = true, label = "Salir" }: { onDark?: boolean; label?: string }) {
   const router = useRouter();
   return (
-    <button type="button" className={onDark ? "btn ghost small" : "btn ghost"} style={onDark ? { color: "#fff" } : undefined} onClick={async () => { await signOut(); router.push("/login"); }}>
+    <button type="button" className={onDark ? "btn ghost small" : "btn ghost"} style={onDark ? { color: "#fff" } : undefined} onClick={async () => { await signOut(); router.push("/ingresar"); }}>
       {label}
     </button>
   );

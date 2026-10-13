@@ -25,18 +25,20 @@ const SECTIONS: Section[] = [
   { key: "journey", label: "Journey", icon: "route", href: (w) => `/admin/journey/${w}`, match: /^\/admin\/journey/, roles: STAFF, perWave: true },
   { key: "profesor", label: "Clases", icon: "calendar", href: (w) => `/admin/profesor/${w}`, match: /^\/admin\/profesor/, roles: ["admin", "delivery", "profesor"], perWave: true },
   { key: "lab", label: "AI Lab & Showcase", icon: "flask", href: (w) => `/admin/lab/${w}`, match: /^\/admin\/lab/, roles: ["admin", "delivery", "hub"], perWave: true },
-  { key: "pulsos", label: "Pulsos e informe", icon: "chat", href: (w) => `/admin/pulsos/${w}`, match: /^\/admin\/pulsos/, roles: STAFF, perWave: true },
+  { key: "pulsos", label: "Avance y experiencia", icon: "chat", href: (w) => `/admin/pulsos/${w}`, match: /^\/admin\/pulsos/, roles: ADMIN, perWave: true },
   { key: "contenido", label: "Contenido", icon: "book", href: (w) => `/admin/contenido/${w}`, match: /^\/admin\/contenido/, roles: ADMIN, perWave: true },
   { key: "evaluacion", label: "Cómo evaluamos", icon: "target", href: () => "/admin/evaluacion", match: /^\/admin\/evaluacion/, roles: ADMIN },
   { key: "talento", label: "Talento", icon: "star", href: () => "/admin/talento", match: /^\/admin\/talento/, roles: STAFF },
   { key: "vista", label: "Ver como", icon: "user", href: () => "/admin/vista", match: /^\/admin\/vista/, roles: ADMIN },
   { key: "soporte", label: "Soporte", icon: "help", href: () => "/admin/soporte", match: /^\/admin\/soporte/, roles: ADMIN },
-  { key: "accesos", label: "Accesos", icon: "key", href: () => "/admin/accesos", match: /^\/admin\/accesos/, roles: ADMIN },
+  { key: "usuarios", label: "Usuarios y accesos", icon: "users", href: () => "/admin/usuarios", match: /^\/admin\/usuarios/, roles: ADMIN },
+  { key: "asignaciones", label: "Equipo de la Wave", icon: "user", href: (w) => `/admin/asignaciones/${w}`, match: /^\/admin\/asignaciones/, roles: ADMIN, perWave: true },
+  { key: "accesos", label: "Registro de ingresos", icon: "key", href: () => "/admin/accesos", match: /^\/admin\/accesos/, roles: ADMIN },
 ];
 
 /** Wave activa: la de la URL (/admin/<sección>/<wave> o ?wave=), si no la primera de la lista. */
 function currentWave(path: string, search: URLSearchParams, waves: ShellWave[]): string {
-  const m = path.match(/^\/admin\/(admision|journey|contenido|profesor|lab|pulsos)\/([^/]+)/);
+  const m = path.match(/^\/admin\/(admision|journey|contenido|profesor|lab|pulsos|asignaciones)\/([^/]+)/);
   const id = m?.[2] ?? search.get("wave");
   return waves.find((w) => w.id === id)?.id ?? waves[0]?.id ?? "wave-3";
 }
@@ -85,7 +87,7 @@ export function AdminShell({ waves, role, email, children }: { waves: ShellWave[
               <small>{ROLE_LABEL[role]}</small>
             </span>
           </div>
-          <button type="button" className="admin-logout" onClick={async () => { await signOut(); router.push("/login"); }}>
+          <button type="button" className="admin-logout" onClick={async () => { await signOut(); router.push("/ingresar"); }}>
             <Icon name="logout" size={18} /> Salir
           </button>
         </div>

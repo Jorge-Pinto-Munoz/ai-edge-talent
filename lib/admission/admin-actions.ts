@@ -188,7 +188,7 @@ export async function addWaveStaff(waveId: string, email: string, role: "profeso
     const { error } = await db.from("wave_staff").upsert({ wave_id: waveId, email: e, role, added_by: viewer.id });
     if (error) throw error;
     revalidatePath("/admin", "layout");
-    return { ok: true, message: `${e} quedó como ${ROLE_NAME[role]} de la Wave. Entra con su correo en /login.` };
+    return { ok: true, message: `${e} quedó como ${ROLE_NAME[role]} de la Wave. Recibe su acceso desde Usuarios y accesos.` };
   } catch (e) {
     return fail(e);
   }

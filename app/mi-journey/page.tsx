@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MiJourney() {
   const viewer = await getViewer();
-  if (!viewer) redirect("/login?next=/mi-journey");
+  if (!viewer) redirect("/ingresar?next=/mi-journey");
   const j = await myJourney(viewer.id);
 
   if (!j) {

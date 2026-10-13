@@ -1,5 +1,9 @@
 "use server";
 
+import { provisionParticipant } from "@/lib/identity/provision";
+import { normalizeCLMobile } from "@/lib/identity/pin";
+import { COMMUNITY_CONSENT } from "@/lib/data/consents";
+
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { supabaseService } from "@/lib/supabase/server";
@@ -50,10 +54,13 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
     client_name: String(form.get("client_name") ?? "").trim() || null,
     role_title: String(form.get("role_title") ?? "").trim() || null,
     team: String(form.get("team") ?? "").trim() || null,
+    phone: normalizeCLMobile(String(form.get("phone") ?? "")),
   };
   if (!data.full_name || !isEmail(data.corporate_email) || !data.client_name || !data.role_title) {
-    return { ok: false, message: "Completa nombre, correo corporativo, cliente y rol." };
+    return { ok: false, message: "Completa nombre, correo electrónico, cliente y rol." };
   }
+  if (!data.phone) return { ok: false, message: "Revisa tu teléfono: +56 9 y 8 dígitos." };
+  const community = form.get("community") === "1";
   const svc = supabaseService();
   const { data: wave } = await svc.from("waves").select("id, name, application_deadline, status").eq("id", waveId).single();
   if (!wave || !["OPEN_FOR_NOMINATION", "ASSESSMENT"].includes(wave.status)) return { ok: false, message: "Esta Wave no está recibiendo postulaciones." };
@@ -64,6 +71,11 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
     existing ??
     (await svc.from("candidates").insert({ ...data, wave_id: waveId, source: "self", status: "IDENTIFIED" }).select("id, invite_token, full_name").single()).data;
   if (!row) return { ok: false, message: "No pudimos registrar tu postulación. Intenta nuevamente." };
+  if (existing) await svc.from("candidates").update({ phone: data.phone }).eq("id", row.id);
+  // Consentimiento opcional y trazable (texto y versión exactos).
+  if (community) {
+    await svc.from("consents").insert({ kind: "COMMUNITY", version: COMMUNITY_CONSENT.version, text_snapshot: `${COMMUNITY_CONSENT.text} ${COMMUNITY_CONSENT.detail}`, email: data.corporate_email, candidate_id: row.id });
+  }
 
   // El enlace personal se entrega SIEMPRE por correo: así verificamos que el correo es tuyo.
   const link = `${env.appUrl}/postular/${row.invite_token}`;
@@ -161,6 +173,12 @@ export async function acceptCommitmentByToken(token: string, fullName: string, c
     const { error } = await svc.from("commitment_acceptances").update({ status: "ACCEPTED", accepted_by: fullName.trim() }).eq("id", current.id);
     if (error) throw error;
     await moveTo(svc, c.id, "CONDITIONS_PENDING", "ENROLLED");
+    // Paso oficial a AI First Mindset: se activa su portal (cuenta + código temporal por correo). Nunca bloquea la aceptación.
+    try {
+      await provisionParticipant(c.id);
+    } catch (e) {
+      console.error("[activación] provisionParticipant", e);
+    }
     return { ok: true, message: "enrolled" };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };

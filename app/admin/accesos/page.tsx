@@ -14,7 +14,7 @@ const dur = (a: string, b: string) => {
 };
 
 export default async function Accesos({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab = "roles" } = await searchParams;
+  const { tab = "registro" } = await searchParams;
   const viewer = await requireStaffPage("/admin/accesos");
   if (viewer.role !== "admin") redirect("/sin-acceso");
   const db = await supabaseUser();

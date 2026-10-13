@@ -20,7 +20,7 @@ const STATUS: Record<string, [string, "ok" | "warn" | "review" | "brand"]> = {
 export default async function CapsulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const viewer = await getViewer();
-  if (!viewer) redirect(`/login?next=/mi-journey/capsula/${id}`);
+  if (!viewer) redirect(`/ingresar?next=/mi-journey/capsula/${id}`);
   const j = await myJourney(viewer.id);
   const c = j?.capsules.find((x) => x.id === id);
   if (!j || !c) notFound();

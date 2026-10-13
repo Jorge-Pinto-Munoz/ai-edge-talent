@@ -10,7 +10,7 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
       <div className="field">
         <label htmlFor="email">Correo</label>
-        <input id="email" name="email" type="email" required autoComplete="email" placeholder="nombre@kibernum.com" />
+        <input id="email" name="email" type="email" required autoComplete="email" placeholder="tu@correo.com" />
       </div>
       {state && <p className={state.ok ? "" : "error"} role="status">{state.message}</p>}
       <button className="btn" type="submit" disabled={pending}>

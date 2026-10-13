@@ -221,7 +221,7 @@ export function identify(s: AppState, input: IdentificationInput, ctx: Ctx = def
   if (!gate.open) throw new ActionError(gate.reason);
   const email = input.corporateEmail.trim().toLowerCase();
   if (!input.participantName.trim() || !input.client.trim() || !input.role.trim()) throw new ActionError("Completa los campos obligatorios.");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ActionError("Ingresa un correo corporativo válido.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new ActionError("Ingresa un correo electrónico válido.");
 
   // Reanudar postulación existente (mismo correo + Wave): no se duplican registros.
   const existing = s.applications.find((a) => a.waveId === wave.id && a.corporateEmail.toLowerCase() === email);

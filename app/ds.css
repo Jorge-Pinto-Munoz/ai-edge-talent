@@ -241,3 +241,44 @@
 .cx-prompt svg { color: var(--brand); flex-shrink: 0; }
 .cx-prompt p { margin: 0; flex: 1; min-width: 200px; }
 .cx-prompt strong { color: var(--text); }
+
+/* ───── User Management (Usuarios y accesos) ───── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.uc-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.uc-bar select { width: auto; min-height: 44px; }
+.uc-search { flex: 1 1 240px; min-width: 200px; }
+.uc-pin { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; background: var(--surface-2); }
+.uc-pin.p-set { background: var(--ok-soft); color: var(--ok-text); }
+.uc-pin.p-renew, .uc-pin.p-locked { background: var(--warn-soft); color: var(--warn-text); }
+.uc-ok { padding: 10px 14px; border-radius: 12px; background: var(--ok-soft); color: var(--ok-text); font-weight: 600; }
+.ud { display: grid; gap: 16px; }
+.ud-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ud-head small { flex-basis: 100%; }
+.ud-sec { display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: var(--surface-2); }
+.ud-sec h3 { margin: 0; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.ud-sec h4 { margin: 10px 0 4px; font-size: 0.85rem; }
+.ud-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ud-dl { margin: 0; display: grid; gap: 6px; }
+.ud-dl div { display: grid; grid-template-columns: 150px 1fr; gap: 10px; }
+.ud-dl dt { color: var(--muted); font-size: 0.88rem; }
+.ud-dl dd { margin: 0; font-weight: 600; }
+.ud-note { margin: 0; font-size: 0.82rem; }
+.ud-checks { display: grid; gap: 6px; border: 0; padding: 0; margin: 0; }
+.ud-checks legend { font-weight: 700; margin-bottom: 6px; }
+.ud-checks label { display: flex; gap: 8px; align-items: center; font-weight: 500; }
+.ud-checks input { width: 18px; height: 18px; }
+.ud-danger { border-top: 1px dashed var(--border); padding-top: 10px; }
+.ud-danger summary { cursor: pointer; font-weight: 700; color: var(--bad-text); min-height: 36px; display: flex; align-items: center; }
+.ud-hist { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.9rem; }
+.uc-kind { justify-self: start; }
+.uc-kind button { min-height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+.uc-kind button.on { background: var(--surface); color: var(--text); box-shadow: var(--e1); }
+.ar-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .ar-grid, .ud-dl div { grid-template-columns: 1fr; } }
+.as-alerts { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 0.92rem; }
+.as-team { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.as-member { display: grid; gap: 4px; padding: 14px; border-radius: 16px; background: var(--surface-2); }
+.as-member .ds-status { justify-self: start; }
+.as-bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; padding: 10px 12px; border-radius: 14px; background: var(--info-soft); }
+.as-bulk select { width: auto; min-height: 40px; }
+.pp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } @media (max-width: 560px) { .pp-grid { grid-template-columns: 1fr; } }

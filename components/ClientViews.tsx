@@ -214,7 +214,7 @@ export function ClientNominate() {
         >
           <div className="grid grid-2">
             <div className="field"><label htmlFor="nn">Nombre *</label><input id="nn" type="text" required value={f.nomineeName} onChange={set("nomineeName")} /></div>
-            <div className="field"><label htmlFor="ne">Correo corporativo *</label><input id="ne" type="email" required value={f.nomineeEmail} onChange={set("nomineeEmail")} /></div>
+            <div className="field"><label htmlFor="ne">Correo electrónico *</label><input id="ne" type="email" required value={f.nomineeEmail} onChange={set("nomineeEmail")} /></div>
             <div className="field"><label htmlFor="nr">Rol *</label><input id="nr" type="text" required value={f.role} onChange={set("role")} /></div>
             <div className="field"><label htmlFor="nt">Unidad / equipo</label><input id="nt" type="text" value={f.team} onChange={set("team")} /></div>
           </div>
