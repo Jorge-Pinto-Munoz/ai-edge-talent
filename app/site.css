@@ -480,3 +480,28 @@ html, body { overflow-x: clip; }
 
 .gate-dims { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .gate-dims li { padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-size: 0.82rem; font-weight: 700; }
+
+/* ───── Clientes: valor, qué recibe y línea de tiempo en fondo claro ───── */
+.value-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.value-card { display: grid; gap: 10px; align-content: start; padding: 26px; border-radius: 24px; background: var(--surface); border: 1px solid var(--border); }
+.value-ico { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: var(--obsidian); color: var(--cyan); }
+.value-card h3 { margin: 4px 0 0; font-size: 1.15rem; }
+.value-card p { margin: 0; color: var(--muted); }
+.recv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.recv-col { padding: 28px; border-radius: 28px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--fog); }
+.recv-col h3 { margin: 0 0 14px; color: #fff; font-size: 1.1rem; }
+.recv-col h3:not(:first-child) { margin-top: 26px; }
+.recv-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.recv-col li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.recv-col li svg { color: var(--cyan); margin-top: 2px; }
+.recv-col ul.no li svg { color: var(--st-bad); }
+.recv-col strong { color: #fff; }
+.recv-col .ds-milestones li { display: block; padding-left: 30px; }
+.recv-col .ds-milestones li::after { background: rgba(255, 255, 255, 0.14); }
+.recv-col .ds-milestones li::before { background: rgba(61, 201, 212, 0.16); }
+.w3-grid.light .timeline h3 { color: var(--text); }
+.w3-grid.light .timeline p { color: var(--muted); }
+.w3-grid.light .timeline .when { color: var(--brand); }
+.w3-grid.light .timeline li::before { background: var(--surface); border-color: var(--brand); }
+.w3-grid.light .timeline li:first-child::before { background: var(--brand); }
+@media (max-width: 860px) { .value-grid, .recv { grid-template-columns: 1fr; } .recv-col { padding: 22px 18px; } .value-card { padding: 22px; } }

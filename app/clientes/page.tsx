@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { AiCertSection } from "@/components/site/AiCertSection";
-import { certifiedRate } from "@/lib/aicert/stats";
+import { programAdoption } from "@/lib/aicert/adoption";
+import { AICERT_AFTER, AICERT_IMPACT, AICERT_REWARDS } from "@/lib/data/aicert";
+import { CertCatalog } from "@/components/site/CertCatalog";
+import { AdoptionSection } from "@/components/site/AdoptionSection";
 import type { CSSProperties } from "react";
 import { FAQ_BY_ROLE } from "@/lib/data/program";
 import { AUDIENCE_LINES, PUBLIC_STAGES } from "@/lib/data/site";
@@ -8,7 +10,6 @@ import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
 import { StageCard } from "@/components/site/StageCard";
-import { CATALOG } from "@/lib/data/aicert-catalog";
 import { Faq, SecHead } from "@/components/site/Blocks";
 
 export const metadata = { title: "Para clientes · AI Edge Talent" };
@@ -22,6 +23,13 @@ const RECEIVE = [
   "Resultados, evidencia y próximos pasos",
 ];
 const NOT_RECEIVE = ["Ranking entre profesionales", "Puntajes del Assessment", "Evaluación detallada de cada persona"];
+/** Lo que gana su empresa: tres ideas, en orden de importancia. */
+const VALUE = [
+  { icon: "flask" as const, title: "Un caso real con impacto", body: "Cada profesional construye una solución con IA para un desafío de su operación y la presenta con evidencia." },
+  { icon: "badge" as const, title: "Certificación internacional por rol", body: "AI CERTs valida con examen el dominio técnico de la IA aplicada al rol de cada persona." },
+  { icon: "clock" as const, title: "En paralelo al servicio", body: "Kibernum financia la certificación y la habilitación ocurre sin descontar horas, con tiempo coordinado con usted." },
+];
+
 const NOMINATE = [
   { when: "Paso 1", title: "Conversas con tu Delivery", body: "Te explica el programa y acuerdan la disponibilidad de tu equipo." },
   { when: "Paso 2", title: "Identifican profesionales", body: "Personas que ya usan IA y tienen un desafío real que abordar en tu operación." },
@@ -32,30 +40,47 @@ const NOMINATE = [
 export const revalidate = 600;
 
 export default async function ClientesPage() {
+  const adoption = await programAdoption();
   return (
     <div className="site-main">
-      <section className="hero-x bleed" style={{ minHeight: "min(700px, 88vh)" }}>
-        <div className="photo" role="img" aria-label="Equipo trabajando con un cliente (imagen ilustrativa)" style={{ backgroundImage: "url(/images/colaboracion.webp)", "--photo-pos": "70% center" } as CSSProperties} />
+      <section className="hero-x bleed">
+        <div className="photo" role="img" aria-label="Equipo trabajando con un cliente (imagen ilustrativa)" style={{ backgroundImage: "url(/images/colaboracion.webp)" } as CSSProperties} />
         <span className="glow c" aria-hidden="true" />
         <div className="hero-x-body">
           <Reveal>
             <div className="eyebrow">AI Edge Talent · Para clientes</div>
-            <h1 style={{ textTransform: "none", fontSize: "var(--fs-h1)", lineHeight: 1.05 }}>Tus profesionales,<br /><span className="grad">con IA aplicada a tu operación.</span></h1>
+            <h1 style={{ textTransform: "none", fontSize: "var(--fs-h1)", lineHeight: 1.05 }}>Sus profesionales,<br /><span className="grad">con IA aplicada a su operación.</span></h1>
           </Reveal>
           <Reveal delay={100}>
-            <p className="lead">Los profesionales de Kibernum que te prestan servicios se certifican en IA y la llevan a un desafío real de tu empresa. Tú decides qué casos continúan.</p>
+            <p className="lead">Los profesionales de Kibernum que le prestan servicios se certifican en IA y la llevan a un desafío real de su empresa, con impacto medible.</p>
             <div className="actions">
-              <a className="pill accent lg" href="#como-funciona">Cómo funciona <Icon name="arrowRight" size={18} /></a>
-              <Link className="pill ghost lg" href="/inicio">Entrar como cliente</Link>
+              <a className="pill accent lg" href="#talento">Explorar el talento <Icon name="arrowRight" size={18} /></a>
+              <a className="pill ghost lg" href="#como-funciona">Cómo funciona</a>
             </div>
           </Reveal>
         </div>
       </section>
 
+      {/* 1 · Valor: lo primero que debe entender */}
+      <section className="sec tight" id="valor">
+        <div className="sec-inner">
+          <SecHead eyebrow="Lo que gana su empresa" title="La habilitación no termina en un curso." lead={`${AICERT_IMPACT.headline}: la meta es un caso funcionando en su operación y un compromiso de agilidad que medimos al mes 1 y al mes 3.`} />
+          <div className="value-grid">
+            {VALUE.map((v, i) => (
+              <Reveal key={v.title} delay={i * 80} className="value-card">
+                <span className="value-ico"><Icon name={v.icon} size={24} /></span>
+                <h3>{v.title}</h3>
+                <p>{v.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
 
+      {/* 2 · Cómo funciona */}
       <section className="sec dark bleed" id="como-funciona">
         <div className="sec-inner">
-          <SecHead eyebrow="Tu rol en cada etapa" title="Participas en los momentos que importan." lead="Desliza para ver qué pasa en cada etapa y qué se espera de tu empresa." more={{ href: "/programa?para=cliente", label: "Ver el programa" }} />
+          <SecHead eyebrow="Cómo funciona" title="Participa en los momentos que importan." lead="Cinco etapas. Desliza para ver qué pasa en cada una y qué se espera de su empresa." more={{ href: "/programa?para=cliente", label: "Ver el programa" }} />
         </div>
         <Reveal delay={100}>
           <Carousel label="Etapas desde la vista del cliente" dark>
@@ -66,43 +91,54 @@ export default async function ClientesPage() {
         </Reveal>
       </section>
 
-      <section className="sec" id="informacion">
+      {/* 3 · Explorar el talento */}
+      <section className="sec" id="talento">
         <div className="sec-inner">
-          <SecHead eyebrow="Información" title="Qué recibes y qué no." lead="Te mantenemos al tanto de lo que necesitas para decidir, cuidando la evaluación individual de cada persona." />
-          <div className="duo">
-            <Reveal className="list-card">
-              <h3>Lo que recibes</h3>
-              <ul>{RECEIVE.map((x) => <li key={x}><span className="tick"><Icon name="check" size={16} /></span>{x}</li>)}</ul>
+          <SecHead eyebrow="Explore el talento" title="¿Qué rol quiere potenciar en su equipo?" lead="Elija uno o varios roles y vea las certificaciones AI CERTs que corresponden. Abra cualquiera para ver sus competencias." more={{ href: "/certificaciones", label: "Catálogo completo" }} />
+          <CertCatalog compact />
+        </div>
+      </section>
+
+      {/* 4 · Evidencia */}
+      <section className="sec" id="evidencia" style={{ paddingTop: 0 }}>
+        <div className="sec-inner">
+          <SecHead eyebrow="Evidencia del programa" title="Talento que estamos desarrollando." lead="Cifras reales y agregadas. Se actualizan a medida que avanzan las Waves." />
+          <AdoptionSection data={adoption} />
+        </div>
+      </section>
+
+      {/* 5 · Qué recibe */}
+      <section className="sec dark bleed" id="informacion">
+        <div className="sec-inner">
+          <SecHead eyebrow="Qué recibe" title="Información para decidir, sin exponer a las personas." />
+          <div className="recv">
+            <Reveal className="recv-col">
+              <h3>Usted recibe</h3>
+              <ul>{RECEIVE.map((x) => <li key={x}><Icon name="check" size={18} />{x}</li>)}</ul>
+              <h3 className="recv-no">Nunca recibe</h3>
+              <ul className="no">{NOT_RECEIVE.map((x) => <li key={x}><Icon name="close" size={18} />{x}</li>)}</ul>
             </Reveal>
-            <Reveal delay={100} className="list-card dark">
-              <h3>Lo que no recibes</h3>
-              <ul>{NOT_RECEIVE.map((x) => <li key={x}><span className="tick"><Icon name="close" size={16} /></span>{x}</li>)}</ul>
+            <Reveal delay={100} className="recv-col">
+              <h3>Cada profesional certificado obtiene</h3>
+              <ul>{AICERT_REWARDS.map((r) => <li key={r.title}><Icon name={r.icon} size={18} /><span><strong>{r.title}.</strong> {r.body.replace("tu perfil", "su perfil").replace("pasas a construir un caso real con tu cliente", "construye un caso real con su empresa")}</span></li>)}</ul>
+              <h3>Y lo seguimos acompañando</h3>
+              <ol className="ds-milestones">{AICERT_AFTER.map((a) => <li key={a.title}><strong>{a.when} · {a.title}.</strong> {a.body.replace("contigo y con tu cliente", "con el profesional y con usted").replace("Quedas visible", "Queda visible")}</li>)}</ol>
             </Reveal>
           </div>
         </div>
       </section>
 
-      <section className="sec" id="certificacion">
-        <div className="sec-inner">
-          <AiCertSection id="aic-clientes" audience="cliente" stat={await certifiedRate()} />
-          <Reveal className="cat-teaser">
-            <div>
-              <div className="eyebrow">Catálogo</div>
-              <h3>{CATALOG.length} certificaciones AI CERTs disponibles</h3>
-              <p>Consulte qué aprende cada una, para qué roles sirve y su malla por módulos.</p>
-            </div>
-            <Link className="pill accent lg" href="/certificaciones">Ver certificaciones <Icon name="arrowRight" size={18} /></Link>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="sec dark bleed" id="nominar">
-        <div className="sec-inner w3-grid">
+      <section className="sec" id="nominar">
+        <div className="sec-inner w3-grid light">
           <Reveal>
             <div className="eyebrow">Nominar profesionales</div>
-            <h2 style={{ fontSize: "var(--fs-h2)", color: "#fff", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Nominar no es seleccionar.</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-lead)", marginBottom: 28 }}>Junto a tu Delivery identifican a quienes tienen más potencial. Cada persona decide postular y la selección se hace por evidencia.</p>
-            <p className="muted">Para nominar, conversa con tu Delivery de Kibernum.</p>
+            <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Nominar no es seleccionar.</h2>
+            <p className="muted" style={{ fontSize: "var(--fs-lead)", marginBottom: 20 }}>Junto a su Delivery identifican a quienes tienen más potencial. Cada persona decide postular y la selección se hace por evidencia.</p>
+            <div className="stat-row">
+              <div className="stat"><strong>2–3 h</strong><small>por semana, según etapa</small></div>
+              <div className="stat"><strong>30–45</strong><small>días de recorrido</small></div>
+              <div className="stat"><strong>1</strong><small>caso real por persona</small></div>
+            </div>
           </Reveal>
           <Reveal delay={120}>
             <ol className="timeline vertical">
@@ -114,24 +150,6 @@ export default async function ClientesPage() {
                 </li>
               ))}
             </ol>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="sec" id="tiempo">
-        <div className="sec-inner split">
-          <Reveal>
-            <div className="eyebrow">Tiempo</div>
-            <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Un esfuerzo acotado, coordinado con tu equipo.</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-lead)" }}>Delivery coordina contigo los espacios dentro de jornada según la etapa. No es un número fijo todas las semanas.</p>
-            <div className="stat-row">
-              <div className="stat"><strong>2–3 h</strong><small>por semana, según etapa</small></div>
-              <div className="stat"><strong>30–45</strong><small>días de recorrido</small></div>
-              <div className="stat"><strong>1</strong><small>caso real por persona</small></div>
-            </div>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="media" style={{ backgroundImage: "url(/images/trabajo-laptop.webp)" }} role="img" aria-label="Profesional trabajando (imagen ilustrativa)" />
           </Reveal>
         </div>
       </section>
@@ -150,10 +168,10 @@ export default async function ClientesPage() {
       <section className="sec-inner" style={{ paddingBottom: "var(--sp-section)" }}>
         <Reveal className="cta-band">
           <div>
-            <h2>¿Ya participas en una Wave?</h2>
-            <p>Entra con tu correo para ver cómo avanzan tus profesionales.</p>
+            <h2>¿Ya participa en una Wave?</h2>
+            <p>Ingrese con su correo para ver cómo avanzan sus profesionales.</p>
           </div>
-          <Link className="pill accent lg" href="/inicio">Entrar como cliente <Icon name="arrowRight" size={18} /></Link>
+          <Link className="pill accent lg" href="/inicio">Ingresar como cliente <Icon name="arrowRight" size={18} /></Link>
         </Reveal>
       </section>
     </div>

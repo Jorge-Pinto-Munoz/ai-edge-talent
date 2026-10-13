@@ -2,7 +2,7 @@ import { SignOut } from "@/components/admission/SignOut";
 import { supabaseUser } from "@/lib/supabase/server";
 import { LAYERS, layerName, type Layer } from "@/lib/journey/rules";
 import { WAVE_STATUS_LABEL, type WaveStatus } from "@/lib/domain/types";
-import { AiCertSection } from "@/components/site/AiCertSection";
+import { Icon } from "@/components/site/Icon";
 import { certifiedRate } from "@/lib/aicert/stats";
 import { Callout, fmtDate } from "@/components/ui";
 import { PulseCard } from "@/components/pulse/PulseCard";
@@ -101,7 +101,14 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
       <Callout title="Su rol en el proceso">
         Habilitar la disponibilidad coordinada (normalmente 2–3 h/semana según etapa), ayudar a validar el problema en AI Lab y tomar una decisión de continuidad en el Showcase.
       </Callout>
-      <div className="card"><AiCertSection id="aic-cliente" audience="cliente" stat={stat} /></div>
+      <div className="cat-teaser">
+        <div>
+          <div className="eyebrow">Certificaciones AI CERTs</div>
+          <h3>Explore el talento que puede desarrollar en su equipo</h3>
+          <p>Por rol: qué certificación corresponde, qué aprende cada profesional y cómo lo aplica.{stat ? ` En Waves cerradas, ${stat.rate} % de los inscritos se certificó.` : ""}</p>
+        </div>
+        <a className="pill accent lg" href="/certificaciones">Ver certificaciones <Icon name="arrowRight" size={18} /></a>
+      </div>
     </div>
   );
 }

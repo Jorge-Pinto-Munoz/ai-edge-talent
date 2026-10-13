@@ -227,7 +227,7 @@ export const AUDIENCE_LINES: Record<"cliente" | "equipo", Record<string, string>
     assessment: "Nominas junto a Delivery. Cada profesional decide postular y responde personalmente.",
     mindset: "Habilitas tiempo: tu profesional rediseña una actividad real de su trabajo.",
     "role-enablement": "Recibes el inicio, el avance relevante y el resultado de su certificación.",
-    "ai-lab-showcase": "Validas un problema real y decides en el Showcase si el caso continúa.",
+    "ai-lab-showcase": "Habilitas el contexto de un problema real y ves en el Showcase el impacto de la solución.",
     cierre: "Recibes resultado, evidencia y próximos pasos. Decides la continuidad.",
   },
   equipo: {

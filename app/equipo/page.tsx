@@ -1,121 +1,92 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
-import { FAQ_BY_ROLE } from "@/lib/data/program";
-import { AUDIENCE_LINES, PUBLIC_STAGES } from "@/lib/data/site";
-import { Icon, type IconName } from "@/components/site/Icon";
-import { Reveal } from "@/components/site/Reveal";
-import { Carousel } from "@/components/site/Carousel";
-import { StageCard } from "@/components/site/StageCard";
-import { Faq, SecHead } from "@/components/site/Blocks";
+import { requireTeamPage } from "@/lib/staff/guard";
+import { supabaseUser } from "@/lib/supabase/server";
+import { waveReport } from "@/lib/pulse/report";
+import { DELIVERY_STAGES } from "@/lib/data/delivery-guide";
+import { DeliveryJourney, type StageLive } from "@/components/staff/DeliveryJourney";
+import { Kpi } from "@/components/ds/Status";
+import { Icon } from "@/components/site/Icon";
+import { StaffSignOut } from "@/components/staff/StaffSignOut";
 
-export const metadata = { title: "Equipo Kibernum · AI Edge Talent" };
+export const metadata = { title: "Acompañamiento · Equipo AI Edge Talent" };
+export const dynamic = "force-dynamic";
 
+const ADMISSION = ["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED", "APPLICATION_SUBMITTED", "ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED", "SELECTED", "CONDITIONS_PENDING"];
+const ORDER = ["assessment", "mindset", "certs", "lab", "showcase", "closure"];
 
-const TOOLS: { title: string; body: string; icon: IconName; size?: "wide" | "full" }[] = [
-  { title: "Resumen con pendientes", body: "Lo que necesita acción hoy en cada Wave: evaluar, decidir, revisar entregas y verificar certificaciones.", icon: "grid", size: "wide" },
-  { title: "Admisión por columnas", body: "Dónde está cada persona, de un vistazo.", icon: "kanban" },
-  { title: "Journey y entregas", body: "Avance por etapa, tareas de Mindset y certificaciones.", icon: "route" },
-  { title: "Feedback semanal de AI Coaches", body: "Cada AI Coach registra el avance de su grupo desde Role Enablement.", icon: "chat", size: "wide" },
-  { title: "Pool de talento", body: "Todas las Waves, por especialidad, con High Talent y seguimiento a 1 y 3 meses.", icon: "star", size: "full" },
-];
+/** Inicio de Delivery: en qué etapa está cada profesional, qué viene, qué te toca y qué necesita atención. */
+export default async function EquipoHome({ searchParams }: { searchParams: Promise<{ wave?: string }> }) {
+  const { wave: wq } = await searchParams;
+  const viewer = await requireTeamPage("/equipo");
+  const db = await supabaseUser();
+  const { data: waves } = await db.from("waves").select("id, name, status").order("created_at", { ascending: false });
+  const open = (waves ?? []).filter((w) => w.status !== "CLOSED");
+  const wave = (waves ?? []).find((w) => w.id === wq) ?? open[0] ?? waves?.[0] ?? null;
 
-const DECIDES = [
-  "Product Lead: declara la Wave lista, valida documentos y otorga excepciones",
-  "Hub AI: evaluación y selección en comité",
-  "Cliente: decide la continuidad en el Showcase",
-  "Delivery: coordina, acompaña, comunica y escala",
-];
+  let live: StageLive[] = DELIVERY_STAGES.map((s) => ({ id: s.id, status: "pending", people: 0, attention: [] }));
+  let totals = { admission: 0, journey: 0, attention: 0 };
+  if (wave) {
+    const [{ data: adm }, report, { data: labs }] = await Promise.all([
+      db.from("candidates").select("id", { count: "exact" }).eq("wave_id", wave.id).in("status", ADMISSION),
+      waveReport(wave.id),
+      db.from("lab_projects").select("status, lab_project_members(candidate_id)").eq("wave_id", wave.id),
+    ]);
+    const ready = new Set((labs ?? []).filter((p) => p.status === "READY").flatMap((p) => (p.lab_project_members as { candidate_id: string }[]).map((m) => m.candidate_id)));
+    const at = (id: string) => report.persons.filter((p) => {
+      if (id === "mindset") return !p.layer || p.layer === "AI_MINDSET" || p.layer === "ASSESSMENT";
+      if (id === "certs") return p.layer === "ROLE_ENABLEMENT";
+      if (id === "lab") return p.layer === "AI_LAB_SHOWCASE" && !ready.has(p.id);
+      if (id === "showcase") return p.layer === "AI_LAB_SHOWCASE" && ready.has(p.id);
+      if (id === "closure") return p.layer === "CLOSURE";
+      return false;
+    });
+    const counts = Object.fromEntries(ORDER.map((id) => [id, id === "assessment" ? (adm ?? []).length : at(id).length]));
+    const lastWithPeople = Math.max(...ORDER.map((id, i) => (counts[id] > 0 ? i : -1)));
+    live = ORDER.map((id, i) => {
+      const attention = id === "assessment" ? [] : at(id).filter((p) => p.alert).map((p) => ({ id: p.id, name: p.name, reason: p.alert!.reason, action: p.alert!.action, level: p.alert!.level }));
+      const status: StageLive["status"] = attention.length ? "attention" : counts[id] > 0 ? "progress" : i < lastWithPeople ? "done" : "pending";
+      return { id, status, people: counts[id], attention };
+    });
+    totals = { admission: counts.assessment, journey: report.persons.length, attention: live.reduce((n, l) => n + l.attention.length, 0) };
+  }
 
-export default function EquipoPage() {
   return (
-    <div className="site-main">
-      <section className="hero-x bleed" style={{ minHeight: "min(700px, 88vh)" }}>
-        <div className="photo" role="img" aria-label="Equipo Kibernum (imagen ilustrativa)" style={{ backgroundImage: "url(/images/equipo.webp)" } as CSSProperties} />
-        <span className="glow c" aria-hidden="true" />
-        <span className="glow m" aria-hidden="true" />
-        <div className="hero-x-body">
-          <Reveal>
-            <div className="eyebrow">AI Edge Talent · Equipo Kibernum</div>
-            <h1 style={{ textTransform: "none", fontSize: "var(--fs-h1)", lineHeight: 1.05 }}>Todo para operar<br /><span className="grad">cada Wave.</span></h1>
-          </Reveal>
-          <Reveal delay={100}>
-            <p className="lead">Delivery, AI Coaches, Hub AI y Product Lead: qué hacer en cada etapa, quién decide y dónde registrar la evidencia.</p>
-            <div className="actions">
-              <Link className="pill accent lg" href="/inicio">Entrar al portal <Icon name="arrowRight" size={18} /></Link>
-              <Link className="pill ghost lg" href="/delivery/playbook">Ver el playbook</Link>
-            </div>
-          </Reveal>
+    <div className="team">
+      <header className="team-head">
+        <div>
+          <div className="eyebrow">Área de equipo · Acompañamiento</div>
+          <h1>Hola{viewer.fullName ? `, ${viewer.fullName.split(" ")[0]}` : ""}.</h1>
+          <p>Dónde está cada profesional, qué viene y qué te toca. Elige una etapa para ver tu gestión.</p>
         </div>
-      </section>
-
-
-      <section className="sec dark bleed" id="etapas">
-        <div className="sec-inner">
-          <SecHead eyebrow="Etapa por etapa" title="Qué hace Delivery en cada etapa." lead="Desliza y toca una etapa para ver las tareas y la evidencia que se registra." />
-        </div>
-        <Reveal delay={100}>
-          <Carousel label="Etapas desde la vista del equipo" dark>
-            {PUBLIC_STAGES.map((s) => (
-              <StageCard key={s.slug} stage={s} line={AUDIENCE_LINES.equipo[s.slug]} href={`/programa/${s.slug}?para=equipo`} />
-            ))}
-          </Carousel>
-        </Reveal>
-      </section>
-
-      <section className="sec">
-        <div className="sec-inner">
-          <SecHead eyebrow="El portal" title="Las herramientas que vas a usar." more={{ href: "/inicio", label: "Entrar" }} />
-          <div className="bento">
-            {TOOLS.map((b, i) => (
-              <Reveal key={b.title} delay={i * 70} className={`bento-tile ${b.size ?? ""}`}>
-                <span className="orb" aria-hidden="true" />
-                <span className="ico"><Icon name={b.icon} size={28} /></span>
-                <h3>{b.title}</h3>
-                <p>{b.body}</p>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="sec" style={{ paddingTop: 0 }}>
-        <div className="sec-inner duo">
-          <Reveal className="list-card">
-            <h3>Quién decide qué</h3>
-            <ul>{DECIDES.map((x) => <li key={x}><span className="tick"><Icon name="check" size={16} /></span>{x}</li>)}</ul>
-            <Link href="/responsabilidades" className="more-link" style={{ marginTop: 16 }}>Ver la matriz completa <Icon name="arrowRight" size={16} /></Link>
-          </Reveal>
-          <Reveal delay={100} className="list-card dark">
-            <h3>Cuándo escalar</h3>
-            <ul>
-              {["No asistencia a Mindset", "Una semana sin acompañamiento en la certificación", "Segundo intento no aprobado", "Un cliente que bloquea el proceso"].map((x) => (
-                <li key={x}><span className="tick"><Icon name="alert" size={16} /></span>{x}</li>
+        <div className="team-head-actions">
+          {(waves ?? []).length > 1 && (
+            <nav className="ds-seg" aria-label="Wave">
+              {(waves ?? []).map((w) => (
+                <Link key={w.id} href={`/equipo?wave=${w.id}`} aria-current={w.id === wave?.id ? "page" : undefined} className={w.id === wave?.id ? "on" : ""}>{w.name.replace("AI Edge Talent · ", "")}</Link>
               ))}
-            </ul>
-          </Reveal>
+            </nav>
+          )}
+          <StaffSignOut />
+        </div>
+      </header>
+
+      <div className="team-kpis">
+        <Kpi label="En admisión" value={totals.admission} hint="Nominados, postulando o en evaluación" />
+        <Kpi label="En el journey" value={totals.journey} hint="Inscritos y avanzando" />
+        <Kpi label="Requieren atención" value={totals.attention} hint={totals.attention ? "Revisa la etapa marcada" : "Sin alertas por ahora"} />
+      </div>
+
+      <DeliveryJourney stages={DELIVERY_STAGES} live={live} waveId={wave?.id ?? null} />
+
+      <section className="team-res" aria-labelledby="res-t">
+        <h2 id="res-t">Recursos del equipo</h2>
+        <div className="team-res-grid">
+          <Link href="/equipo/playbook" className="ds-tile"><Icon name="book" size={22} /><strong>Playbook de acompañamiento</strong><span>Checklists, comunicaciones, riesgos y escalamiento por etapa.</span></Link>
+          <Link href="/responsabilidades" className="ds-tile"><Icon name="users" size={22} /><strong>Responsabilidades (RACI)</strong><span>Quién hace, decide, es consultado e informado.</span></Link>
+          <Link href={wave ? `/admin/admision/${wave.id}` : "/admin"} className="ds-tile"><Icon name="grid" size={22} /><strong>Portal operativo</strong><span>Admisión, journey, clases, pulsos y AI Lab de la Wave.</span></Link>
         </div>
       </section>
-
-      <section className="sec" id="preguntas" style={{ paddingTop: 0 }}>
-        <div className="sec-inner faq-grid">
-          <Reveal>
-            <div className="eyebrow">Preguntas frecuentes</div>
-            <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Lo que pregunta el equipo.</h2>
-            <Link href="/ayuda?rol=DELIVERY" className="more-link">Ver todas <Icon name="arrowRight" size={16} /></Link>
-          </Reveal>
-          <Reveal delay={100}><Faq items={FAQ_BY_ROLE.DELIVERY} /></Reveal>
-        </div>
-      </section>
-
-      <section className="sec-inner" style={{ paddingBottom: "var(--sp-section)" }}>
-        <Reveal className="cta-band">
-          <div>
-            <h2>Todo lo operativo está en el portal.</h2>
-            <p>Entra con tu correo de Kibernum. Tu acceso lo habilita un admin.</p>
-          </div>
-          <Link className="pill accent lg" href="/inicio">Entrar al portal <Icon name="arrowRight" size={18} /></Link>
-        </Reveal>
-      </section>
+      <p className="team-note">Registramos tus ingresos y las secciones del área de equipo que consultas, solo para auditoría (180 días).</p>
     </div>
   );
 }

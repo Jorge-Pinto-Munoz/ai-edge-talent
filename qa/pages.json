@@ -9,14 +9,13 @@
     "/programa/cierre",
     "/clientes",
     "/certificaciones",
-    "/equipo",
     "/ayuda",
-    "/responsabilidades",
     "/login",
     "/postular/registro?wave=wave-3",
     "/wave-3/postular",
     "/sin-acceso",
-    "/no-existe"
+    "/no-existe",
+    "/equipo/ingresar"
   ],
   "admin": [
     "/admin",
@@ -29,11 +28,15 @@
     "/admin/vista",
     "/admin/soporte",
     "/admin/pulsos/wave-3",
-    "/admin/journey/wave-3?tab=aicert"
+    "/admin/journey/wave-3?tab=aicert",
+    "/admin/accesos?tab=registro"
   ],
   "delivery": [
     "/admin",
-    "/admin/profesor"
+    "/admin/profesor",
+    "/equipo",
+    "/equipo/playbook",
+    "/responsabilidades"
   ],
   "profesor": [
     "/admin/profesor"

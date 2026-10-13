@@ -120,7 +120,7 @@ export function HelpButton() {
     return () => window.removeEventListener(OPEN_EVENT, on);
   }, []);
   useEffect(() => setOpen(false), [path]);
-  const hidden = path.startsWith("/admin") || path === "/ayuda";
+  const hidden = path.startsWith("/admin") || path === "/ayuda" || path === "/equipo" || path.startsWith("/equipo/") || path === "/responsabilidades";
   return (
     <>
       {!hidden && (

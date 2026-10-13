@@ -41,11 +41,10 @@ export const AUDIENCE: Record<
     short: "Equipo",
     home: "/equipo",
     nav: [
-      { href: "/delivery/playbook", label: "Playbook" },
+      { href: "/equipo/playbook", label: "Playbook" },
       { href: "/responsabilidades", label: "Responsabilidades" },
-      { href: "/ayuda?rol=DELIVERY", label: "Preguntas" },
     ],
-    cta: { href: "/inicio", label: "Entrar al portal" },
+    cta: { href: "/equipo", label: "Ingresar" },
   },
 };
 
@@ -64,6 +63,8 @@ export function audienceOfPath(path: string): Audience | null {
 /** Portales con sesión: llevan su propia navegación y no muestran la del sitio público. */
 const PORTALS = ["/admin", "/mi-journey", "/ai-coach", "/mentor", "/cliente", "/inicio", "/sin-acceso"];
 export function isPortalPath(path: string): boolean {
+  if (path === "/equipo/ingresar") return false;
+  if (path === "/equipo" || path.startsWith("/equipo/") || path === "/responsabilidades") return true;
   return PORTALS.some((p) => path === p || path.startsWith(`${p}/`));
 }
 

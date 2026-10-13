@@ -1,65 +1,57 @@
 import Link from "next/link";
-import { CATALOG, CATALOG_SOURCE, ROLE_ROUTES, certBySlug } from "@/lib/data/aicert-catalog";
+import { CATALOG, CATALOG_SOURCE, ROLE_FAMILIES } from "@/lib/data/aicert-catalog";
+import { programAdoption } from "@/lib/aicert/adoption";
 import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { CertCatalog } from "@/components/site/CertCatalog";
+import { AdoptionSection } from "@/components/site/AdoptionSection";
 
 export const metadata = {
   title: "Certificaciones AI CERTs · AI Edge Talent",
-  description: "Las certificaciones AI CERTs que ofrece AI Edge Talent: qué aprende cada una, para qué roles sirve y su malla por módulos.",
+  description: "Explora por rol las certificaciones AI CERTs de AI Edge Talent: qué aprende cada profesional, sus competencias y cómo se aplica en el trabajo.",
 };
+export const revalidate = 600;
 
-/** Catálogo para clientes (y profesionales): consultar qué certificaciones hay y qué se aprende en cada una. */
-export default function Certificaciones() {
+/** Explora el talento que quieres desarrollar: rol → certificaciones → detalle, y la evidencia del programa. */
+export default async function Certificaciones() {
+  const adoption = await programAdoption();
   return (
     <div className="site-main">
       <section className="sec dark bleed cat-hero">
         <div className="sec-inner">
           <Reveal>
             <div className="eyebrow">AI CERTs · Catálogo</div>
-            <h1>Certificaciones en IA para cada rol de su equipo.</h1>
-            <p className="lead">{CATALOG.length} certificaciones internacionales AI CERTs, con su malla validada. Filtre por área o busque un rol para ver qué aprende cada profesional y cómo lo aplica en su operación.</p>
+            <h1>Explora el talento que quieres desarrollar.</h1>
+            <p className="lead">Elige uno o varios roles de tu equipo y descubre qué certificación internacional AI CERTs corresponde, qué aprende cada profesional y cómo lo aplica en tu operación.</p>
             <div className="cat-hero-stats">
-              <span><b>{CATALOG.length}</b> certificaciones con malla</span>
-              <span><b>{new Set(CATALOG.map((c) => c.area)).size}</b> áreas</span>
-              <span><b>{CATALOG.filter((c) => c.aet).length}</b> en uso hoy en AI Edge Talent</span>
+              <span><b>{CATALOG.length}</b> certificaciones con malla validada</span>
+              <span><b>{ROLE_FAMILIES.length}</b> familias de rol</span>
+              <span><b>100 %</b> financiadas por Kibernum</span>
             </div>
           </Reveal>
         </div>
       </section>
 
-      <section className="sec">
+      <section className="sec" style={{ paddingTop: 48 }}>
         <div className="sec-inner">
           <CertCatalog />
         </div>
       </section>
 
-      <section className="sec dark bleed" id="rutas">
+      <section className="sec bleed adopt-sec" id="talento" style={{ paddingTop: 0 }}>
         <div className="sec-inner">
           <Reveal className="sec-head">
             <div>
-              <div className="eyebrow">Rutas por rol</div>
-              <h2>De los fundamentos a la especialidad.</h2>
-              <p>Una referencia para conversar con su Delivery: primero alfabetización y prompting, luego la certificación del oficio. La ruta final se acuerda según el rol y el desafío real.</p>
+              <div className="eyebrow">Evidencia del programa</div>
+              <h2>Talento que estamos desarrollando.</h2>
+              <p>Cifras reales y agregadas de AI Edge Talent. Se actualizan solas a medida que avanzan las Waves.</p>
             </div>
           </Reveal>
-          <div className="routes">
-            {ROLE_ROUTES.map((r, i) => (
-              <Reveal key={r.role} delay={i * 40} className="route-card">
-                <h3>{r.role}</h3>
-                <ol>
-                  {r.steps.map((s) => {
-                    const c = certBySlug(s)!;
-                    return <li key={s}><a href={`#cert-${s}`}>{c.name.replace("™", "")}</a></li>;
-                  })}
-                </ol>
-              </Reveal>
-            ))}
-          </div>
+          <AdoptionSection data={adoption} />
         </div>
       </section>
 
-      <section className="sec-inner" style={{ padding: "var(--sp-section) 24px" }}>
+      <section className="sec-inner" style={{ paddingBottom: "var(--sp-section)" }}>
         <Reveal className="cta-band">
           <div>
             <h2>¿Qué certificación necesita su equipo?</h2>
@@ -71,8 +63,7 @@ export default function Certificaciones() {
           </div>
         </Reveal>
         <p className="cat-note">
-          Fuente: catálogo oficial de AI CERTs (aicerts.ai) y resúmenes ejecutivos de cada malla, al {CATALOG_SOURCE.date}. El catálogo oficial tiene {CATALOG_SOURCE.officialTotal} entradas en {CATALOG_SOURCE.officialAreas} áreas; aquí mostramos las que tienen malla validada.
-          Los módulos son una síntesis en español: no reemplazan el material oficial y AI CERTs puede actualizarlos.
+          Fuente: catálogo oficial de AI CERTs (aicerts.ai) y resúmenes ejecutivos de cada malla, al {CATALOG_SOURCE.date}. El catálogo oficial tiene {CATALOG_SOURCE.officialTotal} entradas en {CATALOG_SOURCE.officialAreas} áreas; aquí mostramos las que tienen malla validada. Los niveles corresponden al nombre oficial de cada certificación.
         </p>
       </section>
     </div>

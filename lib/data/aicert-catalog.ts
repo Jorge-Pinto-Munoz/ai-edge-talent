@@ -215,4 +215,22 @@ export const ROLE_ROUTES: { role: string; steps: string[] }[] = [
   { role: "Arquitectura", steps: ["everyone-fundamentals", "prompting-fundamentals", "cloud", "architect"] },
 ];
 
+/**
+ * Familias de rol para explorar el catálogo. Cada relación sale del Atlas (rutas por rol de AI CERTs, secciones 4–6,
+ * y "para quién" de cada malla); no se agregan certificaciones sin respaldo.
+ */
+export interface RoleFamily { id: string; name: string; roles: string; icon: "code" | "bug" | "target" | "cycle" | "cloud" | "shield" | "database" | "bot" | "pen" | "spark"; certs: string[] }
+export const ROLE_FAMILIES: RoleFamily[] = [
+  { id: "dev", name: "Desarrollo de software", roles: "Developer, backend, .NET, Java, full stack", icon: "code", certs: ["developer", "engineer", "vibe-coding", "context-engineering"] },
+  { id: "qa", name: "QA y testing", roles: "QA, automatización de pruebas", icon: "bug", certs: ["qa"] },
+  { id: "product", name: "Producto y análisis", roles: "Product Owner, Product Manager, Business Analyst", icon: "target", certs: ["product-manager"] },
+  { id: "agile", name: "Agilidad y proyectos", roles: "Scrum Master, Agile Coach, Project Manager, PMO", icon: "cycle", certs: ["agile-pm", "project-manager", "project-management"] },
+  { id: "arch", name: "Arquitectura y cloud", roles: "Arquitectura de soluciones, cloud, DevOps", icon: "cloud", certs: ["architect", "cloud", "engineer"] },
+  { id: "sec", name: "Ciberseguridad", roles: "Seguridad, SOC, redes, cumplimiento", icon: "shield", certs: ["security-practitioner", "security-expert", "security-strategist", "security-compliance", "network", "ethical-hacker"] },
+  { id: "data", name: "Datos e IA", roles: "Data Analyst, BI, Data Engineer", icon: "database", certs: ["data", "data-agent"] },
+  { id: "agents", name: "Agentes de IA", roles: "Automatización y asistentes", icon: "bot", certs: ["agent", "data-agent", "context-engineering"] },
+  { id: "design", name: "Diseño y UX", roles: "UX/UI, research, diseño de producto", icon: "pen", certs: ["design", "ux-designer"] },
+  { id: "base", name: "Fundamentos para todos", roles: "Cualquier rol: punto de partida", icon: "spark", certs: ["everyone-fundamentals", "prompting-fundamentals", "ethics"] },
+];
+
 export const certBySlug = (slug: string) => CATALOG.find((c) => c.slug === slug);
