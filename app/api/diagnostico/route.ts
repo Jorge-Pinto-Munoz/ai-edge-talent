@@ -1,3 +1,4 @@
+import { describeProvider, emailProvider } from "@/lib/email/provider";
 import { NextResponse } from "next/server";
 import { env, serverEnv } from "@/lib/supabase/env";
 
@@ -29,6 +30,6 @@ export async function GET() {
     authConPublishable: await check("/auth/v1/settings", env.supabaseAnonKey),
     authAdminConSecret: await check("/auth/v1/admin/users?per_page=1", secret),
     anthropic: serverEnv().anthropicConfigured ? "configurada" : "FALTA",
-    resend: serverEnv().resendApiKey ? `configurada · remitente ${serverEnv().resendFrom || "FALTA RESEND_FROM"}` : "FALTA",
+    correo: describeProvider(emailProvider()),
   });
 }

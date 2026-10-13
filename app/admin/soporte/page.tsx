@@ -34,7 +34,7 @@ export default async function Soporte({ searchParams }: { searchParams: Promise<
       {failed > 0 && (
         <div className="callout warn" role="note">
           <strong>{failed} pregunta(s) abiertas no llegaron por correo</strong>
-          El envío de correos aún no está configurado (RESEND_API_KEY y RESEND_FROM en Vercel). Las preguntas quedan guardadas aquí igual.
+          El envío de correos aún no está configurado (SMTP_USER y SMTP_PASS en Vercel, o Resend). Las preguntas quedan guardadas aquí igual.
         </div>
       )}
       <nav className="view-toggle" aria-label="Filtrar" style={{ alignSelf: "start" }}>

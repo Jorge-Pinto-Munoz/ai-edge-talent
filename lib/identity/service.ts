@@ -129,7 +129,7 @@ export async function ensureAccount(email: string, fullName: string | null, svc:
 // ───────────── Correos (con registro real del envío) ─────────────
 /**
  * Envía un correo de identidad/journey y lo registra en email_messages: "sent" significa aceptado por el proveedor
- * (Resend), no entregado. Si falla queda "failed" para reintento.
+ * (SMTP o Resend), no entregado. Si falla queda "failed" para reintento.
  */
 export async function sendIdentityEmail(
   template: IdentityTemplate,
