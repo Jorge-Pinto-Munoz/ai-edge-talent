@@ -7,6 +7,10 @@ import { DeliveryJourney, type StageLive } from "@/components/staff/DeliveryJour
 import { Kpi } from "@/components/ds/Status";
 import { Icon } from "@/components/site/Icon";
 import { StaffSignOut } from "@/components/staff/StaffSignOut";
+import { supabaseService } from "@/lib/supabase/server";
+import { loadWavePeople } from "@/lib/pulse/experience-data";
+import { experience, operational } from "@/lib/pulse/experience";
+import { ExperienceByStage, ExperienceDetail } from "@/components/pulse/WaveExperience";
 
 export const metadata = { title: "Acompañamiento · Equipo AI Edge Talent" };
 export const dynamic = "force-dynamic";
@@ -50,6 +54,20 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
     totals = { admission: counts.assessment, journey: report.persons.length, attention: live.reduce((n, l) => n + l.attention.length, 0) };
   }
 
+  // Experiencia de tus profesionales: solo las personas asignadas a este Delivery; las respuestas, solo si el admin las compartió.
+  let mine: Awaited<ReturnType<typeof loadWavePeople>> | null = null;
+  let shared = false;
+  if (wave && viewer.role === "delivery") {
+    const svc = supabaseService();
+    const [{ data: assigned }, { data: ws }] = await Promise.all([
+      svc.from("delivery_assignments").select("candidate_id").eq("wave_id", wave.id).eq("delivery_email", viewer.email),
+      svc.from("wave_settings").select("share_experience").eq("wave_id", wave.id).maybeSingle(),
+    ]);
+    shared = Boolean(ws?.share_experience);
+    mine = await loadWavePeople(wave.id, { onlyIds: (assigned ?? []).map((a) => a.candidate_id), withAnswers: shared });
+  }
+  const mineOps = mine ? operational(mine) : null;
+
   return (
     <div className="team">
       <header className="team-head">
@@ -77,6 +95,37 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
       </div>
 
       <DeliveryJourney stages={DELIVERY_STAGES} live={live} waveId={wave?.id ?? null} />
+
+      {mine && mineOps && (
+        <section className="team-exp stack" aria-labelledby="exp-t">
+          <div>
+            <h2 id="exp-t" style={{ margin: 0 }}>Experiencia de tus profesionales</h2>
+            <p className="muted" style={{ margin: "6px 0 0" }}>
+              Solo las personas que tienes asignadas en esta Wave, en modo lectura.{" "}
+              {shared ? "El Líder de Servicio compartió su experiencia declarada en los pulsos de cierre." : "Ves su avance; su experiencia declarada aparecerá si el Líder de Servicio la comparte."}
+            </p>
+          </div>
+          {mine.length === 0 ? (
+            <p className="muted">Aún no tienes profesionales asignados en esta Wave. Si debieras tenerlos, avísale al Líder de Servicio.</p>
+          ) : (
+            <>
+              <div className="team-kpis">
+                <Kpi label="Asignados" value={mineOps.enrolled} hint={mineOps.neverSignedIn ? `${mineOps.neverSignedIn} sin primer ingreso` : "Todos ingresaron"} />
+                <Kpi label="Pulsos de cierre pendientes" value={mineOps.pulsePending} hint={mineOps.pulsePending ? "Recuérdales responderlo: sin él no avanzan" : "Al día"} />
+                <Kpi label="Requieren atención" value={mineOps.attention} />
+                {shared && <Kpi label="Satisfacción promedio" value={experience(mine).satisfaction === null ? "—" : String(experience(mine).satisfaction).replace(".", ",")} hint="De 1 a 5, en sus pulsos de cierre" />}
+              </div>
+              <ExperienceDetail people={mine} showExperience={shared} />
+              {shared && (
+                <details>
+                  <summary><strong>Ver sus respuestas por etapa</strong></summary>
+                  <div className="stack" style={{ marginTop: 12 }}><ExperienceByStage exp={experience(mine)} /></div>
+                </details>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
       <section className="team-res" aria-labelledby="res-t">
         <h2 id="res-t">Recursos del equipo</h2>

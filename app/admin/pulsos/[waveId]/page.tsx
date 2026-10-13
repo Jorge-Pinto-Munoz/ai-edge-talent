@@ -8,8 +8,17 @@ import { layerName } from "@/lib/journey/rules";
 import { progressLabel } from "@/lib/aicert/progress";
 import { PrintButton } from "@/components/admin/PrintButton";
 import { fmtDate } from "@/components/ui";
+import { supabaseService } from "@/lib/supabase/server";
+import { loadWavePeople } from "@/lib/pulse/experience-data";
+import { applyFilters, experience, operational } from "@/lib/pulse/experience";
+import { STAGE_STATUS } from "@/lib/journey/closure";
+import { LAYERS } from "@/lib/journey/rules";
+import { ExperienceByStage, ExperienceDetail, ExperienceSummary } from "@/components/pulse/WaveExperience";
+import { ShareExperience } from "@/components/pulse/ShareExperience";
 
-export const metadata = { title: "Pulsos e informe · Portal AET" };
+export const metadata = { title: "Avance y experiencia · Portal AET" };
+
+const LEVELS = [["resumen", "Resumen"], ["etapa", "Por etapa"], ["detalle", "Detalle"], ["habilitacion", "Indicadores de habilitación"]] as const;
 export const dynamic = "force-dynamic";
 
 const fmt = (x: number | null | undefined, suffix = "") => (x === null || x === undefined ? "—" : `${String(x).replace(".", ",")}${suffix}`);
@@ -27,14 +36,32 @@ const IND = [
   ["TIIC", "Impacto intermedio corroborado", "GPC ≥ +0,5, evidencia válida, ICP ≥ 6 y progreso verificado, a la vez.", "%"],
 ] as const;
 
-export default async function PulsosReport({ params }: { params: Promise<{ waveId: string }> }) {
+type SP = { nivel?: string; etapa?: string; cliente?: string; delivery?: string; estado?: string };
+
+export default async function PulsosReport({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<SP> }) {
   const { waveId } = await params;
+  const sp = await searchParams;
+  const nivel = LEVELS.some(([k]) => k === sp.nivel) ? sp.nivel! : "resumen";
   const viewer = await requireStaffPage(`/admin/pulsos/${waveId}`);
   if (viewer.role !== "admin") redirect("/sin-acceso");
   const db = await supabaseUser();
   const { data: wave } = await db.from("waves").select("id, name").eq("id", waveId).single();
   if (!wave) notFound();
-  const r = await waveReport(waveId);
+  const [r, all, { data: settings }, { data: team }] = await Promise.all([
+    waveReport(waveId),
+    loadWavePeople(waveId),
+    supabaseService().from("wave_settings").select("share_experience").eq("wave_id", waveId).maybeSingle(),
+    supabaseService().from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "delivery"),
+  ]);
+  const filters = { layer: sp.etapa, client: sp.cliente, delivery: sp.delivery, status: sp.estado };
+  const people = applyFilters(all, filters);
+  const ops = operational(people);
+  const exp = experience(people);
+  const clients = [...new Set(all.map((p) => p.client).filter(Boolean))] as string[];
+  const deliveries = [...new Set([...(team ?? []).map((t) => t.email), ...all.map((p) => p.delivery).filter(Boolean)])] as string[];
+  const { data: dprof } = deliveries.length ? await supabaseService().from("profiles").select("email, full_name").in("email", deliveries) : { data: [] };
+  const dName = (e: string | null) => (dprof ?? []).find((d) => d.email === e)?.full_name || e || "";
+  const qs = (k: string) => new URLSearchParams(Object.entries({ ...sp, nivel: k }).filter(([, v]) => v) as [string, string][]).toString();
   const enab = [["Pulso intermedio", r.enablementMid], ["Pulso de cierre", r.enablementClose]] as const;
   const readings = r.persons.filter((p) => p.pulse || p.alert);
 
@@ -43,11 +70,36 @@ export default async function PulsosReport({ params }: { params: Promise<{ waveI
       <div className="spread">
         <div>
           <div className="eyebrow">{wave.name}</div>
-          <h1 style={{ margin: 0 }}>Pulsos e informe</h1>
-          <p className="muted" style={{ margin: "6px 0 0" }}>Los pulsos aparecen solos en el portal de cada persona al pasar de etapa (el intermedio, a los {MID_DAYS} días de Role Enablement). Este informe se recalcula con cada respuesta.</p>
+          <h1 style={{ margin: 0 }}>Avance y experiencia</h1>
+          <p className="muted" style={{ margin: "6px 0 0" }}>Cada etapa se cierra con su pulso obligatorio, que se habilita al cumplir los requisitos académicos (el intermedio aparece a los {MID_DAYS} días de Role Enablement). Todo se recalcula con cada respuesta, sin datos estimados.</p>
         </div>
         <PrintButton />
       </div>
+
+      <ShareExperience waveId={waveId} shared={Boolean(settings?.share_experience)} />
+
+      <nav className="row" aria-label="Nivel del informe">
+        {LEVELS.map(([k, label]) => <Link key={k} href={`?${qs(k)}`} className={`btn small ${nivel === k ? "" : "ghost"}`} aria-current={nivel === k ? "page" : undefined}>{label}</Link>)}
+      </nav>
+
+      {nivel !== "habilitacion" && (
+        <form className="ex-filters" method="get">
+          <input type="hidden" name="nivel" value={nivel} />
+          <label>Etapa<select name="etapa" defaultValue={sp.etapa ?? ""}><option value="">Todas</option>{LAYERS.filter((l) => l.id !== "ASSESSMENT").map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+          <label>Cliente<select name="cliente" defaultValue={sp.cliente ?? ""}><option value="">Todos</option>{clients.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
+          <label>Delivery<select name="delivery" defaultValue={sp.delivery ?? ""}><option value="">Todos</option><option value="none">Sin Delivery asignado</option>{deliveries.map((d) => <option key={d} value={d}>{dName(d)}</option>)}</select></label>
+          <label>Estado<select name="estado" defaultValue={sp.estado ?? ""}><option value="">Todos</option>{Object.entries(STAGE_STATUS).filter(([k]) => k !== "LOCKED").map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+          <button className="btn small secondary">Filtrar</button>
+          {(sp.etapa || sp.cliente || sp.delivery || sp.estado) && <Link className="btn small ghost" href={`?nivel=${nivel}`}>Limpiar</Link>}
+          <small className="muted">{people.length} de {all.length} personas</small>
+        </form>
+      )}
+
+      {nivel === "resumen" && <ExperienceSummary ops={ops} exp={exp} />}
+      {nivel === "etapa" && <ExperienceByStage exp={exp} />}
+      {nivel === "detalle" && <ExperienceDetail people={people} deliveryName={dName} />}
+
+      {nivel === "habilitacion" && (<>
 
       <section className="card" aria-labelledby="cov">
         <h2 id="cov" style={{ marginTop: 0 }}>Respuestas por pulso</h2>
@@ -163,6 +215,7 @@ export default async function PulsosReport({ params }: { params: Promise<{ waveI
           </ul>
         </section>
       )}
+      </>)}
     </div>
   );
 }

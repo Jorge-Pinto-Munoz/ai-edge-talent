@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { assignDelivery, setWaveDeliveries, type AdminResult } from "@/lib/identity/admin-actions";
+import { assignDelivery, provisionWave, setWaveDeliveries, type AdminResult } from "@/lib/identity/admin-actions";
 import { layerName, type Layer } from "@/lib/journey/rules";
 import { Icon } from "@/components/site/Icon";
 
@@ -33,13 +33,21 @@ export function AssignmentsBoard({ waveId, pros, team, allDeliveries }: { waveId
       {res && <p className={res.ok ? "uc-ok" : "error"} role={res.ok ? "status" : "alert"}>{res.message}</p>}
       {alerts.length > 0 ? (
         <div className="dj-attn" role="region" aria-label="Alertas de cobertura">
-          <h3><Icon name="alert" size={18} /> {alerts.length} alerta{alerts.length === 1 ? "" : "s"} de cobertura</h3>
+          <h2 className="as-alert-t"><Icon name="alert" size={18} /> {alerts.length} alerta{alerts.length === 1 ? "" : "s"} de cobertura</h2>
           <ul className="as-alerts">{alerts.slice(0, 12).map((a) => <li key={a.k}>{a.t}</li>)}</ul>
           {alerts.length > 12 && <p className="muted" style={{ margin: 0 }}>Y {alerts.length - 12} más.</p>}
         </div>
       ) : (
         <p className="uc-ok">Cobertura completa: todos los profesionales tienen Delivery y todos los Delivery tienen profesionales.</p>
       )}
+
+      <section className="card">
+        <div className="spread">
+          <h2 style={{ margin: 0 }}>Portales de los profesionales</h2>
+          <button type="button" className="btn small secondary" disabled={busy} onClick={() => run(() => provisionWave(waveId))}>Activar portales pendientes</button>
+        </div>
+        <p className="muted ud-note">Cada inscrito recibe su código de activación al pasar a AI First Mindset. Esto lo envía a quienes aún no lo recibieron (por ejemplo, inscritos antes de esta función). No duplica envíos.</p>
+      </section>
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Delivery de la Wave</h2>

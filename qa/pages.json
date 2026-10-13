@@ -29,14 +29,22 @@
     "/admin/soporte",
     "/admin/pulsos/wave-3",
     "/admin/journey/wave-3?tab=aicert",
-    "/admin/accesos?tab=registro"
+    "/admin/accesos?tab=registro",
+    "/admin/usuarios",
+    "/admin/usuarios?tab=solicitudes",
+    "/admin/usuarios?tab=config",
+    "/admin/asignaciones/wave-3",
+    "/admin/pulsos/wave-3?nivel=etapa",
+    "/admin/pulsos/wave-3?nivel=detalle",
+    "/mi-perfil"
   ],
   "delivery": [
     "/admin",
     "/admin/profesor",
     "/equipo",
     "/equipo/playbook",
-    "/responsabilidades"
+    "/responsabilidades",
+    "/equipo?wave=wave-3"
   ],
   "profesor": [
     "/admin/profesor"
@@ -45,7 +53,8 @@
     "/admin/lab"
   ],
   "kiber": [
-    "/mi-journey"
+    "/mi-journey",
+    "/mi-perfil"
   ],
   "mentor": [
     "/ai-coach"

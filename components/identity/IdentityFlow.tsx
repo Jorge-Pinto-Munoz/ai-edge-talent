@@ -15,7 +15,9 @@ type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "cha
 function Digits({ n, value, onChange, label, secret = false, autoFocus = false, onComplete }: { n: 4 | 6; value: string; onChange: (v: string) => void; label: string; secret?: boolean; autoFocus?: boolean; onComplete?: (v: string) => void }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const set = (i: number, raw: string) => {
-    const only = raw.replace(/\D/g, "");
+    let only = raw.replace(/\D/g, "");
+    // Escribir sobre una casilla ya llena (la primera admite pegar el código completo): queda el dígito nuevo.
+    if (only.length === 2 && value[i] && only.startsWith(value[i])) only = only.slice(1);
     if (only.length > 1) {
       const v = only.slice(0, n);
       onChange(v);
@@ -23,11 +25,11 @@ function Digits({ n, value, onChange, label, secret = false, autoFocus = false, 
       if (v.length === n) onComplete?.(v);
       return;
     }
-    const arr = Array.from({ length: n }, (_, k) => value[k] ?? "");
-    arr[i] = only;
-    const v = arr.join("");
+    // Sin huecos: borrar una casilla descarta las siguientes (si no, los dígitos se correrían y se guardaría otro código);
+    // escribir más allá del último dígito lo agrega al final.
+    const v = !only ? value.slice(0, i) : i >= value.length ? (value + only).slice(0, n) : (value.slice(0, i) + only + value.slice(i + 1)).slice(0, n);
     onChange(v);
-    if (only && i < n - 1) refs.current[i + 1]?.focus();
+    if (only && v.length < n) refs.current[v.length]?.focus();
     if (v.length === n) onComplete?.(v);
   };
   return (
@@ -60,7 +62,12 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
 
   const handle = (r: FlowResult) => {
     setMsg(r);
-    if (!r.ok) return;
+    if (!r.ok) {
+      // Un código rechazado se borra para escribirlo de nuevo desde la primera casilla.
+      if (screen === "set_pin" || screen === "change_pin") { setP1(""); setP2(""); }
+      if (screen === "login") setPin("");
+      return;
+    }
     if (r.step === "done" && r.redirect) { router.replace(r.redirect); router.refresh(); return; }
     if (r.step === "admin_code") { setCode(""); setScreen("admin_code"); }
     if (r.step === "change_pin") { setP1(""); setP2(""); setScreen("change_pin"); }

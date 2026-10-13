@@ -32,6 +32,9 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
     svc.from("app_settings").select("value").eq("key", "reminders").maybeSingle(),
     svc.auth.admin.listUsers({ perPage: 1000 }),
   ]);
+  const { data: sent } = tab === "config"
+    ? await svc.from("email_messages").select("id, to_email, template, status, error, attempts, created_at, sent_at").in("template", ["PULSE_REMINDER", "DELIVERY_PULSE_ALERT"]).order("created_at", { ascending: false }).limit(50)
+    : { data: [] };
   const lastSignIn = new Map((authUsers.data?.users ?? []).map((u) => [u.id, u.last_sign_in_at ?? null]));
   const credOf = new Map((creds ?? []).map((c) => [c.user_id, c]));
   const waveName = (id: string) => (waves ?? []).find((w) => w.id === id)?.name.replace("AI Edge Talent · ", "") ?? id;
@@ -96,7 +99,32 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
           existing={Object.fromEntries((reqs ?? []).map((r) => [r.email, rows.find((x) => x.email === r.email)?.status ?? null]))}
         />
       )}
-      {tab === "config" && <ReminderSettings value={(settings?.value as { every_days: number; max: number; delivery_after_days: number }) ?? { every_days: 3, max: 3, delivery_after_days: 5 }} />}
+      {tab === "config" && (
+        <>
+          <ReminderSettings value={(settings?.value as { every_days: number; max: number; delivery_after_days: number }) ?? { every_days: 3, max: 3, delivery_after_days: 5 }} />
+          <section className="card" aria-labelledby="hist-t">
+            <h2 id="hist-t" style={{ marginTop: 0 }}>Historial de envíos</h2>
+            <p className="muted" style={{ marginTop: 0 }}>Recordatorios a profesionales y avisos a Delivery. «Enviado» significa aceptado por el proveedor de correo; no confirma que se haya leído.</p>
+            {!sent?.length ? <p className="muted">Aún no hay envíos.</p> : (
+              <div className="table-wrap" tabIndex={0}>
+                <table className="rtable">
+                  <thead><tr><th>Fecha</th><th>Tipo</th><th>Destinatario</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {sent.map((m) => (
+                      <tr key={m.id}>
+                        <td data-label="Fecha">{new Date(m.created_at).toLocaleString("es-CL", { timeZone: "America/Santiago", dateStyle: "short", timeStyle: "short" })}</td>
+                        <td data-label="Tipo">{m.template === "PULSE_REMINDER" ? "Recordatorio de pulso" : "Aviso a Delivery"}</td>
+                        <td data-label="Destinatario">{m.to_email}</td>
+                        <td data-label="Estado"><span className={`ds-status s-${m.status === "sent" ? "done" : m.status === "failed" ? "blocked" : "pending"}`}>{m.status === "sent" ? "Enviado" : m.status === "failed" ? `Falló${m.attempts > 1 ? ` (${m.attempts} intentos)` : ""}` : "En cola"}</span>{m.error && <><br /><small className="muted">{m.error}</small></>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

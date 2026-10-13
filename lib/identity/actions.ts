@@ -156,7 +156,7 @@ export async function requestPinReset(rawEmail: string): Promise<FlowResult> {
     const code = await issueCode(email, purpose, acc.id, 4, svc);
     const r = await sendIdentityEmail(purpose === "RESET" ? "PIN_RESET" : acc.role === "delivery" ? "DELIVERY_INVITE" : "ACTIVATION", email, { name: acc.full_name ?? undefined, code, minutes: CODE_TTL[purpose], link: portalLink("restablecer", email) }, { userId: acc.id }, svc);
     await audit("user.pin.reset_requested", { actor: acc.id, actorEmail: email, targetUser: acc.id, targetEmail: email, details: { by: "self", sent: r.ok } }, svc);
-    if (!r.ok && !dev()) return { ok: false, message: "No pudimos enviar el código: el envío de correos aún no está configurado. Escríbenos desde Ayuda." };
+    if (!r.ok && !dev()) return { ok: false, message: "No pudimos enviar el código por correo en este momento. Ingresa con «Ingresar con un enlace por correo» o escríbenos desde Ayuda." };
     return { ok: true, step: "code_sent", message: GENERIC_SENT, ...(dev() && !r.ok ? { devCode: code } : {}) };
   } catch (e) {
     console.error("[identidad] requestPinReset", e);

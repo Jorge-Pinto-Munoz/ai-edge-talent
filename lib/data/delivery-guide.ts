@@ -82,6 +82,7 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
       "Recibe feedback con criterios conocidos de antemano.",
     ],
     actions: [
+      "Si ya cumplió los requisitos y su pulso de cierre sigue pendiente, recuérdaselo: sin el pulso no avanza (te avisamos por correo si se atrasa).",
       "Dar la bienvenida y confirmar el calendario inicial.",
       "Asegurar con el cliente el tiempo coordinado para la etapa.",
       "Ayudar a elegir una actividad real y adecuada para el desafío.",
@@ -92,13 +93,13 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
       { to: "Profesional", what: "Calendario, dónde está el contenido y a quién pedir ayuda; resultado y siguiente paso." },
       { to: "Cliente", what: "Inicio y cierre de la etapa y la disponibilidad que se necesita." },
     ],
-    milestones: ["Compromiso aceptado", "Contenido revisado", "Desafío entregado y evaluado"],
+    milestones: ["Pulso de cierre respondido: cierra la etapa y desbloquea la siguiente", "Compromiso aceptado", "Contenido revisado", "Desafío entregado y evaluado"],
     risks: [
       { risk: "No asiste o no avanza con el contenido", mitigation: "Conversación temprana y acuerdo de un bloque de tiempo protegido." },
       { risk: "Elige una actividad sin relación con su trabajo", mitigation: "Revisar la elección con el profesional antes de entregar." },
     ],
     escalate: ["No asistencia a Mindset", "Desafío no aprobado según las reglas de continuidad (solo Product Lead puede hacer excepciones)"],
-    never: ["Saltar Mindset para ir directo a la certificación", "Prometer intentos adicionales"],
+    never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Saltar Mindset para ir directo a la certificación", "Prometer intentos adicionales"],
     where: [{ label: "Journey de la Wave", href: "/admin/journey/{wave}" }],
   },
   {
@@ -114,6 +115,7 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
       "Rinde el examen AI CERT y registra su certificado.",
     ],
     actions: [
+      "Si ya cumplió los requisitos y su pulso de cierre sigue pendiente, recuérdaselo: sin el pulso no avanza (te avisamos por correo si se atrasa).",
       "Revisar cada semana el avance por tramo y la asistencia a clases.",
       "Actuar sobre las alertas: conversar, acordar un microplan y validar la disponibilidad.",
       "Activar un plan de recuperación cuando el avance se atrasa.",
@@ -124,18 +126,18 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
       { to: "Profesional", what: "Seguimiento de su avance y acuerdos de la semana." },
       { to: "Cliente", what: "Inicio, progreso relevante, riesgos y resultado de la certificación." },
     ],
-    milestones: ["Ruta AI CERT asignada", "Avance constante por tramos", "Examen rendido", "Certificación verificada"],
+    milestones: ["Pulso de cierre respondido: cierra la etapa y desbloquea la siguiente", "Ruta AI CERT asignada", "Avance constante por tramos", "Examen rendido", "Certificación verificada"],
     risks: [
       { risk: "Sin avance en la plataforma", mitigation: "Contacto la misma semana y microplan con metas por tramo." },
       { risk: "Inasistencia a clases", mitigation: "Acordar cómo recupera lo visto y revisar su disponibilidad con el cliente." },
       { risk: "Falta de tiempo con capacidad alta", mitigation: "Acordar fecha de examen y bloquear tiempo protegido." },
     ],
     escalate: ["Una semana completa sin acompañamiento", "Sin avance en la plataforma por más de 2 semanas", "Examen no aprobado según las reglas de continuidad"],
-    never: ["Presentar un intento adicional como financiado o cobrado al profesional", "Transformar un atraso en una sanción no definida por el programa"],
+    never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Presentar un intento adicional como financiado o cobrado al profesional", "Transformar un atraso en una sanción no definida por el programa"],
     where: [
       { label: "Avance AI CERT", href: "/admin/journey/{wave}?tab=aicert" },
       { label: "Clases y asistencia", href: "/admin/profesor/{wave}" },
-      { label: "Pulsos e informe", href: "/admin/pulsos/{wave}" },
+      { label: "Experiencia de tus profesionales", href: "/equipo?wave={wave}" },
     ],
   },
   {
@@ -182,16 +184,17 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
       "Muestra el contraste: qué hubiese pasado sin la mejora.",
     ],
     actions: [
+      "Si ya cumplió los requisitos y su pulso de cierre sigue pendiente, recuérdaselo: sin el pulso no avanza (te avisamos por correo si se atrasa).",
       "Confirmar que la solución está lista para mostrarse (READY FOR SHOWCASE).",
       "Asegurar que asista la contraparte del cliente capaz de reconocer el problema.",
       "Coordinar la agenda.",
       "Registrar el resultado y el siguiente paso con un responsable.",
     ],
     communicate: [{ to: "Cliente", what: "Agenda y contenido esperado del Showcase." }],
-    milestones: ["READY FOR SHOWCASE", "Showcase realizado", "Siguiente paso registrado con responsable"],
+    milestones: ["Pulso de cierre respondido: cierra la etapa y desbloquea la siguiente", "READY FOR SHOWCASE", "Showcase realizado", "Siguiente paso registrado con responsable"],
     risks: [{ risk: "Contraparte sin contexto del problema", mitigation: "Confirmar asistentes con el cliente antes de agendar." }],
     escalate: ["El cliente no dispone de una contraparte que reconozca el problema"],
-    never: ["Agendar Showcase sin READY FOR SHOWCASE", "Cerrar sin siguiente paso registrado"],
+    never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Agendar Showcase sin READY FOR SHOWCASE", "Cerrar sin siguiente paso registrado"],
     where: [{ label: "AI Lab & Showcase", href: "/admin/lab/{wave}" }],
   },
   {
@@ -203,15 +206,16 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
     purpose: "Que el cierre deje acciones con responsable y se mida la adopción después.",
     professional: ["Cierra su proceso con evidencia y responde el pulso final.", "Participa del seguimiento al mes 1 y al mes 3."],
     actions: [
+      "Si ya cumplió los requisitos y su pulso de cierre sigue pendiente, recuérdaselo: sin el pulso no avanza (te avisamos por correo si se atrasa).",
       "Comunicar el cierre a profesional y cliente.",
       "Asegurar que cada acción tenga responsable.",
       "Coordinar los seguimientos de adopción al mes 1 y al mes 3.",
     ],
     communicate: [{ to: "Cliente", what: "Resultado, evidencia, próximos pasos y casos con continuidad." }],
-    milestones: ["Cierre comunicado", "Acciones con responsable", "Seguimiento mes 1", "Seguimiento mes 3"],
+    milestones: ["Pulso de cierre respondido: cierra el journey", "Cierre comunicado", "Acciones con responsable", "Seguimiento mes 1", "Seguimiento mes 3"],
     risks: [{ risk: "Dar por terminado el programa con la certificación", mitigation: "Recordar que el valor se mide con el caso real y su adopción." }],
     escalate: ["Según el criterio que defina el programa para continuidad"],
-    never: ["Dar por cerrado el programa solo con la certificación"],
+    never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Dar por cerrado el programa solo con la certificación"],
     where: [{ label: "Banca de talento", href: "/admin/talento" }],
   },
 ];
@@ -222,6 +226,8 @@ export const DELIVERY_FAQ: { q: string; a: string }[] = [
   { q: "¿Qué información puede recibir el cliente?", a: "Estado, avance relevante, riesgos y resultados. Nunca puntajes, rankings ni la evaluación detallada de una persona." },
   { q: "¿Un atraso significa salir del programa?", a: "No. Un atraso activa alerta, plan de recuperación y revisión. No hay expulsión automática por atraso." },
   { q: "¿Quién puede hacer excepciones?", a: "Solo el Product Lead, de forma explícita." },
+  { q: "¿Qué es el pulso de cierre de cada etapa?", a: "Cinco preguntas sobre la experiencia del profesional que se habilitan al cumplir los requisitos académicos de la etapa. Es obligatorio: sin él la etapa no se cierra ni se desbloquea la siguiente. Lo responde solo el profesional; tú haces seguimiento y el Líder de Servicio lo supervisa." },
+  { q: "¿Puedo ver lo que respondieron?", a: "Ves el avance y si el pulso está pendiente para quienes tienes asignados. Sus respuestas, solo si el Líder de Servicio comparte la experiencia de la Wave. Nunca condicionan sus evaluaciones." },
   { q: "¿Cuánto tiempo del profesional coordino con el cliente?", a: "Normalmente 2 a 3 horas por semana según la etapa. No es una cantidad fija garantizada todas las semanas." },
 ];
 

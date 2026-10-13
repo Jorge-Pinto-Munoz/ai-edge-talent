@@ -61,6 +61,10 @@ export function JourneyApp({ v }: { v: JourneyView }) {
   const [open, setOpen] = useState<Open>(null);
   const [pulseOpen, setPulseOpen] = useState(false);
   const [closingOpen, setClosingOpen] = useState(false);
+  // Al enviar el pulso de cierre la etapa avanza y `v.closing` desaparece: conservamos la hoja abierta para ver el agradecimiento.
+  const lastClosing = useRef(v.closing);
+  if (v.closing) lastClosing.current = v.closing;
+  const closing = v.closing ?? (closingOpen ? lastClosing.current : null);
   const [rulesOpen, setRulesOpen] = useState(false);
   useEffect(() => { if (v.showStageRules) setRulesOpen(true); }, [v.showStageRules]);
   const close = useCallback(() => setOpen(null), []);
@@ -133,9 +137,9 @@ export function JourneyApp({ v }: { v: JourneyView }) {
         {open?.type === "node" && <NodeContent v={v} node={open.node} stage={open.stage} />}
         {open?.type === "guide" && <GuideContent v={v} stage={open.stage} />}
       </Sheet>
-      {v.closing && (
-        <Sheet open={closingOpen} onClose={() => setClosingOpen(false)} accent={STAGE_COLOR[v.closing.layer].c} eyebrow="Pulso de cierre · obligatorio" title={v.closing.def.title}>
-          <PulseForm def={v.closing.def} waveId={v.waveId} preview={Boolean(v.preview)} onDone={() => setClosingOpen(false)} />
+      {closing && (
+        <Sheet open={closingOpen} onClose={() => setClosingOpen(false)} accent={STAGE_COLOR[closing.layer].c} eyebrow="Pulso de cierre · obligatorio" title={closing.def.title}>
+          <PulseForm def={closing.def} waveId={v.waveId} preview={Boolean(v.preview)} onDone={() => setClosingOpen(false)} />
         </Sheet>
       )}
       <Sheet open={rulesOpen} onClose={() => setRulesOpen(false)} eyebrow="Cómo se cierra cada etapa" title={STAGE_RULES.title}>
