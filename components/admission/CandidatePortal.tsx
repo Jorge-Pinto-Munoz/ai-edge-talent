@@ -45,6 +45,12 @@ export function CandidatePortal({ data, inPortal = false, preview = false }: { d
         <Callout title="Si quedas bajo el corte, tienes una segunda oportunidad">
           Te pediremos un video breve (máximo 3 minutos) respondiendo cuatro preguntas sobre tu compromiso, tu uso de IA y tu interés. Una persona del equipo lo revisa y decide.
         </Callout>
+        {!inPortal && (
+          <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+            <Link className="btn" href="/ingresar">Ingresar a mi portal</Link>
+            <Link className="btn ghost" href="/">Volver al inicio</Link>
+          </div>
+        )}
       </Message>
     );
   if (s === "RESCUE_REQUIRED")
@@ -290,7 +296,10 @@ function ApplicationForm({ data, preview = false }: { data: PortalData; preview?
       <Message eyebrow={`Assessment ${ASSESSMENT_STATE_LABEL.COMPLETED.toLowerCase()}`} title="Recibimos tu postulación">
         <p>{finished === "sent" ? "¡Gracias por postular! Tu Assessment quedó enviado y registrado." : "Tu postulación ya estaba enviada: quedó registrada una sola vez."}</p>
         <p>Te enviamos un correo con el detalle. Puedes seguir el estado de tu postulación ingresando a tu portal con tu correo.</p>
-        <p><Link className="btn ghost" href="/mi-journey">Ir a mi portal</Link></p>
+        <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+          <Link className="btn" href="/mi-journey">Ir a mi portal</Link>
+          <Link className="btn ghost" href="/">Volver al inicio</Link>
+        </div>
       </Message>
     );
 

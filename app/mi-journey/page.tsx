@@ -34,9 +34,18 @@ export default async function MiJourney() {
           {isDemoEmail(viewer.email) && <p className="jr-preview" role="note"><Icon name="user" size={18} /><span><strong>Cuenta de demostración</strong> · datos ficticios.</span></p>}
           <div className="spread">
             <h1 style={{ margin: 0 }}>Hola, {first}</h1>
-            <SignOut />
+            <div className="row" style={{ gap: 8 }}>
+              <Link className="btn ghost" href="/">Ir al inicio</Link>
+              <SignOut onDark={false} />
+            </div>
           </div>
           <CandidatePortal data={portal} inPortal />
+          {!out && portal.candidate.status !== "APPLICATION_STARTED" && (
+            <nav className="row" aria-label="Seguir navegando" style={{ gap: 10, flexWrap: "wrap" }}>
+              <Link className="btn" href="/">Volver al inicio</Link>
+              <Link className="btn ghost" href="/programa">Conocer el programa</Link>
+            </nav>
+          )}
           {out && (
             <section className="card" aria-labelledby="mj-next">
               <h2 id="mj-next" style={{ marginTop: 0 }}>Qué sigue para ti</h2>
