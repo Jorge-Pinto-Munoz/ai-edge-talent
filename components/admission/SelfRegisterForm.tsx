@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { selfRegister } from "@/lib/admission/candidate-actions";
 import { Callout } from "@/components/ui";
+import Link from "next/link";
 import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
 export function SelfRegisterForm({ waveId }: { waveId: string }) {
@@ -10,10 +11,10 @@ export function SelfRegisterForm({ waveId }: { waveId: string }) {
   if (state?.ok) {
     return (
       <div className="stack narrow">
-        <Callout tone="ok" title="Revisa tu correo">
+        <Callout tone="ok" title="Ya tienes una postulación">
           {state.message}
         </Callout>
-        <p className="muted">El enlace es personal: te permite retomar tu postulación cuando quieras hasta el cierre del plazo.</p>
+        <Link className="btn" href="/ingresar">Ir a ingresar</Link>
       </div>
     );
   }
@@ -21,7 +22,7 @@ export function SelfRegisterForm({ waveId }: { waveId: string }) {
     <form action={action} className="card narrow">
       <div className="eyebrow">Paso 1 · Identificación</div>
       <h1>Identifícate</h1>
-      <p className="muted">Te enviaremos un enlace personal a tu correo para continuar. No solicitamos RUT.</p>
+      <p className="muted">Con tus datos pasas directo a las preguntas. Al enviar tu postulación te llega un correo con tus credenciales para seguir su estado desde tu portal. No solicitamos RUT.</p>
       <input type="hidden" name="wave" value={waveId} />
       <div className="field">
         <label htmlFor="full_name">Nombre completo *</label>
@@ -56,7 +57,7 @@ export function SelfRegisterForm({ waveId }: { waveId: string }) {
       </label>
       {state && !state.ok && <p className="error" role="alert">{state.message}</p>}
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? "Enviando…" : "Recibir mi enlace de postulación"}
+        {pending ? "Un momento…" : "Continuar a la postulación"}
       </button>
     </form>
   );

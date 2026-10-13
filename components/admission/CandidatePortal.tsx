@@ -26,7 +26,8 @@ export interface PortalData {
   rescue: { at: string; reviewed: boolean } | null;
 }
 
-export function CandidatePortal({ data }: { data: PortalData }) {
+/** `inPortal`: la persona ya ingresó con su cuenta (no se le recuerda revisar el correo de credenciales). */
+export function CandidatePortal({ data, inPortal = false }: { data: PortalData; inPortal?: boolean }) {
   const s = data.candidate.status;
   const first = data.candidate.fullName.split(" ")[0];
   if (["NOMINATED", "INVITED", "IDENTIFIED"].includes(s)) return <BeforeApplying data={data} first={first} />;
@@ -34,7 +35,8 @@ export function CandidatePortal({ data }: { data: PortalData }) {
   if (["APPLICATION_SUBMITTED", "ASSESSMENT_EVALUATED", "HUMAN_REVIEW"].includes(s))
     return (
       <Message eyebrow="Postulación enviada" title="Recibimos tu postulación">
-        <p>El equipo AI Edge Talent revisará la evidencia y te comunicará el resultado y el próximo paso por correo.</p>
+        {!inPortal && <p>¡Gracias por postular! Te enviamos un correo con tus credenciales para ingresar a tu portal: ahí ves el estado de tu postulación. Al ingresar por primera vez creas tu propio código de 4 dígitos.</p>}
+        <p>El equipo AI Edge Talent revisará la evidencia y te comunicará el resultado y el próximo paso por correo y en tu portal.</p>
         <Callout tone="warn" title="Postular no significa estar seleccionado/a." />
         <Callout title="Si quedas bajo el corte, tienes una segunda oportunidad">
           Te pediremos un video breve (máximo 3 minutos) respondiendo cuatro preguntas sobre tu compromiso, tu uso de IA y tu interés. Una persona del equipo lo revisa y decide.

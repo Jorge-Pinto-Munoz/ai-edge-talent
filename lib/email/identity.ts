@@ -4,7 +4,7 @@
  */
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
-  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED";
+  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -14,6 +14,7 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ADMIN_STEP: "Verificación de administración",
   ACCESS_UPDATED: "Acceso habilitado",
   PULSE_REMINDER: "Recordatorio de pulso",
+  APPLICATION_RECEIVED: "Postulación recibida",
   DELIVERY_PULSE_ALERT: "Alerta a Delivery",
   ACCESS_REQUEST_ADMIN: "Solicitud de acceso especial",
   ACCESS_REQUEST_APPROVED: "Solicitud aprobada",
@@ -73,6 +74,21 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
     case "ACCESS_UPDATED": {
       const p = [hi, "Tu acceso a AI Edge Talent quedó habilitado para tu siguiente etapa. Ingresa con tu correo y tu código personal."];
       return { subject: "AI Edge Talent | Tu siguiente etapa comienza aquí", text: [...p, "", `Ingresar: ${c.link}`].join("\n"), html: layout("Tu siguiente etapa comienza aquí", p, { cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" } }) };
+    }
+    case "APPLICATION_RECEIVED": {
+      // Con código: primera vez (credenciales). Sin código: ya tiene su código personal.
+      const p = [
+        hi,
+        `¡Gracias por postular a ${c.stage ?? "AI Edge Talent"}! Recibimos tu postulación.`,
+        "Desde tu portal puedes seguir el estado de tu postulación: después del cierre te contamos el resultado y el próximo paso.",
+        c.code ? `Ingresa con tu correo (${c.extra ?? ""}) y este código temporal:` : "Ingresa con tu correo y tu código personal de 4 dígitos.",
+      ];
+      const foot = c.code ? `El código vence en ${Math.round((c.minutes ?? 2880) / 60)} horas. Al ingresar por primera vez crearás tu propio código de 4 dígitos, uno que recuerdes.` : undefined;
+      return {
+        subject: "AI Edge Talent | Recibimos tu postulación",
+        text: [...p, ...(c.code ? ["", c.code] : []), "", `Ingresar a mi portal: ${c.link}`, ...(foot ? ["", foot] : [])].join("\n"),
+        html: layout("Recibimos tu postulación", p, { code: c.code, cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" }, foot }),
+      };
     }
     case "PULSE_REMINDER": {
       const p = [hi, `Completaste los requisitos de ${c.stage}. Para cerrar la etapa y continuar tu journey, solo falta tu pulso de experiencia: toma uno o dos minutos.`];

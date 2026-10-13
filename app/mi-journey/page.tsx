@@ -36,7 +36,7 @@ export default async function MiJourney() {
             <h1 style={{ margin: 0 }}>Hola, {first}</h1>
             <SignOut />
           </div>
-          <CandidatePortal data={portal} />
+          <CandidatePortal data={portal} inPortal />
           {out && (
             <section className="card" aria-labelledby="mj-next">
               <h2 id="mj-next" style={{ marginTop: 0 }}>Qué sigue para ti</h2>

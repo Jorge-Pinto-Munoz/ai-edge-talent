@@ -1,26 +1,23 @@
 "use server";
 
 import { provisionParticipant } from "@/lib/identity/provision";
+import { CODE_TTL, ensureAccount, issueCode, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { normalizeCLMobile } from "@/lib/identity/pin";
 import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { supabaseService } from "@/lib/supabase/server";
-import { env, serverEnv } from "@/lib/supabase/env";
 import { statusPath } from "./status";
 import { evaluateOne } from "./evaluate-one";
 import { getDocument } from "@/lib/content";
-import { renderEmail } from "@/lib/email/templates";
-import { sendEmail } from "@/lib/email/send";
 import type { AdmissionStatus } from "@/lib/domain/types";
-import { fmtDeadline } from "@/components/ui";
 import { isAcceptableVideoUrl } from "./rescue";
 
 /**
- * Acciones del postulante. No requieren cuenta: se identifican con el enlace personal (token aleatorio
- * de 144 bits) que reciben por correo. El servidor valida el token y usa la clave secreta;
- * nada de esto expone datos de otros candidatos.
+ * Acciones del postulante. Se identifican con su enlace personal (token aleatorio de 144 bits): al registrarse
+ * pasa directo a responder, y al enviar la postulación recibe por correo las credenciales de su portal.
+ * El servidor valida el token y usa la clave secreta; nada de esto expone datos de otros candidatos.
  */
 export type CandidateResult = { ok: boolean; message: string };
 
@@ -77,34 +74,46 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
     await svc.from("consents").insert({ kind: "COMMUNITY", version: COMMUNITY_CONSENT.version, text_snapshot: `${COMMUNITY_CONSENT.text} ${COMMUNITY_CONSENT.detail}`, email: data.corporate_email, candidate_id: row.id });
   }
 
-  // El enlace personal se entrega SIEMPRE por correo: así verificamos que el correo es tuyo.
-  const link = `${env.appUrl}/postular/${row.invite_token}`;
-  const { subject, text } = renderEmail(existing ? "REMINDER" : "INVITATION", {
-    firstName: row.full_name.split(" ")[0],
-    waveName: wave.name,
-    link,
-    deadline: wave.application_deadline ? fmtDeadline(wave.application_deadline) : null,
-    senderName: "Equipo AI Edge Talent",
-  });
-  const sent = await sendEmail(data.corporate_email, subject, text);
-  await svc.from("email_messages").insert({
-    wave_id: waveId,
-    candidate_id: row.id,
-    to_email: data.corporate_email,
-    template: existing ? "REMINDER" : "INVITATION",
-    subject,
-    body_text: text,
-    status: sent.error ? "failed" : "sent",
-    provider_id: sent.id,
-    error: sent.error,
-    sent_at: sent.error ? null : new Date().toISOString(),
-  });
-  if (sent.error) {
-    // Sin servicio de correo configurado (ambiente de prueba): se continúa directo solo si el registro es nuevo.
-    if (!serverEnv().resendApiKey && !existing) redirect(`/postular/${row.invite_token}`);
-    return { ok: false, message: "No pudimos enviarte el enlace por correo. Escríbele a tu Delivery." };
+  // Registro nuevo: pasa directo a responder. El correo se verifica después: las credenciales del portal
+  // llegan a ese correo al enviar la postulación.
+  if (!existing) redirect(`/postular/${row.invite_token}`);
+
+  // Ya había una postulación con este correo: no se abre aquí (podría ser de otra persona). Se continúa desde el
+  // portal, con el código que llega a ese correo.
+  const access = await sendPortalAccess(svc, row.id, data.corporate_email, row.full_name, waveId, null);
+  return {
+    ok: true,
+    message: access === "has_pin"
+      ? `Ya tienes una postulación con ${data.corporate_email}. Ingresa a tu portal con tu correo y tu código personal para continuar.`
+      : access === "sent"
+        ? `Ya tienes una postulación con ${data.corporate_email}. Te enviamos un código a ese correo para continuar desde tu portal.`
+        : `Ya tienes una postulación con ${data.corporate_email}. Ingresa en "Ingresar" y toca "Olvidé mi código" para recibir tu acceso.`,
+  };
+}
+
+/**
+ * Credenciales del portal del profesional: crea (o reutiliza) su cuenta, la vincula a la postulación y envía el
+ * correo. Si aún no tiene código personal, incluye uno temporal de 4 dígitos (al primer ingreso crea el suyo).
+ * Nunca se muestra el código en pantalla: solo llega al correo, así se verifica que el correo es suyo.
+ */
+async function sendPortalAccess(svc: ReturnType<typeof supabaseService>, candidateId: string, email: string, fullName: string, waveId: string, waveName: string | null): Promise<"sent" | "has_pin" | "failed"> {
+  try {
+    const { userId } = await ensureAccount(email, fullName, svc);
+    await svc.from("candidates").update({ user_id: userId }).eq("id", candidateId).is("user_id", null);
+    const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
+    if (cred?.pin_hash) {
+      if (waveName) await sendIdentityEmail("APPLICATION_RECEIVED", email, { name: fullName, stage: waveName, link: portalLink("ingresar", email) }, { userId, candidateId, waveId }, svc);
+      return "has_pin";
+    }
+    const code = await issueCode(email, "ACTIVATION", null, 4, svc);
+    const r = waveName
+      ? await sendIdentityEmail("APPLICATION_RECEIVED", email, { name: fullName, stage: waveName, code, extra: email, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email) }, { userId, candidateId, waveId }, svc)
+      : await sendIdentityEmail("ACTIVATION", email, { name: fullName, code, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email) }, { userId, candidateId, waveId }, svc);
+    return r.ok ? "sent" : "failed";
+  } catch (e) {
+    console.error("[postulación] credenciales", e instanceof Error ? e.message : e);
+    return "failed";
   }
-  return { ok: true, message: `Te enviamos tu enlace personal de postulación a ${data.corporate_email}. Revisa tu bandeja (y spam).` };
 }
 
 /* ───────── Confirmación informada previa → habilita el formulario ───────── */
@@ -142,6 +151,8 @@ export async function saveAnswers(token: string, answers: Record<string, string>
     await svc.from("applications").update({ answers: clean, ...(submit ? { submitted_at: new Date().toISOString() } : {}) }).eq("id", app.id);
     if (submit) {
       await moveTo(svc, c.id, "APPLICATION_STARTED", "APPLICATION_SUBMITTED");
+      // Gracias por postular + credenciales del portal para seguir el estado.
+      await sendPortalAccess(svc, c.id, c.corporate_email, c.full_name, c.wave_id, c.waves.name);
       // Evaluación inmediata con IA después de responder (no bloquea al postulante). Es una propuesta: decide una persona.
       if (process.env.ANTHROPIC_API_KEY) after(async () => void (await evaluateOne(supabaseService(), c.id, null)));
     }
