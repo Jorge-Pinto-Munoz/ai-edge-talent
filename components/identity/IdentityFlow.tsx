@@ -13,7 +13,7 @@ export type FlowMode = "ingresar" | "activar" | "restablecer" | "especial";
 type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "change_pin" | "admin_code" | "create" | "create_done";
 
 /** Casillas de dígitos: una por número, pegar el código completo funciona; `secret` oculta los números. */
-function Digits({ n, value, onChange, label, secret = false, autoFocus = false, onComplete }: { n: 4 | 6; value: string; onChange: (v: string) => void; label: string; secret?: boolean; autoFocus?: boolean; onComplete?: (v: string) => void }) {
+function Digits({ n, value, onChange, label, secret = false, autoFocus = false, onComplete, aside }: { n: 4 | 6; value: string; onChange: (v: string) => void; label: string; secret?: boolean; autoFocus?: boolean; onComplete?: (v: string) => void; aside?: React.ReactNode }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const set = (i: number, raw: string) => {
     let only = raw.replace(/\D/g, "");
@@ -36,6 +36,7 @@ function Digits({ n, value, onChange, label, secret = false, autoFocus = false, 
   return (
     <fieldset className="otp">
       <legend>{label}</legend>
+      {aside && <div className="otp-aside">{aside}</div>}
       <div className={`otp-boxes n${n}`}>
         {Array.from({ length: n }, (_, i) => (
           <input key={i} ref={(el) => { refs.current[i] = el; }} aria-label={`${label}: dígito ${i + 1}`} inputMode="numeric" pattern="[0-9]*"
@@ -97,16 +98,13 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
         <p className="muted">Ingresa con tu correo y tu código personal de 4 dígitos.</p>
         <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => loginWithPin(email, pin, next)); }}>
           {emailField}
-          <Digits n={4} value={pin} onChange={setPin} label="Código personal" secret />
+          <Digits n={4} value={pin} onChange={setPin} label="Código personal" secret aside={<button type="button" className="link-btn" onClick={() => go("forgot")}>Olvidé mi código</button>} />
           {err}
           <button className="btn auth-btn" disabled={pending || pin.length !== 4}>{pending ? "Ingresando…" : "Ingresar"} <Icon name="arrowRight" size={18} /></button>
-          <div className="auth-links">
-            <button type="button" className="link-btn" onClick={() => go("forgot")}>Olvidé mi código</button>
-          </div>
         </form>
-        <div className="auth-alt">
+        <div className="auth-new">
           <span>¿No tienes cuenta?</span>
-          <button type="button" className="link-btn" onClick={() => go("create")}>Crear cuenta</button>
+          <button type="button" className="btn ghost auth-btn" onClick={() => go("create")}>Crear cuenta</button>
         </div>
       </>
     );
