@@ -10,14 +10,20 @@
   - `profiles` y `role_grants` solo los modifica un admin (RLS existente).
 - **Cuenta principal y último admin:** el trigger `guard_admin_accounts` impide degradar, pausar o eliminar la cuenta principal y dejar la plataforma sin ningún admin activo. Aplica también con la llave de servicio. La marca de principal no se puede tocar con una sesión de usuario.
 
+## Acceso con código por correo (todos los roles)
+- **Un solo mecanismo:** correo + código de 6 dígitos enviado a ese correo. Vence en 10 minutos, sirve una vez y tiene 5 intentos. No hay códigos personales (PIN) ni segundo paso para admin.
+- **Límites:**
+  - 45 s entre envíos y máximo 5 códigos por correo cada 15 minutos.
+  - 30 solicitudes y 20 intentos fallidos por red (IP) cada 15 minutos.
+- **Anti-enumeración:** la respuesta es la misma exista o no la cuenta. Los códigos no se guardan en claro (HMAC), no se registran en logs ni en el historial de correos, y no se muestran en la administración.
+- **Primer ingreso:** activa la cuenta (de PENDIENTE a ACTIVA). Para los roles internos, esto prueba que el correo es de la persona.
+- **Invitaciones** (crear cuenta, aprobar solicitud, aviso a Delivery, postulación recibida): no llevan código, solo el enlace para ingresar.
+- **Cuentas de demostración** (`.invalid`, solo lectura): entran con un botón, sin código.
+- **Migración:** los PIN existentes dejan de usarse y nadie queda bloqueado (todos ingresan con su correo). Los enlaces antiguos de activación abren el nuevo ingreso.
+
 ## Cuenta principal
-- **Datos:** Jorge Pinto, `jorge.pintom@kibernum.com`, admin principal. Se crea de forma idempotente en `supabase/seed.sql`, que se re-ejecuta en cada despliegue sin duplicar.
-- **Código inicial:** viene del secreto `ADMIN_INITIAL_CODE` y nunca está en el repositorio.
-  - Se aplica una sola vez (`app_settings.principal_initialized`).
-  - Se guarda como hash scrypt.
-  - Exige cambiarlo en el primer ingreso.
-  - Después del cambio pide el segundo factor por correo, como todo admin.
-- **Sin el secreto:** ingresa con "Olvidé mi código" (código a su correo).
+- **Datos:** Jorge Pinto, `jorge.pintom@kibernum.com`, admin principal. Se crea de forma idempotente en `supabase/seed.sql`, sin duplicar, y la base la protege.
+- **Ingreso:** con su correo y código, como las demás. El código inicial (`ADMIN_INITIAL_CODE`) ya no se usa.
 
 ## Assessment: borradores y envío
 - **Borrador:**
@@ -33,4 +39,4 @@
   - En progreso: borrador.
   - Completado: enviado.
   - Se muestran al candidato, al admin (ficha y listado) y al Delivery.
-- **Volver otro día:** la cuenta del portal se crea al registrarse. La persona vuelve con su enlace personal o ingresando con su correo ("Olvidé mi código" le envía un código). El formulario usa su enlace personal, así que una sesión caducada no hace perder respuestas.
+- **Volver otro día:** la cuenta del portal se crea al registrarse y el correo se verifica con un código. La persona vuelve con "Continuar aquí": ingresa su correo, recibe un código y retoma donde quedó. El formulario guarda con su enlace personal, así que una sesión caducada no hace perder respuestas.

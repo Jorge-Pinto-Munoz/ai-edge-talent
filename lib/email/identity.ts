@@ -4,7 +4,7 @@
  */
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
-  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED";
+  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -16,6 +16,8 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   PULSE_REMINDER: "Recordatorio de pulso",
   APPLICATION_RECEIVED: "Postulación recibida",
   DELIVERY_APPLICATION_SUBMITTED: "Aviso a Delivery: postulación enviada",
+  LOGIN_CODE: "Código de ingreso",
+  CANDIDATE_ACCESS: "Acceso a la postulación",
   DELIVERY_PULSE_ALERT: "Alerta a Delivery",
   ACCESS_REQUEST_ADMIN: "Solicitud de acceso especial",
   ACCESS_REQUEST_APPROVED: "Solicitud aprobada",
@@ -47,22 +49,17 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
         "¡Felicitaciones!",
         "Has completado exitosamente la etapa de Assessment y estás habilitado para continuar tu experiencia AI Edge Talent.",
         "Desde ahora podrás acceder a tu espacio personal, conocer las próximas actividades y acompañar tu evolución a través de cada etapa.",
-        "Para activar tu portal, utiliza el siguiente código temporal:",
+        "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas.",
       ];
-      const after = [`Por seguridad, este código tiene una vigencia limitada (${Math.round((c.minutes ?? 2880) / 60)} horas).`, "Al ingresar por primera vez, podrás configurar tu propio código personal.", "¡Bienvenido a la siguiente etapa!"];
-      return {
-        subject: "AI Edge Talent | Tu siguiente etapa comienza aquí",
-        text: [...p, "", c.code ?? "", "", ...after, "", `Activar mi portal: ${c.link}`].join("\n"),
-        html: layout("Tu siguiente etapa comienza aquí", p, { code: c.code, cta: { label: "ACTIVAR MI PORTAL", href: c.link ?? "" }, foot: after.join(" ") }),
-      };
+      return { subject: "AI Edge Talent | Tu siguiente etapa comienza aquí", text: [...p, "", `Ingresar a mi portal: ${c.link}`].join("\n"), html: layout("Tu siguiente etapa comienza aquí", p, { cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" } }) };
     }
     case "ACCOUNT_INVITE": {
-      const p = [hi, "Te creamos una cuenta en AI Edge Talent. Activa tu acceso con este código temporal y crea tu código personal:"];
-      return { subject: "AI Edge Talent | Activa tu cuenta", text: [...p, "", c.code ?? "", "", `Activar: ${c.link}`].join("\n"), html: layout("Activa tu cuenta", p, { code: c.code, cta: { label: "ACTIVAR MI CUENTA", href: c.link ?? "" }, foot: `El código vence en ${Math.round((c.minutes ?? 2880) / 60)} horas.` }) };
+      const p = [hi, `Te creamos una cuenta en AI Edge Talent${c.stage ? ` como ${c.stage}` : ""}.`, "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas."];
+      return { subject: "AI Edge Talent | Tu cuenta está lista", text: [...p, "", `Ingresar: ${c.link}`].join("\n"), html: layout("Tu cuenta está lista", p, { cta: { label: "INGRESAR", href: c.link ?? "" } }) };
     }
     case "DELIVERY_INVITE": {
-      const p = [hi, "Te habilitamos como Delivery en AI Edge Talent: desde tu portal podrás acompañar a tus profesionales, ver sus etapas, pendientes y alertas, y consultar el Playbook.", "Activa tu acceso con este código temporal:"];
-      return { subject: "AI Edge Talent | Activa tu acceso de Delivery", text: [...p, "", c.code ?? "", "", `Activar: ${c.link}`, "Al ingresar crearás tu código personal."].join("\n"), html: layout("Activa tu acceso de Delivery", p, { code: c.code, cta: { label: "ACTIVAR MI ACCESO", href: c.link ?? "" }, foot: `El código vence en ${Math.round((c.minutes ?? 2880) / 60)} horas. Al ingresar crearás tu código personal.` }) };
+      const p = [hi, "Te habilitamos como Delivery en AI Edge Talent: desde tu portal podrás acompañar a tus profesionales, ver sus etapas, pendientes y alertas, y consultar el Playbook.", "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas."];
+      return { subject: "AI Edge Talent | Tu acceso de Delivery está listo", text: [...p, "", `Ingresar: ${c.link}`].join("\n"), html: layout("Tu acceso de Delivery está listo", p, { cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" } }) };
     }
     case "PIN_RESET": {
       const p = [hi, "Recibimos una solicitud para restablecer tu código personal de AI Edge Talent. Usa este código temporal para crear uno nuevo:"];
@@ -73,23 +70,17 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
       return { subject: `AI Edge Talent | Código de verificación ${c.code}`, text: [...p, "", c.code ?? "", "", `Vence en ${c.minutes} minutos. Si no fuiste tú, cambia tu código personal.`].join("\n"), html: layout("Verificación de administración", p, { code: c.code, foot: `Vence en ${c.minutes} minutos. Si no fuiste tú, cambia tu código personal de inmediato.` }) };
     }
     case "ACCESS_UPDATED": {
-      const p = [hi, "Tu acceso a AI Edge Talent quedó habilitado para tu siguiente etapa. Ingresa con tu correo y tu código personal."];
+      const p = [hi, "Tu acceso a AI Edge Talent quedó habilitado para tu siguiente etapa.", "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas."];
       return { subject: "AI Edge Talent | Tu siguiente etapa comienza aquí", text: [...p, "", `Ingresar: ${c.link}`].join("\n"), html: layout("Tu siguiente etapa comienza aquí", p, { cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" } }) };
     }
     case "APPLICATION_RECEIVED": {
-      // Con código: primera vez (credenciales). Sin código: ya tiene su código personal.
       const p = [
         hi,
         `¡Gracias por postular a ${c.stage ?? "AI Edge Talent"}! Recibimos tu postulación.`,
         "Desde tu portal puedes seguir el estado de tu postulación: después del cierre te contamos el resultado y el próximo paso.",
-        c.code ? `Ingresa con tu correo (${c.extra ?? ""}) y este código temporal:` : "Ingresa con tu correo y tu código personal de 4 dígitos.",
+        "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas.",
       ];
-      const foot = c.code ? `El código vence en ${Math.round((c.minutes ?? 2880) / 60)} horas. Al ingresar por primera vez crearás tu propio código de 4 dígitos, uno que recuerdes.` : undefined;
-      return {
-        subject: "AI Edge Talent | Recibimos tu postulación",
-        text: [...p, ...(c.code ? ["", c.code] : []), "", `Ingresar a mi portal: ${c.link}`, ...(foot ? ["", foot] : [])].join("\n"),
-        html: layout("Recibimos tu postulación", p, { code: c.code, cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" }, foot }),
-      };
+      return { subject: "AI Edge Talent | Recibimos tu postulación", text: [...p, "", `Ingresar a mi portal: ${c.link}`].join("\n"), html: layout("Recibimos tu postulación", p, { cta: { label: "INGRESAR A MI PORTAL", href: c.link ?? "" } }) };
     }
     case "DELIVERY_APPLICATION_SUBMITTED": {
       // extra = nombre del profesional; when = fecha y hora de envío (hora de Chile).
@@ -97,14 +88,23 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
         hi,
         `Tu profesional ${c.extra} respondió el Assessment de ${c.stage ?? "AI Edge Talent"} el ${c.when}.`,
         "Ya puedes acceder a tu vista de equipo para ver el progreso de tus profesionales: quién se registró, quién está respondiendo, quién envió y en qué etapa va cada uno.",
-        c.code ? "Tu acceso ya está habilitado. Ingresa con tu correo y este código temporal:" : "Ingresa con tu correo y tu código personal de 4 dígitos.",
+        "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas.",
       ];
-      const foot = c.code ? `El código vence en ${Math.round((c.minutes ?? 2880) / 60)} horas. Al ingresar por primera vez crearás tu propio código de 4 dígitos.` : undefined;
       return {
         subject: `AI Edge Talent | ${c.extra} respondió el Assessment`,
-        text: [...p, ...(c.code ? ["", c.code] : []), "", `Ver el progreso de mi equipo: ${c.link}`, ...(foot ? ["", foot] : [])].join("\n"),
-        html: layout(`${c.extra} respondió el Assessment`, p, { code: c.code, cta: { label: "VER EL PROGRESO DE MI EQUIPO", href: c.link ?? "" }, foot }),
+        text: [...p, "", `Ver el progreso de mi equipo: ${c.link}`].join("\n"),
+        html: layout(`${c.extra} respondió el Assessment`, p, { cta: { label: "VER EL PROGRESO DE MI EQUIPO", href: c.link ?? "" } }),
       };
+    }
+    case "CANDIDATE_ACCESS": {
+      const p = [hi, `Para continuar o revisar tu postulación a ${c.stage ?? "AI Edge Talent"}, ingresa a tu portal con tu correo: te enviaremos un código de 6 dígitos de un solo uso.`, "Si ya habías empezado, retomas en la primera pregunta pendiente: tus respuestas están guardadas."];
+      return { subject: "AI Edge Talent | Continúa tu postulación", text: [...p, "", `Ingresar: ${c.link}`].join("\n"), html: layout("Continúa tu postulación", p, { cta: { label: "CONTINUAR MI POSTULACIÓN", href: c.link ?? "" } }) };
+    }
+    case "LOGIN_CODE": {
+      // stage = contexto opcional (p. ej. "continuar tu postulación").
+      const p = [hi, `Tu código para ${c.stage ?? "ingresar a AI Edge Talent"} es:`];
+      const foot = `Vence en ${c.minutes ?? 10} minutos y sirve una sola vez. Si no lo pediste, ignora este correo: nadie puede entrar sin él.`;
+      return { subject: "AI Edge Talent | Tu código de acceso", text: [...p, "", c.code ?? "", "", foot].join("\n"), html: layout("Tu código de acceso", p, { code: c.code, foot }) };
     }
     case "PULSE_REMINDER": {
       const p = [hi, `Completaste los requisitos de ${c.stage}. Para cerrar la etapa y continuar tu journey, solo falta tu pulso de experiencia: toma uno o dos minutos.`];
@@ -119,8 +119,8 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
       return { subject: "AI Edge Talent | Nueva solicitud de acceso especial", text: [...p, "", `Revisar: ${c.link}`].join("\n"), html: layout("Nueva solicitud de acceso especial", p, { cta: { label: "REVISAR SOLICITUD", href: c.link ?? "" } }) };
     }
     case "ACCESS_REQUEST_APPROVED": {
-      const p = [hi, "Aprobamos tu solicitud de acceso especial. Activa tu portal con este código temporal:"];
-      return { subject: "AI Edge Talent | Tu acceso fue aprobado", text: [...p, "", c.code ?? "", "", `Activar: ${c.link}`].join("\n"), html: layout("Tu acceso fue aprobado", p, { code: c.code, cta: { label: "ACTIVAR MI PORTAL", href: c.link ?? "" }, foot: "Al ingresar crearás tu código personal." }) };
+      const p = [hi, "Aprobamos tu solicitud de acceso a AI Edge Talent.", "Ingresa con tu correo: te enviaremos un código de 6 dígitos de un solo uso. No necesitas recordar contraseñas."];
+      return { subject: "AI Edge Talent | Tu acceso fue aprobado", text: [...p, "", `Ingresar: ${c.link}`].join("\n"), html: layout("Tu acceso fue aprobado", p, { cta: { label: "INGRESAR", href: c.link ?? "" } }) };
     }
     case "ACCESS_REQUEST_REJECTED": {
       const p = [hi, "Revisamos tu solicitud de acceso especial y por ahora no podemos habilitar tu acceso.", c.extra ? `Motivo: ${c.extra}` : "", "Si tienes dudas, responde este correo o escríbenos desde la sección Ayuda."].filter(Boolean);

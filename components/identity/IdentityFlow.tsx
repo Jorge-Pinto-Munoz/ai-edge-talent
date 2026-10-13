@@ -1,17 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  checkTemporaryCode, forcedPinChange, loginWithPin, requestPinReset, setPinWithCode, requestAccount, verifyAdminStep, type FlowResult,
-} from "@/lib/identity/actions";
+import { loginDemo, requestAccount, requestLoginCode, verifyLoginCode, type FlowResult } from "@/lib/identity/actions";
 import { Icon } from "@/components/site/Icon";
 import { PUBLIC_REQUEST_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
 import { suggestEmail } from "@/lib/identity/email-typo";
+import { PhoneField } from "@/components/ds/PhoneField";
 
-export type FlowMode = "ingresar" | "activar" | "restablecer" | "especial";
-type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "change_pin" | "admin_code" | "create" | "create_done";
+export type FlowMode = "ingresar" | "activar" | "restablecer" | "especial" | "continuar";
+type Screen = "email" | "code" | "demo" | "create" | "create_done";
 
 /** Casillas de dígitos: una por número, pegar el código completo funciona; `secret` oculta los números. */
 function Digits({ n, value, onChange, label, secret = false, autoFocus = false, onComplete, aside }: { n: 4 | 6; value: string; onChange: (v: string) => void; label: string; secret?: boolean; autoFocus?: boolean; onComplete?: (v: string) => void; aside?: React.ReactNode }) {
@@ -50,134 +48,103 @@ function Digits({ n, value, onChange, label, secret = false, autoFocus = false, 
   );
 }
 
+/** Código de 6 dígitos (ingreso y verificación de correo). */
+export function CodeInput({ value, onChange, onComplete }: { value: string; onChange: (v: string) => void; onComplete?: (v: string) => void }) {
+  return <Digits n={6} value={value} onChange={onChange} label="Código de acceso" autoFocus onComplete={onComplete} />;
+}
+
 export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode: FlowMode; initialEmail: string; next?: string }) {
   const router = useRouter();
-  const start0: Screen = initialMode === "activar" || initialMode === "restablecer" ? "activate" : initialMode === "especial" ? "create" : "login";
-  const [screen, setScreen] = useState<Screen>(start0);
+  const [screen, setScreen] = useState<Screen>(initialMode === "especial" ? "create" : "email");
   const [email, setEmail] = useState(initialEmail);
-  const [pin, setPin] = useState("");
   const [code, setCode] = useState("");
-  const [p1, setP1] = useState("");
-  const [p2, setP2] = useState("");
   const [msg, setMsg] = useState<FlowResult | null>(null);
+  const [wait, setWait] = useState(0);
   const [pending, start] = useTransition();
   const go = (s: Screen) => { setScreen(s); setMsg(null); };
+  const continuing = initialMode === "continuar";
 
-  const handle = (r: FlowResult) => {
+  // Cuenta regresiva para volver a pedir un código.
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [wait]);
+
+  const send = () => start(async () => {
+    const r = await requestLoginCode(email);
     setMsg(r);
-    if (!r.ok) {
-      // Un código rechazado se borra para escribirlo de nuevo desde la primera casilla.
-      if (screen === "set_pin" || screen === "change_pin") { setP1(""); setP2(""); }
-      if (screen === "login") setPin("");
-      return;
-    }
-    if (r.step === "done" && r.redirect) { router.replace(r.redirect); router.refresh(); return; }
-    // Tras el cambio obligatorio, el segundo paso de administración valida con el código NUEVO.
-    if (r.step === "admin_code") { if (screen === "change_pin") setPin(p1); setCode(""); setScreen("admin_code"); }
-    if (r.step === "change_pin") { setP1(""); setP2(""); setScreen("change_pin"); }
-    if (r.step === "set_pin") { setP1(""); setP2(""); setScreen("set_pin"); }
-    if (r.step === "code_sent") { setCode(""); setScreen("forgot_sent"); }
-  };
-  const run = (f: () => Promise<FlowResult>) => start(async () => handle(await f()));
-  const err = msg && !msg.ok ? (
-    <p className="error" role="alert">
-      {msg.message}
-      {msg.linkFallback && <> Mientras tanto, <Link href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>ingresa con un enlace por correo</Link>.</>}
-    </p>
-  ) : null;
-  const devNote = msg?.devCode ? <p className="auth-dev">Desarrollo: tu código es <strong>{msg.devCode}</strong> (en producción llega por correo).</p> : null;
+    if (!r.ok) return;
+    if (r.step === "demo") { setScreen("demo"); return; }
+    setCode("");
+    setWait(r.waitS ?? 45);
+    setScreen("code");
+  });
+  const verify = (c = code) => start(async () => {
+    const r = await verifyLoginCode(email, c, next);
+    setMsg(r);
+    if (r.ok && r.redirect) { router.replace(r.redirect); router.refresh(); return; }
+    setCode(""); // un código rechazado se borra para escribirlo de nuevo desde la primera casilla
+  });
+  const err = msg && !msg.ok ? <p className="error" role="alert">{msg.message}</p> : null;
   const fix = suggestEmail(email);
   const emailField = (
     <div className="field">
       <label htmlFor="id-e">Correo electrónico</label>
-      <input id="id-e" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input id="id-e" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus={!email} />
       {fix && <small className="auth-typo" role="status">¿Quisiste decir <button type="button" className="link-btn" onClick={() => setEmail(fix)}>{fix}</button>?</small>}
     </div>
   );
 
-  if (screen === "login") {
+  if (screen === "email") {
     return (
       <>
-        <h1>Bienvenido nuevamente</h1>
-        <p className="muted">Ingresa con tu correo y tu código personal de 4 dígitos.</p>
-        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => loginWithPin(email, pin, next)); }}>
+        <h1>{continuing ? "Continúa tu postulación" : "Ingresa a AI Edge Talent"}</h1>
+        <p className="muted">{continuing ? "Escribe el correo con el que te registraste. Te enviaremos un código de 6 dígitos y retomas donde quedaste." : "Escribe tu correo. Te enviaremos un código de 6 dígitos para ingresar: no necesitas contraseña."}</p>
+        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
           {emailField}
-          <Digits n={4} value={pin} onChange={setPin} label="Código personal" secret />
           {err}
-          <button className="btn auth-btn" disabled={pending || pin.length !== 4}>{pending ? "Ingresando…" : "Ingresar"} <Icon name="arrowRight" size={18} /></button>
-          <button type="button" className="link-btn auth-forgot" onClick={() => go("forgot")}>Olvidé mi código</button>
+          <button className="btn auth-btn" disabled={pending || !email}>{pending ? "Enviando…" : "Enviar código"} <Icon name="arrowRight" size={18} /></button>
         </form>
-        <div className="auth-new">
-          <span>¿No tienes cuenta?</span>
-          <button type="button" className="btn ghost auth-btn" onClick={() => go("create")}>Crear cuenta</button>
-        </div>
-      </>
-    );
-  }
-
-  if (screen === "activate" || screen === "forgot_sent") {
-    return (
-      <>
-        <h1>{screen === "forgot_sent" ? "Revisa tu correo" : "Activa tu espacio AI Edge Talent"}</h1>
-        <p className="muted">{screen === "forgot_sent" ? msg?.message ?? "Te enviamos un código temporal." : "Ingresa tu correo y el código temporal de 4 dígitos que recibiste."}</p>
-        {devNote}
-        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => checkTemporaryCode(email, code)); }}>
-          {emailField}
-          <Digits n={4} value={code} onChange={setCode} label="Código temporal" autoFocus={!!email} />
-          {err}
-          <button className="btn auth-btn" disabled={pending || code.length !== 4}>{pending ? "Validando…" : "Continuar"} <Icon name="arrowRight" size={18} /></button>
-          <div className="auth-links">
-            <button type="button" className="link-btn" onClick={() => go("login")}>Ya tengo mi código personal</button>
-            <button type="button" className="link-btn" onClick={() => go("forgot")}>Pedir un código nuevo</button>
+        {!continuing && (
+          <div className="auth-new">
+            <span>¿No tienes cuenta?</span>
+            <button type="button" className="btn ghost auth-btn" onClick={() => go("create")}>Crear cuenta</button>
           </div>
+        )}
+      </>
+    );
+  }
+
+  if (screen === "code") {
+    return (
+      <>
+        <h1>Revisa tu correo</h1>
+        <p className="muted">Si <strong>{email}</strong> está registrado, te enviamos un código de 6 dígitos. Vence en 10 minutos y sirve una sola vez.</p>
+        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); verify(); }}>
+          <Digits n={6} value={code} onChange={setCode} label="Código de acceso" autoFocus onComplete={(v) => verify(v)} />
+          {err}
+          <button className="btn auth-btn" disabled={pending || code.length !== 6}>{pending ? "Verificando…" : "Ingresar"} <Icon name="arrowRight" size={18} /></button>
+          <div className="auth-links">
+            <button type="button" className="link-btn" disabled={pending || wait > 0} onClick={send} aria-live="polite">{wait > 0 ? `Reenviar código en ${wait} s` : "Reenviar código"}</button>
+            <button type="button" className="link-btn" onClick={() => { setCode(""); go("email"); }}>Usar otro correo</button>
+          </div>
+          <p className="auth-hint muted">¿No llega? Revisa spam o la cuarentena de tu correo corporativo.</p>
         </form>
       </>
     );
   }
 
-  if (screen === "set_pin" || screen === "change_pin") {
-    const forced = screen === "change_pin";
+  if (screen === "demo") {
     return (
       <>
-        <h1>Crea tu código personal</h1>
-        <p className="muted">{forced ? "Por seguridad, debes crear un nuevo código antes de continuar." : "Elige 4 números que recuerdes. Evita secuencias (1234) o números repetidos (1111)."}</p>
-        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => (forced ? forcedPinChange(email, pin, p1, p2, next) : setPinWithCode(email, code, p1, p2, next))); }}>
-          <Digits n={4} value={p1} onChange={setP1} label="Nuevo código" secret autoFocus />
-          <Digits n={4} value={p2} onChange={setP2} label="Confirmar código" secret />
+        <h1>Cuenta de demostración</h1>
+        <p className="muted">Es una cuenta ficticia de solo lectura: ves la plataforma como ese profesional, sin enviar nada.</p>
+        <div className="auth-form">
           {err}
-          <button className="btn auth-btn" disabled={pending || p1.length !== 4 || p2.length !== 4}>{pending ? "Guardando…" : "Guardar e ingresar"}</button>
-        </form>
-      </>
-    );
-  }
-
-  if (screen === "admin_code") {
-    return (
-      <>
-        <h1>Verificación de administración</h1>
-        <p className="muted">{msg?.ok ? msg.message : "Te enviamos un código de 6 dígitos a tu correo."} Es un segundo paso obligatorio para cuentas de administración.</p>
-        {devNote}
-        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => verifyAdminStep(email, pin, code, next)); }}>
-          <Digits n={6} value={code} onChange={setCode} label="Código de verificación" autoFocus />
-          {err}
-          <button className="btn auth-btn" disabled={pending || code.length !== 6}>{pending ? "Verificando…" : "Verificar e ingresar"}</button>
-          <div className="auth-links"><button type="button" className="link-btn" onClick={() => run(() => loginWithPin(email, pin, next))}>Reenviar código</button></div>
-        </form>
-      </>
-    );
-  }
-
-  if (screen === "forgot") {
-    return (
-      <>
-        <h1>Olvidé mi código</h1>
-        <p className="muted">Te enviaremos un código temporal a tu correo para crear uno nuevo. Tu código actual sigue funcionando hasta que lo cambies.</p>
-        <form className="auth-form" onSubmit={(e) => { e.preventDefault(); run(() => requestPinReset(email)); }}>
-          {emailField}
-          {err}
-          <button className="btn auth-btn" disabled={pending}>{pending ? "Enviando…" : "Enviar código temporal"}</button>
-          <div className="auth-links"><button type="button" className="link-btn" onClick={() => go("login")}>Volver</button></div>
-        </form>
+          <button type="button" className="btn auth-btn" disabled={pending} onClick={() => start(async () => { const r = await loginDemo(email, next); setMsg(r); if (r.ok && r.redirect) { router.replace(r.redirect); router.refresh(); } })}>{pending ? "Entrando…" : "Entrar a la demostración"}</button>
+          <div className="auth-links"><button type="button" className="link-btn" onClick={() => go("email")}>Usar otro correo</button></div>
+        </div>
       </>
     );
   }
@@ -186,12 +153,12 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
     return (
       <>
         <div className="help-done" role="status"><Icon name="check" size={26} /><div><strong>{msg?.message}</strong><p>Te escribiremos a {email}.</p></div></div>
-        <div className="auth-alt"><button type="button" className="link-btn" onClick={() => go("login")}>Volver al ingreso</button></div>
+        <div className="auth-alt"><button type="button" className="link-btn" onClick={() => go("email")}>Volver al ingreso</button></div>
       </>
     );
   }
 
-  return <CreateAccount email={email} setEmail={setEmail} onDone={(r) => { setMsg(r); if (r.ok) setScreen("create_done"); }} onBack={() => go("login")} />;
+  return <CreateAccount email={email} setEmail={setEmail} onDone={(r) => { setMsg(r); if (r.ok) setScreen("create_done"); }} onBack={() => go("email")} />;
 }
 
 function CreateAccount({ email, setEmail, onDone, onBack }: { email: string; setEmail: (v: string) => void; onDone: (r: FlowResult) => void; onBack: () => void }) {
@@ -213,10 +180,7 @@ function CreateAccount({ email, setEmail, onDone, onBack }: { email: string; set
           </select>
           <small id="ca-r-h" className="muted">Las cuentas de Delivery, Hub AI, AI Coach y Líder de producto las crea el administrador de la plataforma.</small>
         </div>
-        <div className="field">
-          <label htmlFor="ca-p">Teléfono <span className="muted">(opcional)</span></label>
-          <div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="ca-p" inputMode="numeric" autoComplete="tel-national" placeholder="1234 5678" maxLength={9} value={f.phone} onChange={set("phone")} /></div>
-        </div>
+        <PhoneField id="ca-p" value={f.phone} onChange={(v) => setF((x) => ({ ...x, phone: v }))} />
         <div className="field"><label htmlFor="ca-d">¿Algo que debamos saber? <span className="muted">(opcional)</span></label><textarea id="ca-d" rows={2} maxLength={2000} placeholder="Cliente, equipo o Wave en la que participas" value={f.note} onChange={set("note")} /></div>
         <div className="sr-only" aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={f.website} onChange={set("website")} /></div>
         {err && <p className="error" role="alert">{err}</p>}

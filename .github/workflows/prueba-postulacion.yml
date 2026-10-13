@@ -1,5 +1,5 @@
-# Prueba de punta a punta: postula en el sitio publicado y revisa que salgan los correos (al postulante y a su
-# Delivery). Se ejecuta al cambiar .github/pruebas/postulacion.env en main, o a mano. ENVÍA CORREOS REALES.
+# Prueba en el sitio publicado: registra una postulación hasta la verificación del correo y revisa que salga el
+# código. Se ejecuta al cambiar .github/pruebas/postulacion.env en main, o a mano. ENVÍA CORREOS REALES.
 name: Prueba de postulación
 
 on:
@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo apt-get install -y -qq postgresql-client >/dev/null 2>&1
           sleep 8
-          psql "$DB_URL" -At -F ' | ' -c "select m.template, m.to_email, m.status, coalesce(m.error,'') from public.email_messages m join public.candidates c on c.id = m.candidate_id where c.wave_id='wave-3' and lower(c.corporate_email)=lower('$EMAIL') order by m.created_at" | while read -r l; do echo "::notice title=Correo::$l"; done
+          psql "$DB_URL" -At -F ' | ' -c "select m.template, m.to_email, m.status, coalesce(m.error,'') from public.email_messages m where lower(m.to_email)=lower('$EMAIL') and m.created_at > now() - interval '15 minutes' order by m.created_at" | while read -r l; do echo "::notice title=Correo::$l"; done
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: falla, path: falla.png }

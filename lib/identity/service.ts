@@ -13,6 +13,9 @@ export type CodePurpose = "LOGIN" | "ACTIVATION" | "RESET" | "ADMIN_STEP";
 /** Vigencia de cada código temporal (minutos). */
 export const CODE_TTL: Record<CodePurpose, number> = { LOGIN: 10, ACTIVATION: 48 * 60, RESET: 30, ADMIN_STEP: 10 };
 export const CODE_ATTEMPTS = 5;
+/** Ingreso con código por correo: espera mínima entre envíos y máximo de códigos por correo cada 15 minutos. */
+export const LOGIN_RESEND_S = 45;
+export const LOGIN_MAX_PER_15 = 5;
 
 function secret(): string {
   const s = process.env.STAFF_CODE_SECRET || serverEnv().serviceRoleKey;
@@ -154,3 +157,24 @@ export const portalLink = (mode: "activar" | "ingresar" | "restablecer", email?:
   `${env.appUrl}/ingresar?modo=${mode}${email ? `&email=${encodeURIComponent(email)}` : ""}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
 
 export const HOME_BY_ROLE: Record<string, string> = { admin: "/admin", delivery: "/equipo", bp: "/equipo", mentor: "/ai-coach", client: "/cliente", kiber: "/mi-journey", profesor: "/admin/profesor", hub: "/admin/lab" };
+
+/**
+ * Envía un código de ingreso de 6 dígitos (un solo uso, 10 minutos) a una cuenta existente.
+ * Respeta la espera entre envíos y el máximo cada 15 minutos. Nunca devuelve el código.
+ */
+export async function sendLoginCode(
+  email: string,
+  opts: { name?: string | null; context?: string; userId?: string | null; candidateId?: string | null; waveId?: string | null } = {},
+  svc: Svc = supabaseService(),
+): Promise<{ ok: boolean; reason?: "wait" | "limit" | "email"; waitS?: number }> {
+  const e = email.toLowerCase();
+  const since = new Date(Date.now() - 15 * 60_000).toISOString();
+  const { data: recent } = await svc.from("staff_login_codes").select("created_at").eq("email", e).eq("purpose", "LOGIN").gte("created_at", since).order("created_at", { ascending: false });
+  const last = recent?.[0] ? Date.parse(recent[0].created_at) : 0;
+  const waitS = Math.ceil(LOGIN_RESEND_S - (Date.now() - last) / 1000);
+  if (last && waitS > 0) return { ok: false, reason: "wait", waitS };
+  if ((recent?.length ?? 0) >= LOGIN_MAX_PER_15) return { ok: false, reason: "limit" };
+  const code = await issueCode(e, "LOGIN", opts.userId ?? null, 6, svc);
+  const r = await sendIdentityEmail("LOGIN_CODE", e, { name: opts.name ?? undefined, code, minutes: CODE_TTL.LOGIN, stage: opts.context, link: portalLink("ingresar", e) }, { userId: opts.userId ?? null, candidateId: opts.candidateId ?? null, waveId: opts.waveId ?? null }, svc);
+  return r.ok ? { ok: true } : { ok: false, reason: "email" };
+}

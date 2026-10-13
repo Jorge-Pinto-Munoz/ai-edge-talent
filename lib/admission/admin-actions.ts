@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { env } from "@/lib/supabase/env";
 import { requireRole } from "./auth";
+import { ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { statusPath } from "./status";
 import { parseCandidatesCsv } from "@/lib/import/candidates";
 import { evaluateOne } from "./evaluate-one";
@@ -234,7 +235,7 @@ export async function reviewRescue(waveId: string, candidateId: string, input: {
 export async function deleteCandidates(waveId: string, candidateIds: string[], opts: { account: boolean; confirm: string }): Promise<ActionResult> {
   try {
     const viewer = await requireRole(["admin"]);
-    if (opts.confirm.trim().toUpperCase() !== "BORRAR") throw new Error('Para confirmar, escribe BORRAR.');
+    if (opts.confirm.trim().toUpperCase() !== "ELIMINAR") throw new Error("Confirma la eliminación.");
     if (!candidateIds.length) throw new Error("Selecciona al menos una postulación.");
     const svc = supabaseService();
     const { data: rows } = await svc.from("candidates").select("id, full_name, corporate_email, status, user_id, wave_id").in("id", candidateIds).eq("wave_id", waveId);
@@ -266,14 +267,33 @@ export async function deleteCandidates(waveId: string, candidateIds: string[], o
         } else if (prof && prof.role !== "kiber") accountNote = " (su cuenta se mantiene: tiene un rol interno)";
         else if (others?.length) accountNote = " (su cuenta se mantiene: tiene otra postulación)";
       }
-      details.push(`${c.full_name}: postulación borrada${opts.account ? `, correos y códigos limpiados${accountNote}` : ""}.`);
+      details.push(`${c.full_name}: postulación eliminada${opts.account ? `, correos y códigos limpiados${accountNote}` : ""}.`);
       await svc.from("audit_log").insert({
         action: "candidate.deleted", actor: viewer.id, actor_email: viewer.email, target_email: email, wave_id: c.wave_id,
         details: { name: c.full_name, status: c.status, account: opts.account },
       });
     }
     revalidatePath(`/admin/admision/${waveId}`);
-    return { ok: deleted > 0, message: deleted ? `${deleted} postulación(es) borrada(s). Ya pueden postular de nuevo con el mismo correo.` : "No se borró ninguna postulación.", details };
+    return { ok: deleted > 0, message: deleted ? `${deleted} candidato(s) eliminado(s). Ya pueden postular de nuevo con el mismo correo.` : "No se eliminó ningún candidato.", details };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Reenvía al postulante el acceso a su portal (enlace para ingresar con su correo y un código de un solo uso). */
+export async function resendCandidateAccess(waveId: string, candidateId: string): Promise<ActionResult> {
+  try {
+    const viewer = await requireRole(["admin"]);
+    const svc = supabaseService();
+    const { data: c } = await svc.from("candidates").select("id, full_name, corporate_email, wave_id, waves(name)").eq("id", candidateId).eq("wave_id", waveId).maybeSingle();
+    if (!c) throw new Error("La postulación no existe.");
+    if (/\.invalid$/i.test(c.corporate_email)) throw new Error("Esta persona no tiene un correo registrado.");
+    const { userId } = await ensureAccount(c.corporate_email, c.full_name, svc);
+    await svc.from("candidates").update({ user_id: userId }).eq("id", c.id).is("user_id", null);
+    const wave = (c.waves as unknown as { name: string } | null)?.name ?? "AI Edge Talent";
+    const r = await sendIdentityEmail("CANDIDATE_ACCESS", c.corporate_email, { name: c.full_name, stage: wave, link: portalLink("ingresar", c.corporate_email, "/mi-journey") }, { userId, candidateId: c.id, waveId, sentBy: viewer.id }, svc);
+    revalidatePath(`/admin/admision/${waveId}`);
+    return r.ok ? { ok: true, message: `Enviamos el acceso a ${c.full_name}.` } : { ok: false, message: `El correo no salió: ${r.error ?? "error del proveedor"}.` };
   } catch (e) {
     return fail(e);
   }

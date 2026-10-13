@@ -39,7 +39,7 @@ export function CandidatePortal({ data, inPortal = false, preview = false }: { d
   if (["APPLICATION_SUBMITTED", "ASSESSMENT_EVALUATED", "HUMAN_REVIEW"].includes(s))
     return (
       <Message eyebrow={`Assessment ${ASSESSMENT_STATE_LABEL.COMPLETED.toLowerCase()}${data.submittedAt ? ` · enviado el ${fmtDay(data.submittedAt)}` : ""}`} title="Recibimos tu postulación">
-        {!inPortal && <p>¡Gracias por postular! Te enviamos un correo con tus credenciales para ingresar a tu portal: ahí ves el estado de tu postulación. Al ingresar por primera vez creas tu propio código de 4 dígitos.</p>}
+        {!inPortal && <p>¡Gracias por postular! Te enviamos un correo de confirmación. Para seguir el estado, ingresa a tu portal con tu correo: te enviaremos un código de un solo uso.</p>}
         <p>El equipo AI Edge Talent revisará la evidencia y te comunicará el resultado y el próximo paso por correo y en tu portal.</p>
         <Callout tone="warn" title="Postular no significa estar seleccionado/a." />
         <Callout title="Si quedas bajo el corte, tienes una segunda oportunidad">

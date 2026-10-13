@@ -27,15 +27,10 @@ export async function provisionParticipant(candidateId: string, actor: string | 
     await audit("user.invitation.skipped", { actor, targetUser: userId, targetEmail: email, candidateId, waveId: c.wave_id, details: { reason: `cuenta ${prof.status}` } }, svc);
     return { ok: true, message: "La cuenta está pausada o revocada: Administración decide su reactivación." };
   }
-  const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
-  if (cred?.pin_hash) {
-    // Ya tiene código personal: solo se le avisa, sin tocar su credencial.
-    const r = await sendIdentityEmail("ACCESS_UPDATED", email, { name: c.full_name, link: portalLink("ingresar", email) }, { userId, candidateId, waveId: c.wave_id, sentBy: actor }, svc);
-    await audit("user.access.enabled", { actor, targetUser: userId, targetEmail: email, candidateId, waveId: c.wave_id, details: { sent: r.ok, error: r.error } }, svc);
-    return { ok: true, message: "Acceso habilitado (ya tenía código personal)." };
-  }
-  const code = await issueCode(email, "ACTIVATION", actor, 4, svc);
-  const r = await sendIdentityEmail("ACTIVATION", email, { name: c.full_name, code, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email) }, { userId, candidateId, waveId: c.wave_id, sentBy: actor }, svc);
-  await audit("user.invitation.requested", { actor, targetUser: userId, targetEmail: email, candidateId, waveId: c.wave_id, details: { created, sent: r.ok, error: r.error } }, svc);
-  return { ok: true, message: r.ok ? "Invitación enviada." : `Cuenta lista; el correo no salió (${r.error}).`, devCode: process.env.NODE_ENV !== "production" && !r.ok ? code : undefined };
+  // Primera vez (cuenta pendiente): bienvenida a la etapa; si ya ingresaba, aviso de acceso habilitado. Sin códigos:
+  // entra con su correo y un código de un solo uso.
+  const template = !prof || prof.status === "PENDING" ? "ACTIVATION" : "ACCESS_UPDATED";
+  const r = await sendIdentityEmail(template, email, { name: c.full_name, link: portalLink("ingresar", email) }, { userId, candidateId, waveId: c.wave_id, sentBy: actor }, svc);
+  await audit(template === "ACTIVATION" ? "user.invitation.requested" : "user.access.enabled", { actor, targetUser: userId, targetEmail: email, candidateId, waveId: c.wave_id, details: { created, sent: r.ok, error: r.error } }, svc);
+  return { ok: true, message: r.ok ? "Acceso habilitado y aviso enviado." : `Cuenta lista; el correo no salió (${r.error}).` };
 }

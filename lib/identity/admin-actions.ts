@@ -5,7 +5,7 @@ import { supabaseService } from "@/lib/supabase/server";
 import { requireRole, type Viewer } from "@/lib/admission/auth";
 import { LAYERS, type Layer } from "@/lib/journey/rules";
 import { CODE_TTL, audit, ensureAccount, issueCode, portalLink, revokeSessions, sendIdentityEmail, setAuthBan } from "./service";
-import { normalizeCLMobile } from "./pin";
+import { normalizePhone } from "./phone";
 import { CREATABLE_ROLES, ROLE_LABEL, isRole, type CreatableRole, type Role } from "./roles";
 
 export type AdminResult = { ok: boolean; message: string; devCode?: string };
@@ -30,16 +30,13 @@ async function target(userId: string) {
   return data as { id: string; email: string; full_name: string | null; role: Role; status: string };
 }
 
-/** Envía un código temporal y deja todo registrado. Devuelve el código solo en desarrollo, si el correo no salió. */
+/** Invitación de acceso (sin código): la persona ingresa con su correo y recibe un código de un solo uso. */
 async function sendAccessCode(t: { id: string; email: string; full_name: string | null; role: string }, actor: Viewer, kind: "invite" | "reset") {
   const svc = supabaseService();
-  const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", t.id).maybeSingle();
-  const purpose = kind === "reset" && cred?.pin_hash ? "RESET" : "ACTIVATION";
-  const code = await issueCode(t.email, purpose, actor.id, 4, svc);
-  const template = purpose === "RESET" ? "PIN_RESET" : t.role === "delivery" ? "DELIVERY_INVITE" : "ACCOUNT_INVITE";
-  const r = await sendIdentityEmail(template, t.email, { name: t.full_name ?? undefined, code, minutes: CODE_TTL[purpose], link: portalLink("activar", t.email) }, { userId: t.id, sentBy: actor.id }, svc);
-  await audit(kind === "reset" ? "user.pin.reset_requested" : "user.invitation.requested", { actor: actor.id, actorEmail: actor.email, targetUser: t.id, targetEmail: t.email, details: { purpose, sent: r.ok, error: r.error } }, svc);
-  return { sent: r.ok, error: r.error, devCode: dev() && !r.ok ? code : undefined };
+  const template = t.role === "delivery" ? "DELIVERY_INVITE" : "ACCOUNT_INVITE";
+  const r = await sendIdentityEmail(template, t.email, { name: t.full_name ?? undefined, stage: ROLE_LABEL[t.role], link: portalLink("ingresar", t.email) }, { userId: t.id, sentBy: actor.id }, svc);
+  await audit("user.invitation.requested", { actor: actor.id, actorEmail: actor.email, targetUser: t.id, targetEmail: t.email, details: { kind, sent: r.ok, error: r.error } }, svc);
+  return { sent: r.ok, error: r.error, devCode: undefined as string | undefined };
 }
 const sentMsg = (s: { sent: boolean; error: string | null }, ok: string) => (s.sent ? ok : `${ok.replace(/ y enviamos.*$/, "")}. El correo no salió: ${s.error ?? "error del proveedor"}. Puedes reenviarlo.`);
 
@@ -52,8 +49,8 @@ export async function createUser(input: { kind: CreatableRole; fullName: string;
     const fullName = input.fullName.trim();
     if (fullName.length < 2) throw new Error("Ingresa el nombre completo.");
     if (!EMAIL_RE.test(email)) throw new Error("Revisa el correo electrónico.");
-    const phone = input.phone?.trim() ? normalizeCLMobile(input.phone) : null;
-    if (input.phone?.trim() && !phone) throw new Error("Teléfono inválido: +56 9 y 8 dígitos.");
+    const phone = input.phone?.trim() ? normalizePhone(input.phone) : null;
+    if (input.phone?.trim() && !phone) throw new Error("Teléfono inválido: revisa el código de país y el número.");
     const svc = supabaseService();
     const { data: existing } = await svc.from("profiles").select("id, role, status").eq("email", email).maybeSingle();
     if (existing && existing.role !== input.kind && existing.role !== "kiber") throw new Error(`Ese correo ya tiene una cuenta con rol ${ROLE_LABEL[existing.role] ?? existing.role}. Cámbiale el rol desde su ficha.`);
@@ -90,8 +87,8 @@ export async function updateUser(userId: string, input: { fullName: string; phon
   try {
     const actor = await admin();
     const t = await target(userId);
-    const phone = input.phone.trim() ? normalizeCLMobile(input.phone) : null;
-    if (input.phone.trim() && !phone) throw new Error("Teléfono inválido: +56 9 y 8 dígitos.");
+    const phone = input.phone.trim() ? normalizePhone(input.phone) : null;
+    if (input.phone.trim() && !phone) throw new Error("Teléfono inválido: revisa el código de país y el número.");
     await supabaseService().from("profiles").update({ full_name: input.fullName.trim() || null, phone, updated_at: new Date().toISOString() }).eq("id", userId);
     await audit("user.updated", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: t.email, details: { fields: ["full_name", "phone"] } });
     return done("Datos actualizados.");
@@ -170,54 +167,13 @@ export async function setAccountStatus(userId: string, status: "ACTIVE" | "PAUSE
 }
 
 // ───────────── Códigos y sesiones ─────────────
-export async function resetPin(userId: string): Promise<AdminResult> {
-  try {
-    const actor = await admin();
-    const t = await target(userId);
-    const svc = supabaseService();
-    // Invalida el código actual: la persona crea uno nuevo con el código temporal.
-    await svc.from("user_credentials").upsert({ user_id: userId, pin_hash: null, must_change: false, failed_count: 0, locked_until: null, updated_at: new Date().toISOString() });
-    const s = await sendAccessCode(t, actor, "invite");
-    return done(sentMsg(s, `Código invalidado y enviamos un código temporal a ${t.email}.`), { devCode: s.devCode });
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function forcePinChange(userId: string): Promise<AdminResult> {
-  try {
-    const actor = await admin();
-    const t = await target(userId);
-    const svc = supabaseService();
-    const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
-    if (!cred?.pin_hash) throw new Error("La cuenta aún no tiene código personal: usa “Reenviar invitación”.");
-    await svc.from("user_credentials").update({ must_change: true, updated_at: new Date().toISOString() }).eq("user_id", userId);
-    await audit("user.pin.force_change", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: t.email }, svc);
-    return done("En su próximo ingreso deberá crear un nuevo código.");
-  } catch (e) {
-    return fail(e);
-  }
-}
-
 export async function resendInvite(userId: string): Promise<AdminResult> {
   try {
     const actor = await admin();
     const t = await target(userId);
     if (t.status === "PAUSED" || t.status === "REVOKED" || t.status === "DELETED") throw new Error("Reactiva la cuenta antes de reenviar la invitación.");
     const s = await sendAccessCode(t, actor, "reset");
-    return done(sentMsg(s, `Enviamos un nuevo código temporal a ${t.email}.`), { devCode: s.devCode });
-  } catch (e) {
-    return fail(e);
-  }
-}
-
-export async function unlockAccount(userId: string): Promise<AdminResult> {
-  try {
-    const actor = await admin();
-    const t = await target(userId);
-    await supabaseService().from("user_credentials").update({ failed_count: 0, locked_until: null }).eq("user_id", userId);
-    await audit("user.unlocked", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: t.email });
-    return done("Bloqueo de seguridad retirado.");
+    return done(sentMsg(s, `Enviamos el acceso a ${t.email}: ingresa con su correo y recibe un código.`));
   } catch (e) {
     return fail(e);
   }
@@ -297,12 +253,9 @@ export async function decideAccessRequest(id: string, input: { decision: "APPROV
     }
     await svc.from("access_requests").update({ status: "APPROVED", decided_at: new Date().toISOString(), decided_by: actor.id, decision_note: input.note.trim(), resume_layer: input.resumeLayer || null, candidate_id: candidateId, user_id: userId, granted_role: role }).eq("id", id);
 
-    const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
-    const purpose = cred?.pin_hash ? "RESET" : "ACTIVATION";
-    const code = await issueCode(req.email, purpose, actor.id, 4, svc);
-    const r = await sendIdentityEmail("ACCESS_REQUEST_APPROVED", req.email, { name: req.name, code, link: portalLink("activar", req.email) }, { userId, candidateId, sentBy: actor.id }, svc);
+    const r = await sendIdentityEmail("ACCESS_REQUEST_APPROVED", req.email, { name: req.name, link: portalLink("ingresar", req.email) }, { userId, candidateId, sentBy: actor.id }, svc);
     await audit("access.request.approved", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: req.email, candidateId, details: { request: id, note: input.note.trim(), resume_layer: input.resumeLayer || null, role, sent: r.ok } }, svc);
-    return done(r.ok ? "Solicitud aprobada y acceso enviado." : `Solicitud aprobada. El correo no salió (${r.error}); reenvía el acceso desde la ficha.`, { devCode: dev() && !r.ok ? code : undefined });
+    return done(r.ok ? "Solicitud aprobada y acceso enviado." : `Solicitud aprobada. El correo no salió (${r.error}); reenvía el acceso desde la ficha.`);
   } catch (e) {
     return fail(e);
   }

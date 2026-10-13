@@ -6,9 +6,9 @@ import { IdentityFlow, type FlowMode } from "@/components/identity/IdentityFlow"
 export const metadata = { title: "Ingresar · AI Edge Talent" };
 export const dynamic = "force-dynamic";
 
-const MODES: FlowMode[] = ["ingresar", "activar", "restablecer", "especial"];
+const MODES: FlowMode[] = ["ingresar", "activar", "restablecer", "especial", "continuar"];
 
-/** Ingreso unificado (profesionales, Delivery, clientes y equipo): correo + código personal de 4 dígitos. */
+/** Ingreso unificado (todos los roles): correo + código de 6 dígitos enviado a ese correo. */
 export default async function Ingresar({ searchParams }: { searchParams: Promise<{ modo?: string; email?: string; next?: string }> }) {
   const sp = await searchParams;
   const next = sp.next && sp.next.startsWith("/") && !sp.next.startsWith("//") ? sp.next : undefined;

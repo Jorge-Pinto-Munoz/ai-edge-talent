@@ -3,10 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  changeRole, closeSessions, createUser, forcePinChange, resendInvite, resetPin, setAccountStatus, setDeliveryWaves, unlockAccount, updateUser, userHistory, type AdminResult,
+  changeRole, closeSessions, createUser, resendInvite, setAccountStatus, setDeliveryWaves, updateUser, userHistory, type AdminResult,
 } from "@/lib/identity/admin-actions";
 import { Icon } from "@/components/site/Icon";
 import { Sheet } from "@/components/site/Sheet";
+import { PhoneField } from "@/components/ds/PhoneField";
 import { CREATABLE_ROLES, ROLE_LABEL, type CreatableRole } from "@/lib/identity/roles";
 
 export interface UserRow {
@@ -98,7 +99,7 @@ function useAction() {
 function UserDrawer({ u, waves, isMe, onClose }: { u: UserRow; waves: Wave[]; isMe: boolean; onClose: () => void }) {
   const { run, pending, out } = useAction();
   const [name, setName] = useState(u.name);
-  const [phone, setPhone] = useState(u.phone?.replace("+569", "") ?? "");
+  const [phone, setPhone] = useState(u.phone ?? "");
   const [reason, setReason] = useState("");
   const [confirm, setConfirm] = useState("");
   const [newRole, setNewRole] = useState(u.role);
@@ -111,7 +112,7 @@ function UserDrawer({ u, waves, isMe, onClose }: { u: UserRow; waves: Wave[]; is
     <div className="ud">
       <div className="ud-head">
         <UserStatusBadge status={u.status} />
-        <span className={`uc-pin p-${u.pin.toLowerCase()}`}>Código: {u.pinLabel}</span>
+        <span className={`uc-pin p-${u.lastAccess ? "set" : "pending"}`}>{u.lastAccess ? `Último ingreso: ${new Date(u.lastAccess).toLocaleDateString("es-CL")}` : "Aún no ingresa"}</span>
         <small className="muted">{u.email}{u.lastAccess ? ` · último acceso ${fmt(u.lastAccess)}` : " · nunca ha ingresado"}</small>
       </div>
       {out}
@@ -119,23 +120,19 @@ function UserDrawer({ u, waves, isMe, onClose }: { u: UserRow; waves: Wave[]; is
       <section className="ud-sec">
         <h3>Datos</h3>
         <div className="field"><label htmlFor="ud-n">Nombre completo</label><input id="ud-n" value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div className="field"><label htmlFor="ud-p">Teléfono</label><div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="ud-p" inputMode="numeric" maxLength={9} value={phone} onChange={(e) => setPhone(e.target.value)} /></div></div>
+        <PhoneField id="ud-p" value={phone} onChange={setPhone} />
         <button type="button" className="btn small secondary" disabled={pending} onClick={() => run(() => updateUser(u.id, { fullName: name, phone }))}>Guardar datos</button>
       </section>
 
       <section className="ud-sec">
-        <h3>Código de acceso</h3>
+        <h3>Acceso</h3>
         <dl className="ud-dl">
-          <div><dt>Código personal</dt><dd>{u.pinLabel}{u.pinSetAt ? ` · actualizado ${fmt(u.pinSetAt)}` : ""}</dd></div>
-          <div><dt>Código temporal</dt><dd>{u.tempCode ? `${u.tempCode.purpose === "RESET" ? "Restablecimiento" : "Activación"} vigente hasta ${fmt(u.tempCode.expiresAt)}` : "Ninguno vigente"}</dd></div>
-          {u.lockedUntil && <div><dt>Bloqueo de seguridad</dt><dd>Hasta {fmt(u.lockedUntil)} (intentos fallidos)</dd></div>}
+          <div><dt>Cómo ingresa</dt><dd>Con su correo y un código de 6 dígitos de un solo uso que recibe al ingresar.</dd></div>
+          <div><dt>Último ingreso</dt><dd>{u.lastAccess ? fmt(u.lastAccess) : "Aún no ingresa"}</dd></div>
         </dl>
-        <p className="muted ud-note">Nunca verás el código personal: solo puedes invalidarlo y enviar uno temporal.</p>
+        <p className="muted ud-note">Nadie del equipo puede ver los códigos: llegan solo al correo de la persona.</p>
         <div className="ud-actions">
-          <button type="button" className="btn small" disabled={pending || blocked} onClick={() => run(() => resendInvite(u.id))}>{u.pin === "PENDING" ? "Reenviar invitación" : "Enviar código temporal"}</button>
-          <button type="button" className="btn small ghost" disabled={pending || blocked} onClick={() => confirmAndRun("¿Invalidar su código personal y enviarle uno temporal?", () => run(() => resetPin(u.id)))}>Restablecer código</button>
-          <button type="button" className="btn small ghost" disabled={pending || blocked || u.pin === "PENDING"} onClick={() => run(() => forcePinChange(u.id))}>Forzar cambio en el próximo ingreso</button>
-          {u.lockedUntil && <button type="button" className="btn small ghost" disabled={pending} onClick={() => run(() => unlockAccount(u.id))}>Quitar bloqueo</button>}
+          <button type="button" className="btn small" disabled={pending || blocked} onClick={() => run(() => resendInvite(u.id))}>Reenviar acceso</button>
           <button type="button" className="btn small ghost" disabled={pending} onClick={() => confirmAndRun("¿Cerrar sus sesiones en todos los dispositivos?", () => run(() => closeSessions(u.id)))}>Cerrar sesiones</button>
         </div>
       </section>
@@ -216,8 +213,8 @@ function CreateUser({ waves, onDone }: { waves: Wave[]; onDone: () => void }) {
       </div>
       <div className="field"><label htmlFor="cu-n">Nombre completo</label><input id="cu-n" required value={f.fullName} onChange={set("fullName")} /></div>
       <div className="field"><label htmlFor="cu-e">Correo electrónico</label><input id="cu-e" type="email" required value={f.email} onChange={set("email")} />
-        <small className="muted">{f.kind === "kiber" ? "Cualquier dominio válido." : "Crear la cuenta es la autorización explícita de Administración. La persona recibe un código temporal y crea su código personal."}</small></div>
-      <div className="field"><label htmlFor="cu-p">Teléfono</label><div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="cu-p" inputMode="numeric" maxLength={9} value={f.phone} onChange={set("phone")} /></div></div>
+        <small className="muted">{f.kind === "kiber" ? "Cualquier dominio válido." : "Crear la cuenta es la autorización explícita de Administración. La persona recibe un correo y entra con su correo y un código de un solo uso."}</small></div>
+      <PhoneField id="cu-p" value={f.phone} onChange={(v) => setF((x) => ({ ...x, phone: v }))} />
       {f.kind === "kiber" ? (
         <>
           <div className="field"><label htmlFor="cu-w">Wave</label><select id="cu-w" value={ws[0] ?? ""} onChange={(e) => setWs(e.target.value ? [e.target.value] : [])}><option value="">Sin Wave por ahora</option>{open.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</select></div>
@@ -226,7 +223,7 @@ function CreateUser({ waves, onDone }: { waves: Wave[]; onDone: () => void }) {
           <p className="muted ud-note">Crear la cuenta no aprueba evaluaciones ni salta etapas: en la Wave queda invitado/a a postular, o se vincula a su postulación si ya existe.</p>
         </>
       ) : f.kind !== "delivery" ? (
-        <p className="muted ud-note">Sus permisos quedan activos cuando la persona ingresa con el código temporal y crea su código personal. Puedes cambiar el rol o pausar la cuenta desde su ficha.</p>
+        <p className="muted ud-note">Sus permisos quedan activos cuando la persona ingresa por primera vez con el código que llega a su correo. Puedes cambiar el rol o pausar la cuenta desde su ficha.</p>
       ) : (
         <fieldset className="ud-checks"><legend>Waves que acompaña</legend>{open.map((w) => <label key={w.id}><input type="checkbox" checked={ws.includes(w.id)} onChange={(e) => setWs((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>)}</fieldset>
       )}

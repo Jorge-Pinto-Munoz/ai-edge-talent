@@ -26,7 +26,7 @@ export default async function MiPerfil() {
         <h1 style={{ margin: "6px 0" }}>Mi perfil</h1>
         <p className="muted" style={{ margin: 0 }}>{v.fullName ?? v.email} · {v.email}</p>
       </div>
-      <ProfileForms hasPin={Boolean(cred?.pin_hash)} pinSetAt={cred?.pin_set_at ?? null} community={community ? community.accepted_at : null} communityText={COMMUNITY_CONSENT.text} communityDetail={COMMUNITY_CONSENT.detail} isPro={v.role === "kiber"} />
+      <ProfileForms community={community ? community.accepted_at : null} communityText={COMMUNITY_CONSENT.text} communityDetail={COMMUNITY_CONSENT.detail} isPro={v.role === "kiber"} />
       {v.role === "kiber" && (
         <section className="card">
           <h2 style={{ marginTop: 0 }}>{STAGE_RULES.title}</h2>

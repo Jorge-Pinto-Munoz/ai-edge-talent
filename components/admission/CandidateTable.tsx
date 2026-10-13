@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CandidateListItem } from "@/lib/admission/queries";
-import { decideCandidates, deleteCandidates, evaluateCandidates, sendCandidateEmails, type ActionResult } from "@/lib/admission/admin-actions";
+import { decideCandidates, deleteCandidates, evaluateCandidates, resendCandidateAccess, sendCandidateEmails, type ActionResult } from "@/lib/admission/admin-actions";
 import { TEMPLATE_NAME, type IdentityTemplate } from "@/lib/email/identity";
 import { TEMPLATE_FOR_STATUS, TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
@@ -19,7 +19,7 @@ const OUTCOMES = [
   ["NOT_SELECTED", "No continúa (todavía no)"],
 ] as const;
 
-export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = "" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialStatus?: string }) {
+export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus = "" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialStatus?: string }) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(initialStatus);
   const [rec, setRec] = useState("");
@@ -31,6 +31,9 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
   const [template, setTemplate] = useState<EmailTemplate>("INVITATION");
   const [stage, setStage] = useState<Stage>("all");
   const [toDelete, setToDelete] = useState<string[] | null>(null);
+  // Eliminados en esta sesión: desaparecen de la lista y de los indicadores al instante (el servidor confirma).
+  const [removed, setRemoved] = useState<string[]>([]);
+  const candidates = useMemo(() => all.filter((c) => !removed.includes(c.id)), [all, removed]);
 
   const rows = useMemo(
     () =>
@@ -56,7 +59,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
     <div className="stack adm-board">
       <div className="adm-funnel" role="group" aria-label="Filtrar por etapa del Assessment">
         {(Object.keys(STAGES) as Stage[]).map((k) => (
-          <button key={k} type="button" className={`adm-chip${stage === k ? " on" : ""}`} aria-pressed={stage === k} onClick={() => setStage(stage === k && k !== "all" ? "all" : k)}>
+          <button key={k} type="button" className={`adm-chip${stage === k ? " on" : ""}`} aria-pressed={stage === k} onClick={() => { setStage(stage === k && k !== "all" ? "all" : k); setStatus(""); setRec(""); }}>
             <strong>{count(k)}</strong>
             <span>{STAGES[k].label}</span>
           </button>
@@ -86,6 +89,19 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
             <button className="adm-pill" onClick={() => pick((c) => ["INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(c.status))}>Sin postulación enviada</button>
             <button className="adm-pill" onClick={() => pick(() => true)}>Todos los visibles</button>
           </div>
+        )}
+      </div>
+
+      <div className="adm-showing" role="status" aria-live="polite">
+        <span>Mostrando <strong>{rows.length}</strong> de {candidates.length} candidato{candidates.length === 1 ? "" : "s"}</span>
+        {(stage !== "all" || status || rec || q) && (
+          <>
+            {stage !== "all" && <span className="adm-tag">{STAGES[stage].label}</span>}
+            {status && <span className="adm-tag">Estado: {ADMISSION_LABEL[status as AdmissionStatus]}</span>}
+            {rec && <span className="adm-tag">IA: {REC_LABEL[rec]}</span>}
+            {q && <span className="adm-tag">“{q}”</span>}
+            <button type="button" className="link-btn" onClick={() => { setStage("all"); setStatus(""); setRec(""); setQ(""); }}>Limpiar filtros</button>
+          </>
         )}
       </div>
 
@@ -127,9 +143,9 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
               </button>
             </div>
             <div className="adm-act danger">
-              <span className="adm-step">Borrar postulación</span>
+              <span className="adm-step">Eliminar</span>
               <p>La persona podrá postular de nuevo desde cero.</p>
-              <button className="btn small adm-danger" disabled={pending} onClick={() => setToDelete(sel)}>Borrar {sel.length === 1 ? "postulación" : `${sel.length} postulaciones`}</button>
+              <button className="btn small adm-danger" disabled={pending} onClick={() => setToDelete(sel)}>Eliminar {sel.length === 1 ? "candidato" : `${sel.length} candidatos`}</button>
             </div>
           </div>
         </section>
@@ -140,7 +156,12 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
           people={candidates.filter((c) => toDelete.includes(c.id))}
           pending={pending}
           onCancel={() => setToDelete(null)}
-          onConfirm={(account, confirmText) => start(async () => { const r = await deleteCandidates(waveId, toDelete, { account, confirm: confirmText }); setResult(r); if (r.ok) { setSel([]); setToDelete(null); } })}
+          onConfirm={(account, confirmText) => start(async () => {
+            const ids = toDelete;
+            const r = await deleteCandidates(waveId, ids, { account, confirm: confirmText });
+            setResult(r);
+            if (r.ok) { setRemoved((x) => [...x, ...ids]); setSel((x) => x.filter((id) => !ids.includes(id))); setToDelete(null); }
+          })}
           error={result && !result.ok && toDelete ? result.message : null}
         />
       )}
@@ -197,7 +218,16 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
                   </td>
                 )}
                 <td data-label="Último correo">{c.lastEmail ? <small>{TEMPLATE_LABEL[c.lastEmail.template as EmailTemplate] ?? TEMPLATE_NAME[c.lastEmail.template as IdentityTemplate] ?? c.lastEmail.template}<br /><span className={c.lastEmail.status === "failed" ? "error" : "muted"}>{c.lastEmail.status === "sent" ? "Enviado" : c.lastEmail.status === "failed" ? "Falló" : "En cola"}</span></small> : <span className="muted">—</span>}</td>
-                {isAdmin && <td className="rt-actions"><button type="button" className="adm-row-del" onClick={() => setToDelete([c.id])} aria-label={`Borrar la postulación de ${c.full_name}`} title="Borrar postulación">Borrar</button></td>}
+                {isAdmin && (
+                  <td className="rt-actions">
+                    <RowMenu
+                      name={c.full_name}
+                      detailHref={`/admin/admision/${waveId}/c/${c.id}`}
+                      onResend={() => run(() => resendCandidateAccess(waveId, c.id))}
+                      onDelete={() => setToDelete([c.id])}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
             {rows.length === 0 && <tr><td colSpan={8} className="muted">{candidates.length ? "No hay postulaciones con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
@@ -217,24 +247,78 @@ const STAGES: Record<Stage, { label: string; test: (s: string) => boolean }> = {
   enrolled: { label: "Inscritos", test: (s) => ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(s) },
 };
 
-/** Confirmación del borrado: lista a las personas, explica qué se borra y pide escribir BORRAR. */
+/** Menú de acciones de una fila (···): ver detalle, reenviar acceso y eliminar (acción destructiva, al final). */
+function RowMenu({ name, detailHref, onResend, onDelete }: { name: string; detailHref: string; onResend: () => void; onDelete: () => void }) {
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const open = pos !== null;
+  const setOpen = (v: boolean) => { if (!v) setPos(null); else place(); };
+  const ref = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  // El menú se ubica sobre la página (posición fija), así no lo recorta el borde de la tabla; abre hacia arriba si
+  // no cabe abajo.
+  const place = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    if (r.bottom < 0 || r.top > window.innerHeight) { setPos(null); return; } // el botón salió de la pantalla
+    const right = Math.max(8, window.innerWidth - r.right);
+    setPos(window.innerHeight - r.bottom < 190 ? { bottom: window.innerHeight - r.top + 4, right } : { top: r.bottom + 4, right });
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setPos(null); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setPos(null); btn.current?.focus(); } };
+    // Al desplazarse o cambiar el tamaño, el menú se reubica junto a su botón (no se cierra de golpe).
+    const away = () => place();
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    window.addEventListener("scroll", away, true);
+    window.addEventListener("resize", away);
+    ref.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus({ preventScroll: true });
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); window.removeEventListener("scroll", away, true); window.removeEventListener("resize", away); };
+  }, [open]);
+  const item = (f: () => void) => () => { setOpen(false); f(); };
+  return (
+    <div className="row-menu" ref={ref}>
+      <button ref={btn} type="button" className="row-menu-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`Acciones para ${name}`} onClick={() => setOpen(!open)}>
+        <span aria-hidden="true">···</span>
+      </button>
+      {open && (
+        <div className="row-menu-pop" role="menu" aria-label={`Acciones para ${name}`} style={pos ?? undefined}>
+          <Link role="menuitem" href={detailHref} onClick={() => setOpen(false)}>Ver detalle</Link>
+          <button role="menuitem" type="button" onClick={item(onResend)}>Reenviar acceso</button>
+          <hr />
+          <button role="menuitem" type="button" className="danger" onClick={item(onDelete)}>Eliminar candidato</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Confirmación de la eliminación: nombra a la persona y explica las consecuencias. Una persona: Cancelar o
+ * Eliminar candidato. Varias a la vez: además se escribe ELIMINAR, para no borrar por accidente.
+ */
 function DeleteDialog({ people, pending, onCancel, onConfirm, error }: { people: CandidateListItem[]; pending: boolean; onCancel: () => void; onConfirm: (account: boolean, confirm: string) => void; error: string | null }) {
   const [account, setAccount] = useState(true);
   const [text, setText] = useState("");
+  const cancel = useRef<HTMLButtonElement>(null);
+  const many = people.length > 1;
   const enrolled = people.filter((p) => STAGES.enrolled.test(p.status));
+  useEffect(() => { cancel.current?.focus(); }, []);
+  const ready = !many || text.trim().toUpperCase() === "ELIMINAR";
   return (
-    <div className="adm-modal" role="dialog" aria-modal="true" aria-labelledby="del-t" onKeyDown={(e) => e.key === "Escape" && onCancel()}>
+    <div className="adm-modal" role="alertdialog" aria-modal="true" aria-labelledby="del-t" aria-describedby="del-d" onKeyDown={(e) => e.key === "Escape" && !pending && onCancel()}>
       <div className="adm-modal-card">
-        <h2 id="del-t">Borrar {people.length === 1 ? "postulación" : `${people.length} postulaciones`}</h2>
-        <ul className="adm-del-list">{people.map((p) => <li key={p.id}><strong>{p.full_name}</strong> <small className="muted">{shownEmail(p.corporate_email)} · {ADMISSION_LABEL[p.status as AdmissionStatus]}</small></li>)}</ul>
-        <p>Se borran sus respuestas, evaluaciones, decisiones e historial de admisión. Podrá postular de nuevo con el mismo correo. Queda registrado a tu nombre en la auditoría. <strong>No se puede deshacer.</strong></p>
-        {enrolled.length > 0 && <p className="error">{enrolled.length} persona(s) ya están inscritas en el programa: esas no se borran.</p>}
-        <label className="check"><input type="checkbox" checked={account} onChange={(e) => setAccount(e.target.checked)} /> <span>Partir desde cero: borrar también su cuenta del portal, su código personal y el registro de correos enviados. <small className="muted">Las cuentas con rol interno (admin, Delivery…) se mantienen.</small></span></label>
-        <div className="field"><label htmlFor="del-c">Escribe <strong>BORRAR</strong> para confirmar</label><input id="del-c" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" autoFocus /></div>
+        <h2 id="del-t">{many ? `¿Eliminar ${people.length} candidatos?` : `¿Eliminar a ${people[0]?.full_name}?`}</h2>
+        {many ? <ul className="adm-del-list">{people.map((p) => <li key={p.id}><strong>{p.full_name}</strong> <small className="muted">{shownEmail(p.corporate_email)}</small></li>)}</ul> : <p className="muted">{shownEmail(people[0]?.corporate_email ?? "")} · {ADMISSION_LABEL[people[0]?.status as AdmissionStatus]}</p>}
+        <p id="del-d">Se eliminan sus respuestas, evaluaciones, decisiones e historial de admisión. Podrá postular de nuevo con el mismo correo. Queda registrado a tu nombre en la auditoría. <strong>Esta acción no se puede deshacer.</strong></p>
+        {enrolled.length > 0 && <p className="error">{enrolled.length === 1 ? "Esta persona ya está inscrita" : `${enrolled.length} personas ya están inscritas`} en el programa: no se eliminan.</p>}
+        <label className="check"><input type="checkbox" checked={account} onChange={(e) => setAccount(e.target.checked)} /> <span>Partir desde cero: eliminar también su cuenta del portal y el registro de correos enviados. <small className="muted">Las cuentas con rol interno (admin, Delivery…) se mantienen.</small></span></label>
+        {many && <div className="field"><label htmlFor="del-c">Escribe <strong>ELIMINAR</strong> para confirmar</label><input id="del-c" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></div>}
         {error && <p className="error" role="alert">{error}</p>}
-        <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
-          <button type="button" className="btn ghost" onClick={onCancel} disabled={pending}>Cancelar</button>
-          <button type="button" className="btn adm-danger" disabled={pending || text.trim().toUpperCase() !== "BORRAR"} onClick={() => onConfirm(account, text)}>{pending ? "Borrando…" : "Borrar definitivamente"}</button>
+        <div className="adm-modal-actions">
+          <button ref={cancel} type="button" className="btn ghost" onClick={onCancel} disabled={pending}>Cancelar</button>
+          <button type="button" className="btn adm-danger" disabled={pending || !ready} onClick={() => onConfirm(account, many ? text : "ELIMINAR")}>{pending ? "Eliminando…" : many ? `Eliminar ${people.length} candidatos` : "Eliminar candidato"}</button>
         </div>
       </div>
     </div>

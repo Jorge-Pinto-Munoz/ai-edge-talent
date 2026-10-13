@@ -1,12 +1,11 @@
 "use server";
 
 import { provisionParticipant } from "@/lib/identity/provision";
-import { CODE_TTL, audit, ensureAccount, issueCode, portalLink, sendIdentityEmail } from "@/lib/identity/service";
-import { normalizeCLMobile } from "@/lib/identity/pin";
+import { audit, ensureAccount, portalLink, sendIdentityEmail, sendLoginCode } from "@/lib/identity/service";
+import { normalizePhone } from "@/lib/identity/phone";
 import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
 import { after } from "next/server";
-import { redirect } from "next/navigation";
 import { supabaseService } from "@/lib/supabase/server";
 import { statusPath } from "./status";
 import { evaluateOne } from "./evaluate-one";
@@ -22,6 +21,8 @@ import { cleanAnswers, missingRequired, type Question } from "./assessment";
  * El servidor valida el token y usa la clave secreta; nada de esto expone datos de otros candidatos.
  */
 export type CandidateResult = { ok: boolean; message: string };
+/** Registro: al terminar, la persona verifica su correo con un código de 6 dígitos (paso "verify"). */
+export type RegisterResult = CandidateResult & { step?: "verify"; email?: string; waitS?: number };
 /** Guardado del Assessment: `savedAt` es la hora del servidor; `state` dice si ya quedó enviado. */
 export type SaveResult = CandidateResult & { savedAt?: string; state?: "draft" | "submitted"; missing?: string[] };
 
@@ -47,7 +48,7 @@ async function moveTo(svc: ReturnType<typeof supabaseService>, id: string, from:
 }
 
 /* ───────── Autoinscripción (sin invitación previa) ───────── */
-export async function selfRegister(_: unknown, form: FormData): Promise<CandidateResult> {
+export async function selfRegister(_: unknown, form: FormData): Promise<RegisterResult> {
   const waveId = String(form.get("wave") ?? "");
   const data = {
     full_name: String(form.get("full_name") ?? "").trim(),
@@ -55,12 +56,12 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
     client_name: String(form.get("client_name") ?? "").trim() || null,
     role_title: String(form.get("role_title") ?? "").trim() || null,
     team: String(form.get("team") ?? "").trim() || null,
-    phone: normalizeCLMobile(String(form.get("phone") ?? "")),
+    phone: normalizePhone(String(form.get("phone") ?? "")),
   };
   if (!data.full_name || !isEmail(data.corporate_email) || !data.client_name || !data.role_title) {
     return { ok: false, message: "Completa nombre, correo electrónico, cliente y rol." };
   }
-  if (!data.phone) return { ok: false, message: "Revisa tu teléfono: +56 9 y 8 dígitos." };
+  if (!data.phone) return { ok: false, message: "Revisa tu teléfono: elige el código de país y escribe el número (en Chile, 9 dígitos)." };
   const deliveryPick = String(form.get("delivery") ?? "").trim().toLowerCase();
   if (!deliveryPick) return { ok: false, message: "Elige a tu Delivery (o «No lo sé»)." };
   // Solo se acepta un Delivery del directorio: el valor llega del navegador y no se confía en él.
@@ -79,36 +80,22 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
   if (!row) return { ok: false, message: "No pudimos registrar tu postulación. Intenta nuevamente." };
   if (existing) await svc.from("candidates").update({ phone: data.phone }).eq("id", row.id);
   if (delivery) await linkDelivery(svc, row.id, waveId, delivery);
-  // Cuenta del portal desde el registro (sin correo todavía): si deja el Assessment a medias, puede volver a
-  // ingresar con su correo ("Olvidé mi código" le envía un código) y continuar donde quedó.
-  if (!existing) {
-    try {
-      const { userId } = await ensureAccount(data.corporate_email, data.full_name, svc);
-      await svc.from("candidates").update({ user_id: userId }).eq("id", row.id).is("user_id", null);
-    } catch (e) {
-      console.error("[postulación] cuenta al registrarse", e instanceof Error ? e.message : e);
+  // Cuenta del portal y verificación del correo: se envía un código de 6 dígitos y, al ingresarlo, la persona entra a
+  // su postulación (o la retoma donde quedó). La respuesta es la misma sea un registro nuevo o uno existente.
+  try {
+    const { userId } = await ensureAccount(data.corporate_email, data.full_name, svc);
+    await svc.from("candidates").update({ user_id: userId }).eq("id", row.id).is("user_id", null);
+    const { data: prof } = await svc.from("profiles").select("status").eq("id", userId).maybeSingle();
+    if (prof && !["PAUSED", "REVOKED", "DELETED"].includes(prof.status)) {
+      const r = await sendLoginCode(data.corporate_email, { name: data.full_name, context: "continuar tu postulación", userId, candidateId: row.id, waveId }, svc);
+      if (!r.ok && r.reason === "email") return { ok: false, message: "No pudimos enviarte el código por correo. Intenta de nuevo en unos minutos." };
+      return { ok: true, step: "verify", email: data.corporate_email, waitS: r.waitS ?? 45, message: `Te enviamos un código de 6 dígitos a ${data.corporate_email}.` };
     }
+  } catch (e) {
+    console.error("[postulación] cuenta al registrarse", e instanceof Error ? e.message : e);
+    return { ok: false, message: "No pudimos registrar tu postulación. Intenta nuevamente." };
   }
-  // Consentimiento opcional y trazable (texto y versión exactos).
-  if (community) {
-    await svc.from("consents").insert({ kind: "COMMUNITY", version: COMMUNITY_CONSENT.version, text_snapshot: `${COMMUNITY_CONSENT.text} ${COMMUNITY_CONSENT.detail}`, email: data.corporate_email, candidate_id: row.id });
-  }
-
-  // Registro nuevo: pasa directo a responder. El correo se verifica después: las credenciales del portal
-  // llegan a ese correo al enviar la postulación.
-  if (!existing) redirect(`/postular/${row.invite_token}`);
-
-  // Ya había una postulación con este correo: no se abre aquí (podría ser de otra persona). Se continúa desde el
-  // portal, con el código que llega a ese correo.
-  const access = await sendPortalAccess(svc, row.id, data.corporate_email, row.full_name, waveId, null);
-  return {
-    ok: true,
-    message: access === "has_pin"
-      ? `Ya tienes una postulación con ${data.corporate_email}. Ingresa a tu portal con tu correo y tu código personal para continuar.`
-      : access === "sent"
-        ? `Ya tienes una postulación con ${data.corporate_email}. Te enviamos un código a ese correo para continuar desde tu portal.`
-        : `Ya tienes una postulación con ${data.corporate_email}. Ingresa en "Ingresar" y toca "Olvidé mi código" para recibir tu acceso.`,
-  };
+  return { ok: true, step: "verify", email: data.corporate_email, waitS: 45, message: `Te enviamos un código de 6 dígitos a ${data.corporate_email}.` };
 }
 
 /** Vincula al profesional con el Delivery que eligió: asignación, responsable visible y Delivery de la Wave. */
@@ -125,7 +112,7 @@ async function linkDelivery(svc: ReturnType<typeof supabaseService>, candidateId
 
 /**
  * Aviso al Delivery asignado: su profesional envió el Assessment. Le habilita el acceso a su vista de equipo
- * (crea su cuenta con el rol de role_grants si no existe) y, si aún no tiene código personal, incluye uno temporal.
+ * (crea su cuenta con el rol de role_grants si no existe); ingresa con su correo y un código de un solo uso.
  */
 async function notifyDelivery(svc: ReturnType<typeof supabaseService>, candidateId: string, waveId: string, waveName: string, professional: string, submittedAt: Date) {
   try {
@@ -136,40 +123,24 @@ async function notifyDelivery(svc: ReturnType<typeof supabaseService>, candidate
     const { userId } = await ensureAccount(email, name, svc);
     const when = new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(submittedAt).replace(",", " a las") + " (hora de Chile)";
     const next = `/equipo?wave=${waveId}`;
-    const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
-    const meta = { userId, candidateId, waveId };
-    if (cred?.pin_hash) {
-      await sendIdentityEmail("DELIVERY_APPLICATION_SUBMITTED", email, { name: name ?? undefined, stage: waveName, extra: professional, when, link: portalLink("ingresar", email, next) }, meta, svc);
-      return;
-    }
-    const code = await issueCode(email, "ACTIVATION", null, 4, svc);
-    await sendIdentityEmail("DELIVERY_APPLICATION_SUBMITTED", email, { name: name ?? undefined, stage: waveName, extra: professional, when, code, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email, next) }, meta, svc);
+    await sendIdentityEmail("DELIVERY_APPLICATION_SUBMITTED", email, { name: name ?? undefined, stage: waveName, extra: professional, when, link: portalLink("ingresar", email, next) }, { userId, candidateId, waveId }, svc);
   } catch (e) {
     console.error("[postulación] aviso a Delivery", e instanceof Error ? e.message : e);
   }
 }
 
 /**
- * Credenciales del portal del profesional: crea (o reutiliza) su cuenta, la vincula a la postulación y envía el
- * correo. Si aún no tiene código personal, incluye uno temporal de 4 dígitos (al primer ingreso crea el suyo).
- * Nunca se muestra el código en pantalla: solo llega al correo, así se verifica que el correo es suyo.
+ * Postulación recibida: asegura la cuenta del portal, la vincula y envía el correo de gracias con el enlace para
+ * seguir su estado (ingresa con su correo y un código de un solo uso).
  */
-async function sendPortalAccess(svc: ReturnType<typeof supabaseService>, candidateId: string, email: string, fullName: string, waveId: string, waveName: string | null): Promise<"sent" | "has_pin" | "failed"> {
+async function sendPortalAccess(svc: ReturnType<typeof supabaseService>, candidateId: string, email: string, fullName: string, waveId: string, waveName: string): Promise<"sent" | "failed"> {
   try {
     const { userId } = await ensureAccount(email, fullName, svc);
     await svc.from("candidates").update({ user_id: userId }).eq("id", candidateId).is("user_id", null);
-    const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
-    if (cred?.pin_hash) {
-      if (waveName) await sendIdentityEmail("APPLICATION_RECEIVED", email, { name: fullName, stage: waveName, link: portalLink("ingresar", email) }, { userId, candidateId, waveId }, svc);
-      return "has_pin";
-    }
-    const code = await issueCode(email, "ACTIVATION", null, 4, svc);
-    const r = waveName
-      ? await sendIdentityEmail("APPLICATION_RECEIVED", email, { name: fullName, stage: waveName, code, extra: email, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email) }, { userId, candidateId, waveId }, svc)
-      : await sendIdentityEmail("ACTIVATION", email, { name: fullName, code, minutes: CODE_TTL.ACTIVATION, link: portalLink("activar", email) }, { userId, candidateId, waveId }, svc);
+    const r = await sendIdentityEmail("APPLICATION_RECEIVED", email, { name: fullName, stage: waveName, link: portalLink("ingresar", email, "/mi-journey") }, { userId, candidateId, waveId }, svc);
     return r.ok ? "sent" : "failed";
   } catch (e) {
-    console.error("[postulación] credenciales", e instanceof Error ? e.message : e);
+    console.error("[postulación] correo de postulación recibida", e instanceof Error ? e.message : e);
     return "failed";
   }
 }

@@ -1,28 +1,30 @@
 "use client";
 
-import { useActionState } from "react";
-import { selfRegister } from "@/lib/admission/candidate-actions";
-import { Callout } from "@/components/ui";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { selfRegister } from "@/lib/admission/candidate-actions";
+import { requestLoginCode, verifyLoginCode } from "@/lib/identity/actions";
 import { COMMUNITY_CONSENT } from "@/lib/data/consents";
+import { PhoneField } from "@/components/ds/PhoneField";
+import { CodeInput } from "@/components/identity/IdentityFlow";
 
+/**
+ * Postulación · paso 1 (tus datos) y paso 2 (verificar tu correo con un código de 6 dígitos). Al verificar entras a
+ * tu portal y sigues con la postulación; si ya la habías empezado, la retomas donde quedaste.
+ */
 export function SelfRegisterForm({ waveId, deliveries }: { waveId: string; deliveries: { email: string; name: string }[] }) {
   const [state, action, pending] = useActionState(selfRegister, null);
-  if (state?.ok) {
-    return (
-      <div className="stack narrow">
-        <Callout tone="ok" title="Ya tienes una postulación">
-          {state.message}
-        </Callout>
-        <Link className="btn" href="/ingresar">Ir a ingresar</Link>
-      </div>
-    );
-  }
+  if (state?.ok && state.step === "verify" && state.email) return <VerifyEmail email={state.email} initialWait={state.waitS ?? 45} />;
   return (
-    <form action={action} className="card narrow">
-      <div className="eyebrow">Paso 1 · Identificación</div>
-      <h1>Identifícate</h1>
-      <p className="muted">Con tus datos pasas directo a las preguntas. Al enviar tu postulación te llega un correo con tus credenciales para seguir su estado desde tu portal. No solicitamos RUT.</p>
+    <form action={action} className="card narrow reg-card">
+      <ol className="reg-steps" aria-label="Pasos de la postulación">
+        <li className="on" aria-current="step">Tus datos</li>
+        <li>Verifica tu correo</li>
+        <li>Assessment</li>
+      </ol>
+      <h1>Tus datos</h1>
+      <p className="muted">Con estos datos te identificamos y te asignamos a tu Delivery. No solicitamos RUT.</p>
       <input type="hidden" name="wave" value={waveId} />
       <div className="field">
         <label htmlFor="full_name">Nombre completo *</label>
@@ -30,24 +32,22 @@ export function SelfRegisterForm({ waveId, deliveries }: { waveId: string; deliv
       </div>
       <div className="field">
         <label htmlFor="corporate_email">Correo electrónico *</label>
-        <input id="corporate_email" name="corporate_email" type="email" required autoComplete="email" aria-describedby="email-help" />
-        <small id="email-help" className="muted">Utilizaremos este correo para enviarte información importante sobre tu participación en AI Edge Talent y el acceso a tu portal.</small>
+        <input id="corporate_email" name="corporate_email" type="email" required autoComplete="email" inputMode="email" aria-describedby="email-help" />
+        <small id="email-help" className="muted">Te enviaremos un código para verificarlo. Con este correo entras a tu portal.</small>
+      </div>
+      <PhoneField id="phone" name="phone" required help="En Chile, tu celular de 9 dígitos." />
+      <div className="field">
+        <label htmlFor="client_name">Cliente en el que trabajas *</label>
+        <input id="client_name" name="client_name" type="text" required autoComplete="organization" />
       </div>
       <div className="field">
-        <label htmlFor="phone">Teléfono *</label>
-        <div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="phone" name="phone" inputMode="numeric" pattern="[0-9 ]{8,9}" maxLength={9} required autoComplete="tel-national" placeholder="1234 5678" aria-describedby="phone-help" /></div>
-        <small id="phone-help" className="muted">Ingresa los 8 dígitos después de +56 9.</small>
+        <label htmlFor="role_title">Rol / cargo *</label>
+        <input id="role_title" name="role_title" type="text" required autoComplete="organization-title" />
       </div>
-      {[
-        ["client_name", "Cliente en el que trabajas *", "text", "organization"],
-        ["role_title", "Rol / cargo *", "text", "organization-title"],
-        ["team", "Unidad / equipo (opcional)", "text", "off"],
-      ].map(([name, label, type, ac]) => (
-        <div className="field" key={name}>
-          <label htmlFor={name}>{label}</label>
-          <input id={name} name={name} type={type} required={label.endsWith("*")} autoComplete={ac} />
-        </div>
-      ))}
+      <div className="field">
+        <label htmlFor="team">Unidad / equipo <span className="muted">(opcional)</span></label>
+        <input id="team" name="team" type="text" autoComplete="off" />
+      </div>
       <div className="field">
         <label htmlFor="delivery">Tu Delivery *</label>
         <select id="delivery" name="delivery" required defaultValue="" aria-describedby="delivery-help">
@@ -65,9 +65,48 @@ export function SelfRegisterForm({ waveId, deliveries }: { waveId: string; deliv
         </span>
       </label>
       {state && !state.ok && <p className="error" role="alert">{state.message}</p>}
-      <button className="btn" type="submit" disabled={pending}>
-        {pending ? "Un momento…" : "Continuar a la postulación"}
+      <button className="btn btn-lg" type="submit" disabled={pending}>
+        {pending ? "Enviando código…" : "Continuar"}
       </button>
+      <p className="reg-alt">¿Ya comenzaste tu postulación? <Link href="/ingresar?modo=continuar&next=/mi-journey">Continuar aquí →</Link></p>
+    </form>
+  );
+}
+
+function VerifyEmail({ email, initialWait }: { email: string; initialWait: number }) {
+  const router = useRouter();
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
+  const [wait, setWait] = useState(initialWait);
+  const [pending, start] = useTransition();
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [wait]);
+  const verify = (c = code) => start(async () => {
+    const r = await verifyLoginCode(email, c, "/mi-journey");
+    if (r.ok && r.redirect) { router.replace(r.redirect); router.refresh(); return; }
+    setMsg(r);
+    setCode("");
+  });
+  return (
+    <form className="card narrow reg-card" onSubmit={(e) => { e.preventDefault(); verify(); }}>
+      <ol className="reg-steps" aria-label="Pasos de la postulación">
+        <li className="done">Tus datos</li>
+        <li className="on" aria-current="step">Verifica tu correo</li>
+        <li>Assessment</li>
+      </ol>
+      <h1>Verifica tu correo</h1>
+      <p className="muted">Te enviamos un código de 6 dígitos a <strong>{email}</strong>. Vence en 10 minutos.</p>
+      <CodeInput value={code} onChange={setCode} onComplete={(v) => verify(v)} />
+      {msg && !msg.ok && <p className="error" role="alert">{msg.message}</p>}
+      {msg?.ok && <p className="uc-ok" role="status">{msg.message}</p>}
+      <button className="btn btn-lg" disabled={pending || code.length !== 6}>{pending ? "Verificando…" : "Verificar y continuar"}</button>
+      <div className="auth-links">
+        <button type="button" className="link-btn" disabled={pending || wait > 0} onClick={() => start(async () => { const r = await requestLoginCode(email); setMsg(r.ok ? { ok: true, message: "Te enviamos un código nuevo." } : r); setWait(r.waitS ?? 45); })}>{wait > 0 ? `Reenviar código en ${wait} s` : "Reenviar código"}</button>
+      </div>
+      <p className="auth-hint muted">¿No llega? Revisa spam o la cuarentena de tu correo corporativo.</p>
     </form>
   );
 }
