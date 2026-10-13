@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  checkTemporaryCode, forcedPinChange, loginWithPin, requestPinReset, setPinWithCode, submitAccessRequest, verifyAdminStep, type FlowResult,
+  checkTemporaryCode, forcedPinChange, loginWithPin, requestPinReset, setPinWithCode, requestAccount, verifyAdminStep, type FlowResult,
 } from "@/lib/identity/actions";
 import { Icon } from "@/components/site/Icon";
+import { ACCOUNT_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
 
 export type FlowMode = "ingresar" | "activar" | "restablecer" | "especial";
-type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "change_pin" | "admin_code" | "special" | "special_done";
+type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "change_pin" | "admin_code" | "create" | "create_done";
 
 /** Casillas de dígitos: una por número, pegar el código completo funciona; `secret` oculta los números. */
 function Digits({ n, value, onChange, label, secret = false, autoFocus = false, onComplete }: { n: 4 | 6; value: string; onChange: (v: string) => void; label: string; secret?: boolean; autoFocus?: boolean; onComplete?: (v: string) => void }) {
@@ -49,7 +50,7 @@ function Digits({ n, value, onChange, label, secret = false, autoFocus = false, 
 
 export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode: FlowMode; initialEmail: string; next?: string }) {
   const router = useRouter();
-  const start0: Screen = initialMode === "activar" || initialMode === "restablecer" ? "activate" : initialMode === "especial" ? "special" : "login";
+  const start0: Screen = initialMode === "activar" || initialMode === "restablecer" ? "activate" : initialMode === "especial" ? "create" : "login";
   const [screen, setScreen] = useState<Screen>(start0);
   const [email, setEmail] = useState(initialEmail);
   const [pin, setPin] = useState("");
@@ -75,7 +76,12 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
     if (r.step === "code_sent") { setCode(""); setScreen("forgot_sent"); }
   };
   const run = (f: () => Promise<FlowResult>) => start(async () => handle(await f()));
-  const err = msg && !msg.ok ? <p className="error" role="alert">{msg.message}</p> : null;
+  const err = msg && !msg.ok ? (
+    <p className="error" role="alert">
+      {msg.message}
+      {msg.linkFallback && <> Mientras tanto, <Link href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>ingresa con un enlace por correo</Link>.</>}
+    </p>
+  ) : null;
   const devNote = msg?.devCode ? <p className="auth-dev">Desarrollo: tu código es <strong>{msg.devCode}</strong> (en producción llega por correo).</p> : null;
   const emailField = (
     <div className="field">
@@ -96,12 +102,11 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
           <button className="btn auth-btn" disabled={pending || pin.length !== 4}>{pending ? "Ingresando…" : "Ingresar"} <Icon name="arrowRight" size={18} /></button>
           <div className="auth-links">
             <button type="button" className="link-btn" onClick={() => go("forgot")}>Olvidé mi código</button>
-            <button type="button" className="link-btn" onClick={() => go("activate")}>Tengo un código temporal</button>
           </div>
         </form>
         <div className="auth-alt">
-          <button type="button" className="link-btn" onClick={() => go("special")}>Solicitar acceso especial</button>
-          <Link className="link-btn" href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Ingresar con un enlace por correo</Link>
+          <span>¿No tienes cuenta?</span>
+          <button type="button" className="link-btn" onClick={() => go("create")}>Crear cuenta</button>
         </div>
       </>
     );
@@ -174,46 +179,45 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
     );
   }
 
-  if (screen === "special_done") {
+  if (screen === "create_done") {
     return (
-      <div className="help-done" role="status"><Icon name="check" size={26} /><div><strong>{msg?.message}</strong><p>Te responderemos a {email}.</p></div></div>
+      <>
+        <div className="help-done" role="status"><Icon name="check" size={26} /><div><strong>{msg?.message}</strong><p>Te escribiremos a {email}.</p></div></div>
+        <div className="auth-alt"><button type="button" className="link-btn" onClick={() => go("login")}>Volver al ingreso</button></div>
+      </>
     );
   }
 
-  return <SpecialAccess email={email} setEmail={setEmail} onDone={(r) => { setMsg(r); if (r.ok) setScreen("special_done"); }} onBack={() => go("login")} />;
+  return <CreateAccount email={email} setEmail={setEmail} onDone={(r) => { setMsg(r); if (r.ok) setScreen("create_done"); }} onBack={() => go("login")} />;
 }
 
-function SpecialAccess({ email, setEmail, onDone, onBack }: { email: string; setEmail: (v: string) => void; onDone: (r: FlowResult) => void; onBack: () => void }) {
-  const [f, setF] = useState({ name: "", phone: "", reason: "RETOMA", description: "", website: "" });
+function CreateAccount({ email, setEmail, onDone, onBack }: { email: string; setEmail: (v: string) => void; onDone: (r: FlowResult) => void; onBack: () => void }) {
+  const [f, setF] = useState({ name: "", phone: "", role: "", note: "", website: "" });
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
   return (
     <>
-      <h1>Solicitar acceso especial</h1>
-      <p className="muted">Para quienes retoman el programa, participaron en Waves anteriores o tienen un caso excepcional. El Líder de Servicio revisa cada solicitud.</p>
-      <form className="auth-form" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await submitAccessRequest({ ...f, email }); if (!r.ok) setErr(r.message); onDone(r); }); }}>
-        <div className="field"><label htmlFor="sa-n">Nombre completo</label><input id="sa-n" required autoComplete="name" value={f.name} onChange={set("name")} /></div>
-        <div className="field"><label htmlFor="sa-e">Correo electrónico</label><input id="sa-e" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="field">
-          <label htmlFor="sa-p">Teléfono</label>
-          <div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="sa-p" inputMode="numeric" autoComplete="tel-national" placeholder="1234 5678" maxLength={9} value={f.phone} onChange={set("phone")} aria-describedby="sa-p-h" /></div>
-          <small id="sa-p-h" className="muted">8 dígitos después de +56 9 (opcional).</small>
-        </div>
-        <div className="field"><label htmlFor="sa-r">Motivo</label>
-          <select id="sa-r" value={f.reason} onChange={set("reason")}>
-            <option value="RETOMA">Retomo el programa</option>
-            <option value="WAVE_ANTERIOR">Participé en una Wave anterior</option>
-            <option value="HISTORICO">Tengo registros históricos</option>
-            <option value="MIGRACION">Problema con mi cuenta o migración</option>
-            <option value="OTRO">Otro caso</option>
+      <h1>Crear cuenta</h1>
+      <p className="muted">Cuéntanos quién eres y con qué rol participas. El Líder de producto revisa tu solicitud, te asigna el rol y te llega un correo para activar tu cuenta.</p>
+      <form className="auth-form" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await requestAccount({ ...f, email }); if (!r.ok) setErr(r.message); onDone(r); }); }}>
+        <div className="field"><label htmlFor="ca-n">Nombre completo</label><input id="ca-n" required autoComplete="name" value={f.name} onChange={set("name")} /></div>
+        <div className="field"><label htmlFor="ca-e">Correo electrónico</label><input id="ca-e" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+        <div className="field"><label htmlFor="ca-r">Tu rol</label>
+          <select id="ca-r" required value={f.role} onChange={set("role")}>
+            <option value="" disabled>Elige tu rol</option>
+            {ACCOUNT_ROLES.map((r) => <option key={r} value={r}>{r === "admin" ? "Líder de producto" : ROLE_LABEL[r]}</option>)}
           </select>
         </div>
-        <div className="field"><label htmlFor="sa-d">Describe tu caso</label><textarea id="sa-d" required minLength={10} rows={4} value={f.description} onChange={set("description")} /></div>
+        <div className="field">
+          <label htmlFor="ca-p">Teléfono <span className="muted">(opcional)</span></label>
+          <div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="ca-p" inputMode="numeric" autoComplete="tel-national" placeholder="1234 5678" maxLength={9} value={f.phone} onChange={set("phone")} /></div>
+        </div>
+        <div className="field"><label htmlFor="ca-d">¿Algo que debamos saber? <span className="muted">(opcional)</span></label><textarea id="ca-d" rows={2} maxLength={2000} placeholder="Cliente, equipo o Wave en la que participas" value={f.note} onChange={set("note")} /></div>
         <div className="sr-only" aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={f.website} onChange={set("website")} /></div>
         {err && <p className="error" role="alert">{err}</p>}
-        <button className="btn auth-btn" disabled={pending}>{pending ? "Enviando…" : "Enviar solicitud"}</button>
-        <div className="auth-links"><button type="button" className="link-btn" onClick={onBack}>Volver al ingreso</button></div>
+        <button className="btn auth-btn" disabled={pending || !f.role}>{pending ? "Enviando…" : "Enviar solicitud"}</button>
+        <div className="auth-links"><button type="button" className="link-btn" onClick={onBack}>Ya tengo cuenta: ingresar</button></div>
       </form>
     </>
   );

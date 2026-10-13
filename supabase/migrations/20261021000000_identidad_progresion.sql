@@ -244,4 +244,4 @@ create policy audit_admin on public.audit_log for select using (public.is_admin(
 
 -- Altas manuales y por acceso especial (ver también 20261014000000_talento.sql, que fija el mismo conjunto).
 alter table public.candidates drop constraint if exists candidates_source_check;
-alter table public.candidates add constraint candidates_source_check check (source in ('import', 'nomination', 'self', 'historical', 'manual', 'special'));
+alter table public.candidates add constraint candidates_source_check check (source in ('import', 'nomination', 'self', 'historical', 'manual', 'special', 'demo'));

@@ -1,5 +1,5 @@
 import "server-only";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { attendanceByPerson } from "@/lib/teacher/rules";
 import { aicertAlert, overallProgress, type AiCertProgress, type RiskAlert } from "@/lib/aicert/progress";
 import type { Layer } from "@/lib/journey/rules";
@@ -26,8 +26,9 @@ export interface PersonRow {
  * Todo lo que necesita el informe de una Wave, calculado en una pasada: avance AI CERT, asistencia, pulsos,
  * indicadores (W2) y eficiencia pre/post. Staff lee con su sesión (RLS).
  */
-export async function waveReport(waveId: string, now = new Date()) {
-  const db = await supabaseUser();
+export async function waveReport(waveId: string, now = new Date(), reader?: ReturnType<typeof supabaseService>) {
+  // `reader`: lectura con la llave de servicio para roles de solo lectura ya autorizados por quien llama (Business Partner).
+  const db = reader ?? (await supabaseUser());
   const { data: people } = await db
     .from("candidates")
     .select("id, full_name, role_title, client_name, journey_layer, journey_layer_since")

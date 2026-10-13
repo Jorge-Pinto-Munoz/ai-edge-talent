@@ -7,6 +7,6 @@ export const dynamic = "force-dynamic";
 export default async function Inicio() {
   const v = await getViewer();
   if (!v) redirect("/ingresar?next=/inicio");
-  const home = { admin: "/admin", delivery: "/admin", mentor: "/ai-coach", client: "/cliente", kiber: "/mi-journey", profesor: "/admin/profesor", hub: "/admin/lab" }[v.role];
+  const home = { admin: "/admin", delivery: "/equipo", bp: "/equipo", mentor: "/ai-coach", client: "/cliente", kiber: "/mi-journey", profesor: "/admin/profesor", hub: "/admin/lab" }[v.role];
   redirect(home);
 }

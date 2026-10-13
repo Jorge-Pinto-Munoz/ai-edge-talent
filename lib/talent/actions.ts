@@ -138,7 +138,7 @@ export async function importHistorical(csvText: string): Promise<TalentResult> {
           specialty: r.specialty,
           source: "historical",
           status: "ENROLLED",
-          journey_layer: r.completed ? "CLOSURE" : null,
+          journey_layer: r.layer,
         }).select("id").single();
         if (error) {
           details.push(`${r.corporate_email}: ${error.message}`);
@@ -146,6 +146,9 @@ export async function importHistorical(csvText: string): Promise<TalentResult> {
         }
         created++;
         candidateId = ins.id;
+      } else if (r.layer) {
+        // Re-carga: actualiza la etapa en que quedó (solo cargas históricas).
+        await db.from("candidates").update({ journey_layer: r.layer }).eq("id", exists.id).eq("source", "historical");
       }
       // Resultado AI CERT histórico: alimenta el % de ingresados que se certificó.
       if (candidateId && r.certified !== null) {

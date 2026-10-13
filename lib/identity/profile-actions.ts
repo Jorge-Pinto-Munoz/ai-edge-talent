@@ -5,6 +5,7 @@ import { supabaseService } from "@/lib/supabase/server";
 import { getViewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { COMMUNITY_CONSENT, STAGE_RULES } from "@/lib/data/consents";
 import { audit } from "./service";
+import { DEMO_READONLY, isDemoEmail } from "./demo";
 
 export type ProfileResult = { ok: boolean; message: string };
 
@@ -12,6 +13,7 @@ export type ProfileResult = { ok: boolean; message: string };
 export async function setCommunityConsent(accept: boolean): Promise<ProfileResult> {
   const v = await getViewer();
   if (!v) return { ok: false, message: SESSION_EXPIRED };
+  if (isDemoEmail(v.email)) return { ok: false, message: DEMO_READONLY };
   const svc = supabaseService();
   const { data: active } = await svc.from("consents").select("id").eq("email", v.email).eq("kind", "COMMUNITY").is("revoked_at", null);
   if (accept && !(active ?? []).length) {
@@ -28,6 +30,7 @@ export async function setCommunityConsent(accept: boolean): Promise<ProfileResul
 export async function acceptStageRules(): Promise<ProfileResult> {
   const v = await getViewer();
   if (!v) return { ok: false, message: SESSION_EXPIRED };
+  if (isDemoEmail(v.email)) return { ok: false, message: DEMO_READONLY };
   const svc = supabaseService();
   const { data: has } = await svc.from("consents").select("id").eq("email", v.email).eq("kind", "STAGE_RULES").eq("version", STAGE_RULES.version).maybeSingle();
   if (!has) {

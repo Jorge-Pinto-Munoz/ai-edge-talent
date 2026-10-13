@@ -7,6 +7,8 @@ import { env } from "@/lib/supabase/env";
 import { openAccessSession } from "@/lib/staff/audit";
 import { IP_MAX_FAILS, PIN_LOCK_MIN, PIN_MAX_FAILS, hashPin, isPin, normalizeCLMobile, pinProblem, verifyPin } from "./pin";
 import { CODE_TTL, HOME_BY_ROLE, audit, checkCode, ipHash, issueCode, openSession, portalLink, sendIdentityEmail } from "./service";
+import { ROLE_LABEL, isAccountRole } from "./roles";
+import { DEMO_READONLY, isDemoEmail } from "./demo";
 
 export type FlowResult = {
   ok: boolean;
@@ -15,6 +17,8 @@ export type FlowResult = {
   step?: "done" | "admin_code" | "change_pin" | "set_pin" | "code_sent";
   redirect?: string;
   devCode?: string;
+  /** El correo no salió: ofrecer ingresar con un enlace por correo (Supabase). */
+  linkFallback?: boolean;
 };
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -82,7 +86,7 @@ export async function loginWithPin(rawEmail: string, pin: string, next?: string)
     if (acc.role === "admin") {
       const code = await issueCode(email, "ADMIN_STEP", acc.id, 6, svc);
       const r = await sendIdentityEmail("ADMIN_STEP", email, { name: acc.full_name ?? undefined, code, minutes: CODE_TTL.ADMIN_STEP }, { userId: acc.id }, svc);
-      if (!r.ok && !dev()) return { ok: false, message: "No pudimos enviar tu código de verificación (correo no configurado). Ingresa con el enlace por correo." };
+      if (!r.ok && !dev()) return { ok: false, message: "No pudimos enviar tu código de verificación por correo.", linkFallback: true };
       return { ok: true, step: "admin_code", message: "Te enviamos un código de verificación de 6 dígitos a tu correo.", ...(dev() && !r.ok ? { devCode: code } : {}) };
     }
     return finishLogin(acc, "CODE", next);
@@ -122,6 +126,7 @@ export async function checkTemporaryCode(rawEmail: string, code: string): Promis
 export async function setPinWithCode(rawEmail: string, code: string, pin: string, pin2: string, next?: string): Promise<FlowResult> {
   try {
     const email = rawEmail.trim().toLowerCase();
+    if (isDemoEmail(email)) return { ok: false, message: DEMO_READONLY };
     const problem = pinProblem(pin);
     if (problem) return { ok: false, message: problem };
     if (pin !== pin2) return { ok: false, message: "Los códigos no coinciden." };
@@ -145,6 +150,7 @@ export async function requestPinReset(rawEmail: string): Promise<FlowResult> {
   try {
     const email = rawEmail.trim().toLowerCase();
     if (!EMAIL_RE.test(email)) return { ok: false, message: "Ingresa tu correo electrónico." };
+    if (isDemoEmail(email)) return { ok: false, message: DEMO_READONLY };
     const svc = supabaseService();
     const since = new Date(Date.now() - 15 * 60_000).toISOString();
     const { count } = await svc.from("staff_login_codes").select("id", { count: "exact", head: true }).eq("email", email).in("purpose", ["RESET", "ACTIVATION"]).gte("created_at", since);
@@ -156,7 +162,7 @@ export async function requestPinReset(rawEmail: string): Promise<FlowResult> {
     const code = await issueCode(email, purpose, acc.id, 4, svc);
     const r = await sendIdentityEmail(purpose === "RESET" ? "PIN_RESET" : acc.role === "delivery" ? "DELIVERY_INVITE" : "ACTIVATION", email, { name: acc.full_name ?? undefined, code, minutes: CODE_TTL[purpose], link: portalLink("restablecer", email) }, { userId: acc.id }, svc);
     await audit("user.pin.reset_requested", { actor: acc.id, actorEmail: email, targetUser: acc.id, targetEmail: email, details: { by: "self", sent: r.ok } }, svc);
-    if (!r.ok && !dev()) return { ok: false, message: "No pudimos enviar el código por correo en este momento. Ingresa con «Ingresar con un enlace por correo» o escríbenos desde Ayuda." };
+    if (!r.ok && !dev()) return { ok: false, message: "No pudimos enviar el código por correo en este momento.", linkFallback: true };
     return { ok: true, step: "code_sent", message: GENERIC_SENT, ...(dev() && !r.ok ? { devCode: code } : {}) };
   } catch (e) {
     console.error("[identidad] requestPinReset", e);
@@ -190,6 +196,7 @@ export async function forcedPinChange(rawEmail: string, current: string, pin: st
 export async function changeMyPin(current: string, pin: string, pin2: string): Promise<FlowResult> {
   const v = await getViewer();
   if (!v) return { ok: false, message: SESSION_EXPIRED };
+  if (isDemoEmail(v.email)) return { ok: false, message: DEMO_READONLY };
   const problem = pinProblem(pin);
   if (problem) return { ok: false, message: problem };
   if (pin !== pin2) return { ok: false, message: "Los códigos no coinciden." };
@@ -202,33 +209,41 @@ export async function changeMyPin(current: string, pin: string, pin2: string): P
 }
 
 /** Solicitud de acceso especial (sin sesión). Llega a la bandeja del Líder de Servicio y se le avisa por correo. */
-export async function submitAccessRequest(input: { name: string; email: string; phone: string; reason: string; description: string; website?: string }): Promise<FlowResult> {
+/**
+ * "Crear cuenta": la persona pide acceso e indica su rol. No crea la cuenta: llega como solicitud al Líder de
+ * producto, que asigna el rol definitivo al aprobar (y entonces se envía el código de activación).
+ * Respuesta igual exista o no una cuenta con ese correo (no revela quién está registrado).
+ */
+export async function requestAccount(input: { name: string; email: string; phone: string; role: string; note: string; website?: string }): Promise<FlowResult> {
   try {
-    if (input.website) return { ok: true, message: "Recibido." };
+    if (input.website) return { ok: true, step: "done", message: "Recibido." };
     const email = input.email.trim().toLowerCase();
     const name = input.name.trim().slice(0, 120);
-    const description = input.description.trim();
-    const reasons = ["RETOMA", "WAVE_ANTERIOR", "HISTORICO", "MIGRACION", "OTRO"];
-    if (name.length < 2) return { ok: false, message: "Cuéntanos tu nombre." };
+    const note = input.note.trim().slice(0, 2000);
+    if (name.length < 2) return { ok: false, message: "Cuéntanos tu nombre completo." };
     if (!EMAIL_RE.test(email)) return { ok: false, message: "Revisa tu correo electrónico." };
-    if (!reasons.includes(input.reason)) return { ok: false, message: "Elige el motivo." };
-    if (description.length < 10) return { ok: false, message: "Describe tu caso con un poco más de detalle." };
+    if (!isAccountRole(input.role)) return { ok: false, message: "Elige tu rol." };
     const phone = input.phone.trim() ? normalizeCLMobile(input.phone) : null;
     if (input.phone.trim() && !phone) return { ok: false, message: "Revisa el teléfono: +56 9 y 8 dígitos." };
     const svc = supabaseService();
     const since = new Date(Date.now() - 24 * 3600_000).toISOString();
     const { count } = await svc.from("access_requests").select("id", { count: "exact", head: true }).eq("email", email).gte("created_at", since);
-    if ((count ?? 0) >= 3) return { ok: false, message: "Ya recibimos tu solicitud. Te responderemos a tu correo." };
-    const { data: row, error } = await svc.from("access_requests").insert({ name, email, phone, reason: input.reason, description: description.slice(0, 2000) }).select("id").single();
+    const sent = { ok: true, step: "done" as const, message: "Recibimos tu solicitud. El Líder de producto asignará tu rol y te llegará un correo para activar tu cuenta." };
+    if ((count ?? 0) >= 3) return sent;
+    const { data: row, error } = await svc
+      .from("access_requests")
+      .insert({ kind: "ACCOUNT", reason: "CUENTA", requested_role: input.role, name, email, phone, description: note })
+      .select("id")
+      .single();
     if (error) throw error;
-    await audit("access.request.submitted", { targetEmail: email, details: { request: row.id, reason: input.reason } }, svc);
+    await audit("user.account.requested", { targetEmail: email, details: { request: row.id, role: input.role } }, svc);
     const { data: admins } = await svc.from("profiles").select("email").eq("role", "admin").eq("status", "ACTIVE");
     for (const a of admins ?? []) {
-      await sendIdentityEmail("ACCESS_REQUEST_ADMIN", a.email, { extra: `${name} (${email}) · motivo: ${input.reason}. ${description.slice(0, 300)}`, link: `${env.appUrl}/admin/usuarios?tab=solicitudes` }, {}, svc);
+      await sendIdentityEmail("ACCESS_REQUEST_ADMIN", a.email, { extra: `${name} (${email}) pide una cuenta como ${ROLE_LABEL[input.role]}.${note ? ` ${note.slice(0, 300)}` : ""}`, link: `${env.appUrl}/admin/usuarios?tab=solicitudes` }, {}, svc);
     }
-    return { ok: true, step: "done", message: "Recibimos tu solicitud. El Líder de Servicio la revisará y te responderá a tu correo." };
+    return sent;
   } catch (e) {
-    console.error("[identidad] submitAccessRequest", e);
+    console.error("[identidad] requestAccount", e);
     return { ok: false, message: "No pudimos enviar tu solicitud. Intenta de nuevo." };
   }
 }

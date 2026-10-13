@@ -28,7 +28,7 @@ export const HELP: HelpItem[] = [
   { topic: "Cliente", aud: ["cliente"], q: "¿Cuánto tiempo del profesional requiere?", a: "Normalmente 2 a 3 horas por semana dentro de la jornada, coordinadas con Delivery según la etapa. La habilitación es una inversión en la productividad de su propio equipo." },
   { topic: "Cliente", aud: ["cliente"], q: "¿Qué información recibo como cliente?", a: "El avance de sus profesionales por etapa, riesgos o bloqueos si los hay, y los resultados con evidencia. No recibe puntajes ni rankings de evaluación." },
   { topic: "Cliente", aud: ["cliente"], q: "¿Qué impacto buscamos?", a: "Hasta 30 % más productividad, con un caso de IA funcionando en su operación y un compromiso de agilidad que se mide al mes 1 y al mes 3." },
-  { topic: "Plataforma", aud: ["profesional", "cliente"], q: "No puedo ingresar a la plataforma", a: "Ingresa en /ingresar con tu correo y tu código personal de 4 dígitos. Si es tu primera vez, usa el código temporal que te enviamos; si lo olvidaste, toca \"Olvidé mi código\" y te enviamos uno nuevo (revisa spam). Si sigue sin funcionar, escríbenos aquí abajo." },
+  { topic: "Plataforma", aud: ["profesional", "cliente"], q: "No puedo ingresar a la plataforma", a: "Ingresa en /ingresar con tu correo y tu código personal de 4 dígitos. Si es tu primera vez, abre el correo de activación que te enviamos; si lo olvidaste, toca \"Olvidé mi código\" y te enviamos uno nuevo (revisa spam). ¿Aún no tienes cuenta? Toca \"Crear cuenta\": el Líder de producto te asigna el rol y te llega el correo para activarla." },
 ];
 
 export const SUPPORT_TOPICS = ["Postulación", "Selección y resultados", "Certificación AI CERT", "AI Lab y Showcase", "Acceso a la plataforma", "Otro"] as const;

@@ -47,7 +47,7 @@ export const programAdoption = unstable_cache(
     const db = supabaseService();
     const [{ data: waves }, { data: people }, { data: certs }, { data: prog }] = await Promise.all([
       db.from("waves").select("id, name, created_at").order("created_at"),
-      db.from("candidates").select("id, wave_id, specialty").in("status", ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"]),
+      db.from("candidates").select("id, wave_id, specialty").in("status", ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"]).neq("source", "demo"),
       db.from("certifications").select("candidate_id").eq("status", "VERIFIED").eq("result", "PASSED"),
       db.from("aicert_progress").select("candidate_id, specialist_course"),
     ]);

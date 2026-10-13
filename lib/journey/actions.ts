@@ -8,6 +8,7 @@ import { CLOSING_PULSE } from "./closure";
 import { markRequirementsByException, syncMany, syncStageClosure } from "./closure-sync";
 import { audit } from "@/lib/identity/service";
 import { provisionParticipant } from "@/lib/identity/provision";
+import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
 const fail = (e: unknown): Result<never> => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
@@ -19,6 +20,7 @@ const MAX_UPLOAD_MB: Record<Bucket, number> = { content: 500, submissions: 50, c
 async function requireParticipant(): Promise<{ viewer: Viewer; candidate: { id: string; wave_id: string; journey_layer: Layer | null; status: string } }> {
   const viewer = await getViewer();
   if (!viewer) throw new Error(SESSION_EXPIRED);
+  if (isDemoEmail(viewer.email)) throw new Error(DEMO_READONLY);
   const db = await supabaseUser();
   const { data } = await db
     .from("candidates")

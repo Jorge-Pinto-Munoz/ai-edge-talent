@@ -10,6 +10,7 @@ import { dueClientPulse, duePulses, validateAnswers } from "./rules";
 import { stageRequirements } from "@/lib/journey/closure";
 import { syncStageClosure } from "@/lib/journey/closure-sync";
 import { audit } from "@/lib/identity/service";
+import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 
 export type PulseResult = { ok: boolean; message: string };
 
@@ -21,6 +22,7 @@ export async function submitPulse(key: string, waveId: string, raw: Record<strin
   try {
     const viewer = await getViewer();
     if (!viewer) throw new Error(SESSION_EXPIRED);
+    if (isDemoEmail(viewer.email)) throw new Error(DEMO_READONLY);
     const def = pulseDef(key);
     if (!def) throw new Error("Este pulso no existe.");
     const answers = validateAnswers(def, raw);

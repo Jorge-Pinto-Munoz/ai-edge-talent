@@ -22,7 +22,10 @@ export function DeliveryJourney({ stages, live, waveId }: { stages: DeliveryStag
   // En celular el riel es horizontal: la etapa elegida siempre queda a la vista.
   useEffect(() => {
     const r = rail.current, el = r?.querySelector<HTMLElement>(".dj-rail-item.on");
-    if (r && el && r.scrollWidth > r.clientWidth) r.scrollTo({ left: el.offsetLeft - 16, behavior: "smooth" });
+    if (!r || !el || r.scrollWidth <= r.clientWidth) return;
+    // Posición relativa al riel (offsetLeft se mide contra la página cuando el riel no está posicionado).
+    const left = r.scrollLeft + el.getBoundingClientRect().left - r.getBoundingClientRect().left - 8;
+    r.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [sel]);
   const l = live.find((x) => x.id === sel);
 

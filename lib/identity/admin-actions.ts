@@ -6,12 +6,13 @@ import { requireRole, type Viewer } from "@/lib/admission/auth";
 import { LAYERS, type Layer } from "@/lib/journey/rules";
 import { CODE_TTL, audit, ensureAccount, issueCode, portalLink, revokeSessions, sendIdentityEmail, setAuthBan } from "./service";
 import { normalizeCLMobile } from "./pin";
+import { isAccountRole } from "./roles";
 
 export type AdminResult = { ok: boolean; message: string; devCode?: string };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const dev = () => process.env.NODE_ENV !== "production";
 const fail = (e: unknown): AdminResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
-const ROLES = ["kiber", "delivery", "admin", "client", "mentor", "profesor", "hub"] as const;
+const ROLES = ["kiber", "delivery", "bp", "admin", "client", "mentor", "profesor", "hub"] as const;
 type Role = (typeof ROLES)[number];
 const done = (message: string, extra: Partial<AdminResult> = {}): AdminResult => {
   revalidatePath("/admin/usuarios");
@@ -241,7 +242,7 @@ export async function userHistory(userId: string) {
 }
 
 // ───────────── Solicitudes de acceso especial ─────────────
-export async function decideAccessRequest(id: string, input: { decision: "APPROVED" | "REJECTED"; note: string; resumeLayer?: Layer | ""; candidateId?: string | "" }): Promise<AdminResult> {
+export async function decideAccessRequest(id: string, input: { decision: "APPROVED" | "REJECTED"; note: string; resumeLayer?: Layer | ""; candidateId?: string | ""; role?: string }): Promise<AdminResult> {
   try {
     const actor = await admin();
     if (input.note.trim().length < 5) throw new Error("Registra la justificación de la decisión.");
@@ -256,9 +257,17 @@ export async function decideAccessRequest(id: string, input: { decision: "APPROV
     }
 
     // Aprobar: reutiliza la cuenta si existe (reactiva), nunca duplica.
+    // Solicitud de cuenta: el admin asigna el rol definitivo (por defecto el pedido).
+    const role = req.kind === "ACCOUNT" ? input.role || req.requested_role : null;
+    if (req.kind === "ACCOUNT" && (!role || !isAccountRole(role))) throw new Error("Elige el rol de la cuenta.");
     const { data: prof } = await svc.from("profiles").select("id, status, role").eq("email", req.email).maybeSingle();
-    if (!prof) await svc.from("role_grants").upsert({ email: req.email, role: "kiber", granted_by: actor.id }, { onConflict: "email", ignoreDuplicates: true });
+    if (role) await svc.from("role_grants").upsert({ email: req.email, role, granted_by: actor.id }, { onConflict: "email" });
+    else if (!prof) await svc.from("role_grants").upsert({ email: req.email, role: "kiber", granted_by: actor.id }, { onConflict: "email", ignoreDuplicates: true });
     const { userId } = await ensureAccount(req.email, req.name, svc);
+    if (role && prof?.role !== role) {
+      await svc.from("profiles").update({ role, updated_at: new Date().toISOString() }).eq("id", userId);
+      if (prof) await revokeSessions(userId, req.email, svc);
+    }
     if (prof && prof.status !== "ACTIVE" && prof.status !== "PENDING") {
       await svc.from("profiles").update({ status: "ACTIVE" }).eq("id", userId);
       await setAuthBan(userId, false, svc);
@@ -279,13 +288,13 @@ export async function decideAccessRequest(id: string, input: { decision: "APPROV
       await svc.from("journey_events").insert({ candidate_id: candidateId, from_layer: c?.journey_layer ?? null, to_layer: input.resumeLayer, exception: true, note: `Acceso especial aprobado: ${input.note.trim()}`, actor: actor.id });
       await svc.from("candidates").update({ journey_layer: input.resumeLayer, journey_layer_since: new Date().toISOString() }).eq("id", candidateId);
     }
-    await svc.from("access_requests").update({ status: "APPROVED", decided_at: new Date().toISOString(), decided_by: actor.id, decision_note: input.note.trim(), resume_layer: input.resumeLayer || null, candidate_id: candidateId, user_id: userId }).eq("id", id);
+    await svc.from("access_requests").update({ status: "APPROVED", decided_at: new Date().toISOString(), decided_by: actor.id, decision_note: input.note.trim(), resume_layer: input.resumeLayer || null, candidate_id: candidateId, user_id: userId, granted_role: role }).eq("id", id);
 
     const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", userId).maybeSingle();
     const purpose = cred?.pin_hash ? "RESET" : "ACTIVATION";
     const code = await issueCode(req.email, purpose, actor.id, 4, svc);
     const r = await sendIdentityEmail("ACCESS_REQUEST_APPROVED", req.email, { name: req.name, code, link: portalLink("activar", req.email) }, { userId, candidateId, sentBy: actor.id }, svc);
-    await audit("access.request.approved", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: req.email, candidateId, details: { request: id, note: input.note.trim(), resume_layer: input.resumeLayer || null, sent: r.ok } }, svc);
+    await audit("access.request.approved", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: req.email, candidateId, details: { request: id, note: input.note.trim(), resume_layer: input.resumeLayer || null, role, sent: r.ok } }, svc);
     return done(r.ok ? "Solicitud aprobada y acceso enviado." : `Solicitud aprobada. El correo no salió (${r.error}); reenvía el acceso desde la ficha.`, { devCode: dev() && !r.ok ? code : undefined });
   } catch (e) {
     return fail(e);

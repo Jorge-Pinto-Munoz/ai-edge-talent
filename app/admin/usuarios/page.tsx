@@ -11,7 +11,7 @@ import { Kpi } from "@/components/ds/Status";
 export const metadata = { title: "Usuarios y accesos · Portal AET" };
 export const dynamic = "force-dynamic";
 
-const TABS = [["usuarios", "Usuarios"], ["solicitudes", "Solicitudes de acceso especial"], ["config", "Recordatorios"]] as const;
+const TABS = [["usuarios", "Usuarios"], ["solicitudes", "Solicitudes de cuenta"], ["config", "Recordatorios"]] as const;
 
 /** Consola central de identidad: cuentas, estados, códigos (sin verlos), Waves, solicitudes y configuración. */
 export default async function Usuarios({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -86,7 +86,7 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
         <Kpi label="Pausados" value={k.paused} />
         <Kpi label="Bloqueados o revocados" value={k.blocked} />
         <Kpi label="Invitaciones vigentes" value={k.invites} hint="Códigos temporales sin usar" />
-        <Kpi label="Solicitudes especiales" value={k.requests} hint={k.requests ? "Requieren tu decisión" : "Sin pendientes"} />
+        <Kpi label="Solicitudes de cuenta" value={k.requests} hint={k.requests ? "Requieren tu decisión" : "Sin pendientes"} />
       </div>
       <nav className="row" aria-label="Secciones">
         {TABS.map(([key, label]) => <Link key={key} href={`?tab=${key}`} className={`btn small ${tab === key ? "" : "ghost"}`}>{label}{key === "solicitudes" && k.requests ? ` · ${k.requests}` : ""}</Link>)}

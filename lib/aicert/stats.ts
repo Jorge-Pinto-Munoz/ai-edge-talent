@@ -23,7 +23,7 @@ export const certifiedRate = unstable_cache(
     const db = supabaseService();
     const { data: waves } = await db.from("waves").select("id, name").eq("status", "CLOSED");
     if (!waves?.length) return null;
-    const { data: people } = await db.from("candidates").select("id").in("wave_id", waves.map((w) => w.id)).in("status", ["ENROLLED", "MINDSET_READY"]);
+    const { data: people } = await db.from("candidates").select("id").in("wave_id", waves.map((w) => w.id)).in("status", ["ENROLLED", "MINDSET_READY"]).neq("source", "demo");
     const ids = (people ?? []).map((p) => p.id);
     if (ids.length < MIN_SAMPLE) return null;
     const { data: certs } = await db.from("certifications").select("candidate_id").in("candidate_id", ids).eq("status", "VERIFIED").eq("result", "PASSED");

@@ -49,7 +49,7 @@ export interface JourneyView {
   failedCerts: number;
   certStat: CertStat | null;
   /** Vista previa del admin: se ve igual, sin poder enviar nada. */
-  preview?: { label: string } | null;
+  preview?: { label: string; demo?: boolean } | null;
   submissions: { id: string; capsuleTitle: string; attempt: number; status: string; feedback: string | null; files: { name: string; path: string; size: number }[]; submittedAt: string }[];
   lab: {
     id: string;

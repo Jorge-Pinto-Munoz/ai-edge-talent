@@ -7,6 +7,7 @@ import {
 } from "@/lib/identity/admin-actions";
 import { Icon } from "@/components/site/Icon";
 import { Sheet } from "@/components/site/Sheet";
+import { ROLE_LABEL } from "@/lib/identity/roles";
 
 export interface UserRow {
   id: string; name: string; email: string; role: string; status: string; phone: string | null;
@@ -16,7 +17,6 @@ export interface UserRow {
 }
 type Wave = { id: string; name: string; status: string };
 
-export const ROLE_LABEL: Record<string, string> = { kiber: "Profesional", delivery: "Delivery", admin: "Admin", client: "Cliente", mentor: "AI Coach", profesor: "Profesor", hub: "Líder Hub AI" };
 const STATUS_LABEL: Record<string, string> = { ACTIVE: "Activo", PENDING: "Pendiente", PAUSED: "Pausado", REVOKED: "Revocado", DELETED: "Dado de baja" };
 const STATUS_KIND: Record<string, string> = { ACTIVE: "done", PENDING: "pending", PAUSED: "attention", REVOKED: "blocked", DELETED: "blocked" };
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");

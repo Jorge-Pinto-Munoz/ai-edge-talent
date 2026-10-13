@@ -77,7 +77,7 @@ export function JourneyApp({ v }: { v: JourneyView }) {
       {v.preview && (
         <div className="jr-preview" role="note">
           <Icon name="user" size={18} />
-          <span><strong>Vista de admin</strong> · así ve su journey {v.preview.label}. Puedes recorrer todo; los envíos están desactivados.</span>
+          <span>{v.preview.demo ? <><strong>Cuenta de demostración</strong> · datos ficticios. Puedes recorrer todo; los envíos están desactivados.</> : <><strong>Vista de admin</strong> · así ve su journey {v.preview.label}. Puedes recorrer todo; los envíos están desactivados.</>}</span>
         </div>
       )}
       <JourneyHero v={v} />
@@ -163,7 +163,7 @@ function JourneyHero({ v }: { v: JourneyView }) {
     <header className="jr-hero" style={stageVars(cur.layer)}>
       <div className="jr-hero-top">
         <span className="jr-wave">{v.waveName}</span>
-        {!v.preview && <SignOut />}
+        {(!v.preview || v.preview.demo) && <SignOut />}
       </div>
       <div className="jr-hero-main">
         <div>

@@ -41,12 +41,16 @@ const SUPPORT_OF: Partial<Record<Topic, (typeof SUPPORT_TOPICS)[number]>> = {
   Postulación: "Postulación", Selección: "Selección y resultados", Certificación: "Certificación AI CERT", "AI Lab": "AI Lab y Showcase", Plataforma: "Acceso a la plataforma",
 };
 type Msg = { id: number; from: "bot" | "me"; text: string; ai?: boolean };
-type Step = { kind: "topics" } | { kind: "questions"; topic: Topic } | { kind: "answered"; topic: Topic | null; item: HelpItem | null } | { kind: "confirm"; item: HelpItem; asked: string } | { kind: "thinking" } | { kind: "form"; topic: Topic | null; message: string };
+type Step = { kind: "topics" } | { kind: "questions"; topic: Topic } | { kind: "answered"; topic: Topic | null; item: HelpItem | null } | { kind: "confirm"; item: HelpItem; asked: string } | { kind: "thinking" } | { kind: "unanswered"; asked: string };
+type Mode = "chat" | "request";
+const GREETING = /^(hola|holi|buenas|buen(os|as)? (d[ií]as|tardes|noches)|hey|hi|saludos|gracias|ok|okay|dale)[\s!.¡,]*$/i;
 
 /**
- * Ayuda como conversación: el bot ofrece temas, luego preguntas, y responde con textos preparados.
- * Si la persona escribe, busca primero en las respuestas preparadas; si no hay, consulta al asistente (solo
- * con la información oficial) y, si tampoco, deriva al equipo con la pregunta ya escrita. `inline`: en /ayuda.
+ * Ayuda en dos modos que conviven (cada uno guarda su estado):
+ * - Chat de asistencia: temas → preguntas → respuestas preparadas; lo escrito se busca primero en ellas y, si no
+ *   calza, responde el asistente (solo con información oficial). Si tampoco, lo dice y ofrece dejar una solicitud.
+ * - Dejar una solicitud: formulario al equipo, que se puede abrir directo o con la pregunta del chat ya escrita.
+ * `inline`: en /ayuda.
  */
 export function HelpPanel({ inline = false }: { inline?: boolean }) {
   const path = usePathname();
@@ -56,6 +60,8 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>(() => [hello("profesional")]);
   const [step, setStep] = useState<Step>({ kind: "topics" });
   const [draft, setDraft] = useState("");
+  const [mode, setMode] = useState<Mode>("chat");
+  const [request, setRequest] = useState<{ message: string; topic?: string; n: number }>({ message: "", n: 0 });
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => { const a = audienceFrom(path); setAud(a); setMsgs([hello(a)]); setStep({ kind: "topics" }); }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight, behavior: "smooth" }); }, [msgs, step]);
@@ -67,15 +73,16 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
 
   const pickTopic = (t: Topic) => { say({ from: "me", text: TOPIC_LABEL[t] }, { from: "bot", text: `Estas son las preguntas más comunes sobre ${TOPIC_LABEL[t].toLowerCase()}:` }); setStep({ kind: "questions", topic: t }); };
   const pickQuestion = (h: HelpItem) => { say({ from: "me", text: h.q }, { from: "bot", text: h.a }); setStep({ kind: "answered", topic: h.topic, item: h }); };
-  const toTeam = (topic: Topic | null, message: string, intro?: string) => {
-    say({ from: "bot", text: intro ?? (aud === "cliente" ? "Escríbanos y el equipo le responde por correo, normalmente dentro del día hábil." : "Escríbenos y el equipo te responde por correo, normalmente dentro del día hábil.") });
-    setStep({ kind: "form", topic, message });
+  /** Pasa a "Dejar una solicitud" con la pregunta ya escrita; la conversación queda donde estaba. */
+  const toRequest = (topic: Topic | null, message: string) => {
+    setRequest((r) => ({ message, topic: topic ? SUPPORT_OF[topic] : undefined, n: r.n + 1 }));
+    setMode("request");
   };
   const askAi = async (text: string) => {
     setStep({ kind: "thinking" });
     const r = await askHelp(text, aud, path).catch(() => ({ kind: "team" as const, message: "No pude responder ahora." }));
     if (r.kind === "ai") { say({ from: "bot", text: r.answer, ai: true }); setStep({ kind: "answered", topic: null, item: null }); }
-    else toTeam(null, text, r.message);
+    else { say({ from: "bot", text: r.message.replace(/ ?Déjanos tus datos.*$/, "") || "No tengo una respuesta preparada para eso." }, { from: "bot", text: aud === "cliente" ? "Puede dejarnos una solicitud y el equipo le responde por correo, o seguir preguntando aquí." : "Puedes dejarnos una solicitud y el equipo te responde por correo, o seguir preguntando aquí." }); setStep({ kind: "unanswered", asked: text }); }
   };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +90,8 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
     if (!text) return;
     setDraft("");
     say({ from: "me", text });
+    if (GREETING.test(text)) { say({ from: "bot", text: aud === "cliente" ? "¡Hola! Elija un tema o escríbame su pregunta." : "¡Hola! Elige un tema o escríbeme tu pregunta." }); setStep({ kind: "topics" }); return; }
+    if (text.length < 8) { say({ from: "bot", text: aud === "cliente" ? "Cuénteme un poco más de su pregunta, o elija un tema." : "Cuéntame un poco más de tu pregunta, o elige un tema." }); setStep({ kind: "topics" }); return; }
     const m = bestMatch(text, items);
     if (m) { say({ from: "bot", text: `Creo que te refieres a: «${m.q}»` }, { from: "bot", text: m.a }); setStep({ kind: "confirm", item: m, asked: text }); }
     else void askAi(text);
@@ -91,6 +100,15 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
 
   return (
     <div className={`help hc ${inline ? "inline" : ""}`}>
+      <div className="hc-modes" role="tablist" aria-label="Cómo te ayudamos">
+        {([["chat", "Chat de asistencia", "chat"], ["request", "Dejar una solicitud", "send"]] as const).map(([k, label, icon]) => (
+          <button key={k} type="button" role="tab" id={`hc-tab-${k}${inline ? "-i" : ""}`} aria-selected={mode === k} aria-controls={`hc-pane-${k}${inline ? "-i" : ""}`} className={mode === k ? "on" : ""} onClick={() => setMode(k)}>
+            <Icon name={icon} size={18} /> {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="hc-pane" role="tabpanel" id={`hc-pane-chat${inline ? "-i" : ""}`} aria-labelledby={`hc-tab-chat${inline ? "-i" : ""}`} hidden={mode !== "chat"}>
       <div className="help-aud" role="radiogroup" aria-label="Soy">
         {(["profesional", "cliente"] as HelpAudience[]).map((a) => (
           <button key={a} type="button" role="radio" aria-checked={aud === a} className={aud === a ? "on" : ""} onClick={() => { setAud(a); setMsgs([hello(a)]); setStep({ kind: "topics" }); }}>
@@ -109,7 +127,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
         {step.kind === "thinking" && <div className="hc-msg bot hc-typing" aria-label="Escribiendo"><span /><span /><span /></div>}
       </div>
 
-      {step.kind !== "form" && step.kind !== "thinking" && (
+      {step.kind !== "thinking" && (
         <div className="hc-opts" role="group" aria-label="Opciones">
           {step.kind === "topics" && topics.map((t) => <button key={t} type="button" onClick={() => pickTopic(t)}>{TOPIC_LABEL[t]}</button>)}
           {step.kind === "questions" && (
@@ -123,7 +141,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
               <button type="button" onClick={() => { say({ from: "me", text: "Sí, me sirvió" }, { from: "bot", text: `¡Qué bueno! Si ${you === "usted" ? "necesita" : "necesitas"} algo más, aquí estoy.` }); setStep({ kind: "topics" }); }}>Sí, me sirvió</button>
               {step.topic && <button type="button" onClick={() => pickTopic(step.topic!)}>Otra pregunta de este tema</button>}
               <button type="button" className="ghost" onClick={restart}>Otro tema</button>
-              <button type="button" className="ghost" onClick={() => { say({ from: "me", text: "Prefiero hablar con el equipo" }); toTeam(step.topic, step.item ? `Sobre «${step.item.q}»: ` : ""); }}>Hablar con el equipo</button>
+              <button type="button" className="ghost" onClick={() => toRequest(step.topic, step.item ? `Sobre «${step.item.q}»: ` : "")}>Dejar una solicitud</button>
             </>
           )}
           {step.kind === "confirm" && (
@@ -132,18 +150,25 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
               <button type="button" className="ghost" onClick={() => { say({ from: "me", text: "No, mi pregunta es otra" }); void askAi(step.asked); }}>No, mi pregunta es otra</button>
             </>
           )}
+          {step.kind === "unanswered" && (
+            <>
+              <button type="button" onClick={() => toRequest(null, step.asked)}>Dejar una solicitud con esta pregunta</button>
+              <button type="button" className="ghost" onClick={restart}>Ver temas</button>
+            </>
+          )}
         </div>
       )}
 
-      {step.kind === "form" ? (
-        <SupportForm audience={aud} initialMessage={step.message} initialTopic={step.topic ? SUPPORT_OF[step.topic] : undefined} onCancel={restart} />
-      ) : (
-        <form className="hc-input" onSubmit={submit}>
-          <label htmlFor={inline ? "hc-q-inline" : "hc-q"} className="sr-only">Escribe tu pregunta</label>
-          <input id={inline ? "hc-q-inline" : "hc-q"} type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="O escribe tu pregunta…" maxLength={600} disabled={step.kind === "thinking"} autoComplete="off" />
-          <button className="btn small" disabled={!draft.trim() || step.kind === "thinking"} aria-label="Enviar pregunta"><Icon name="arrowRight" size={18} /></button>
-        </form>
-      )}
+      <form className="hc-input" onSubmit={submit}>
+        <label htmlFor={inline ? "hc-q-inline" : "hc-q"} className="sr-only">Escribe tu pregunta</label>
+        <input id={inline ? "hc-q-inline" : "hc-q"} type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={aud === "cliente" ? "O escriba su pregunta…" : "O escribe tu pregunta…"} maxLength={600} disabled={step.kind === "thinking"} autoComplete="off" />
+        <button className="btn small" disabled={!draft.trim() || step.kind === "thinking"} aria-label="Enviar pregunta"><Icon name="arrowRight" size={18} /></button>
+      </form>
+      </div>
+
+      <div className="hc-pane" role="tabpanel" id={`hc-pane-request${inline ? "-i" : ""}`} aria-labelledby={`hc-tab-request${inline ? "-i" : ""}`} hidden={mode !== "request"}>
+        <SupportForm key={request.n} audience={aud} initialMessage={request.message} initialTopic={request.topic} onCancel={() => setMode("chat")} />
+      </div>
     </div>
   );
 }
@@ -165,6 +190,7 @@ function SupportForm({ audience, initialMessage = "", initialTopic, onCancel }: 
   return (
     <form className="help-form" onSubmit={(e) => { e.preventDefault(); start(async () => setRes(await submitSupport({ ...f, audience, page: path }))); }}>
       <h2 className="help-form-title">Escríbele al equipo</h2>
+      <p className="muted" style={{ margin: "0 0 8px" }}>Te respondemos por correo, normalmente dentro del día hábil. Tu conversación del chat sigue disponible.</p>
       <div className="help-row">
         <div className="field"><label htmlFor="hs-n">Nombre</label><input id="hs-n" type="text" required autoComplete="name" value={f.name} onChange={set("name")} /></div>
         <div className="field"><label htmlFor="hs-e">Correo</label><input id="hs-e" type="email" required autoComplete="email" value={f.email} onChange={set("email")} /></div>
@@ -177,7 +203,7 @@ function SupportForm({ audience, initialMessage = "", initialTopic, onCancel }: 
       {res && !res.ok && <p className="error" role="alert">{res.message}</p>}
       <div className="row">
         <button className="btn" disabled={pending}>{pending ? "Enviando…" : "Enviar pregunta"}</button>
-        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Volver a los temas</button>}
+        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Volver al chat</button>}
       </div>
     </form>
   );

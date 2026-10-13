@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { requireTeamPage } from "@/lib/staff/guard";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { waveReport } from "@/lib/pulse/report";
 import { DELIVERY_STAGES } from "@/lib/data/delivery-guide";
 import { DeliveryJourney, type StageLive } from "@/components/staff/DeliveryJourney";
 import { Kpi } from "@/components/ds/Status";
 import { Icon } from "@/components/site/Icon";
 import { StaffSignOut } from "@/components/staff/StaffSignOut";
-import { supabaseService } from "@/lib/supabase/server";
+import { TeamWavePicker } from "@/components/staff/TeamWavePicker";
+import { sortWaves } from "@/lib/waves/order";
 import { loadWavePeople } from "@/lib/pulse/experience-data";
 import { experience, operational } from "@/lib/pulse/experience";
 import { ExperienceByStage, ExperienceDetail } from "@/components/pulse/WaveExperience";
@@ -22,8 +23,12 @@ const ORDER = ["assessment", "mindset", "certs", "lab", "showcase", "closure"];
 export default async function EquipoHome({ searchParams }: { searchParams: Promise<{ wave?: string }> }) {
   const { wave: wq } = await searchParams;
   const viewer = await requireTeamPage("/equipo");
-  const db = await supabaseUser();
-  const { data: waves } = await db.from("waves").select("id, name, status").order("created_at", { ascending: false });
+  // Business Partner: solo lectura. No tiene permisos de staff en la base; ya autorizado arriba, lee con la llave de servicio.
+  const readOnly = viewer.role === "bp";
+  const db = readOnly ? supabaseService() : await supabaseUser();
+  const { data: rawWaves } = await db.from("waves").select("id, name, status");
+  const waves = sortWaves(rawWaves ?? []);
+  const { data: counts } = await db.from("candidates").select("wave_id").in("wave_id", waves.map((w) => w.id));
   const open = (waves ?? []).filter((w) => w.status !== "CLOSED");
   const wave = (waves ?? []).find((w) => w.id === wq) ?? open[0] ?? waves?.[0] ?? null;
 
@@ -32,7 +37,7 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
   if (wave) {
     const [{ data: adm }, report, { data: labs }] = await Promise.all([
       db.from("candidates").select("id", { count: "exact" }).eq("wave_id", wave.id).in("status", ADMISSION),
-      waveReport(wave.id),
+      waveReport(wave.id, new Date(), readOnly ? supabaseService() : undefined),
       db.from("lab_projects").select("status, lab_project_members(candidate_id)").eq("wave_id", wave.id),
     ]);
     const ready = new Set((labs ?? []).filter((p) => p.status === "READY").flatMap((p) => (p.lab_project_members as { candidate_id: string }[]).map((m) => m.candidate_id)));
@@ -77,13 +82,7 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
           <p>Dónde está cada profesional, qué viene y qué te toca. Elige una etapa para ver tu gestión.</p>
         </div>
         <div className="team-head-actions">
-          {(waves ?? []).length > 1 && (
-            <nav className="ds-seg" aria-label="Wave">
-              {(waves ?? []).map((w) => (
-                <Link key={w.id} href={`/equipo?wave=${w.id}`} aria-current={w.id === wave?.id ? "page" : undefined} className={w.id === wave?.id ? "on" : ""}>{w.name.replace("AI Edge Talent · ", "")}</Link>
-              ))}
-            </nav>
-          )}
+          {waves.length > 1 && wave && <TeamWavePicker waves={waves.map((w) => ({ ...w, people: (counts ?? []).filter((c) => c.wave_id === w.id).length }))} value={wave.id} />}
           <StaffSignOut />
         </div>
       </header>
@@ -132,7 +131,7 @@ export default async function EquipoHome({ searchParams }: { searchParams: Promi
         <div className="team-res-grid">
           <Link href="/equipo/playbook" className="ds-tile"><Icon name="book" size={22} /><strong>Playbook de acompañamiento</strong><span>Checklists, comunicaciones, riesgos y escalamiento por etapa.</span></Link>
           <Link href="/responsabilidades" className="ds-tile"><Icon name="users" size={22} /><strong>Responsabilidades (RACI)</strong><span>Quién hace, decide, es consultado e informado.</span></Link>
-          <Link href={wave ? `/admin/admision/${wave.id}` : "/admin"} className="ds-tile"><Icon name="grid" size={22} /><strong>Portal operativo</strong><span>Admisión, journey, clases, pulsos y AI Lab de la Wave.</span></Link>
+          {!readOnly && <Link href={wave ? `/admin/admision/${wave.id}` : "/admin"} className="ds-tile"><Icon name="grid" size={22} /><strong>Portal operativo</strong><span>Admisión, journey, clases, pulsos y AI Lab de la Wave.</span></Link>}
         </div>
       </section>
       <p className="team-note">Registramos tus ingresos y las secciones del área de equipo que consultas, solo para auditoría (180 días).</p>

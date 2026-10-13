@@ -61,5 +61,9 @@
   ],
   "client": [
     "/cliente"
+  ],
+  "bp": [
+    "/equipo?wave=wave-3",
+    "/equipo/playbook"
   ]
 }

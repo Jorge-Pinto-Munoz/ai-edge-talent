@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 export const SESSION_EXPIRED = "Tu sesión expiró. Abre otra pestaña, vuelve a ingresar y luego guarda de nuevo: lo que escribiste sigue aquí.";
 
 export type StaffRole = "admin" | "delivery";
-export type AppRole = "admin" | "delivery" | "kiber" | "client" | "mentor" | "profesor" | "hub";
+export type AppRole = "admin" | "delivery" | "kiber" | "client" | "mentor" | "profesor" | "hub" | "bp";
 export interface Viewer {
   id: string;
   email: string;

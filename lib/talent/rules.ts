@@ -44,6 +44,8 @@ export interface HistoricalRow {
   role_title: string | null;
   specialty: string | null;
   completed: boolean;
+  /** Etapa del journey en que quedó (columna Etapa); si falta y completó, Cierre. */
+  layer: "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "CLOSURE" | null;
   /** Certificación AI CERT: true aprobada, false no aprobada, null sin dato. */
   certified: boolean | null;
   service_status: ServiceStatus;
@@ -59,6 +61,7 @@ const H: Record<string, string[]> = {
   specialty: ["especialidad", "familia", "cluster"],
   result: ["resultado", "completo", "termino", "estado programa"],
   service: ["estado servicio", "servicio", "situacion", "estado"],
+  stage: ["etapa", "etapa actual", "fase", "etapa journey"],
   certified: ["certificacion", "certificado", "ai cert", "aicert", "certificacion ai cert", "ai certs", "certifico"],
 };
 
@@ -95,6 +98,9 @@ export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; error
     const res = norm(get("result"));
     const svc = norm(get("service"));
     const cert = norm(get("certified"));
+    const stage = norm(get("stage"));
+    const completed = /^(si|sí|completo|completó|completado|certificado|aprobado|termino|terminó)/.test(res);
+    const layer: HistoricalRow["layer"] = /(cierre|finaliz|termin)/.test(stage) ? "CLOSURE" : /(lab|showcase)/.test(stage) ? "AI_LAB_SHOWCASE" : /(role|enablement|certific|ai cert)/.test(stage) ? "ROLE_ENABLEMENT" : /(mindset)/.test(stage) ? "AI_MINDSET" : completed ? "CLOSURE" : null;
     rows.push({
       full_name: get("full_name"),
       corporate_email: email,
@@ -102,7 +108,8 @@ export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; error
       client_name: get("client_name") || null,
       role_title: get("role_title") || null,
       specialty: get("specialty") || null,
-      completed: /^(si|sí|completo|completó|completado|certificado|aprobado|termino|terminó)/.test(res),
+      completed: completed || layer === "CLOSURE",
+      layer,
       certified: /^(si|aprob|certific|yes|ok)/.test(cert) ? true : /^(no|reprob|pendiente no)/.test(cert) ? false : null,
       service_status: /(sali|retir|renunc|desvincul|left)/.test(svc) ? "LEFT" : /(banca|bench)/.test(svc) ? "BENCH" : "IN_SERVICE",
     });
