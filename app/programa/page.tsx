@@ -124,7 +124,7 @@ export default function ProgramaPage() {
         <Reveal className="cta-band">
           <div>
             <h2>¿Te hace sentido?</h2>
-            <p>La postulación a Wave 3 cierra el viernes 16 de octubre a las 12:00.</p>
+            <p>La postulación a Wave 3 cierra el viernes 16 de octubre a las 12:00 del mediodía (hora de Chile).</p>
           </div>
           <Link className="pill accent lg" href="/wave-3/postular">Postular a Wave 3 <Icon name="arrowRight" size={18} /></Link>
         </Reveal>

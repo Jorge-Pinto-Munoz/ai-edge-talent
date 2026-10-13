@@ -18,7 +18,7 @@ export default async function Ingresar({ searchParams }: { searchParams: Promise
   return (
     <section className="auth-page">
       <div className="auth-card">
-        <div className="auth-mark" aria-hidden="true"><img src="/brand/kibernum-blanco.svg" alt="" /></div>
+        <div className="auth-mark"><img src="/brand/kibernum-positivo.svg" alt="Kibernum" /></div>
         <IdentityFlow initialMode={mode} initialEmail={sp.email ?? ""} next={next} />
         <p className="auth-foot">Registramos los ingresos para tu seguridad. En el área de equipo también registramos las secciones consultadas (180 días).</p>
       </div>

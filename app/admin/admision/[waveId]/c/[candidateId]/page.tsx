@@ -7,6 +7,7 @@ import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { Badge, admissionTone, fmtDate } from "@/components/ui";
 import { TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
+import { shownEmail } from "@/lib/talent/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       <div className="spread">
         <div>
           <h1 style={{ margin: 0 }}>{c.full_name}</h1>
-          <p className="muted" style={{ margin: "4px 0 0" }}>{c.corporate_email} · {c.client_name ?? "—"} · {c.role_title ?? "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
+          <p className="muted" style={{ margin: "4px 0 0" }}>{shownEmail(c.corporate_email)} · {c.client_name ?? "—"} · {c.role_title ?? "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
         </div>
         <div className="row">
           {isAdmin && <a className="btn ghost small" href={`/admin/vista/candidato?id=${c.id}`}>Ver su postulación</a>}

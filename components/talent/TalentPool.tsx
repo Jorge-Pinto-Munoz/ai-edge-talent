@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { TalentRow } from "@/lib/talent/queries";
-import { FAMILIES, SERVICE_LABEL, retention, talentCsv, type ServiceStatus } from "@/lib/talent/rules";
+import { FAMILIES, SERVICE_LABEL, retention, shownEmail, talentCsv, type ServiceStatus } from "@/lib/talent/rules";
 import { layerName, type Layer } from "@/lib/journey/rules";
 import { Badge, fmtYmd } from "@/components/ui";
 
@@ -99,7 +99,7 @@ export function TalentPool({ rows }: { rows: TalentRow[] }) {
               <tr key={r.id}>
                 <td>
                   <Link href={`/admin/talento/${r.id}`}><strong>{r.full_name}</strong></Link> {r.high_talent && <Badge tone="brand">High Talent</Badge>}
-                  <br /><small className="muted">{r.email}</small>
+                  <br /><small className="muted">{shownEmail(r.email)}</small>
                 </td>
                 <td>{r.specialty_family ?? <span className="muted">—</span>}<br /><small className="muted">{r.specialty ?? ""}</small></td>
                 <td>{r.current_client ?? "—"}<br /><small className="muted">{r.role_title ?? ""}</small></td>

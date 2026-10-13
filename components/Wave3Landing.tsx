@@ -33,7 +33,7 @@ export function Wave3Landing() {
         {wave.applicationDeadline && (
           <p className="kicker" style={{ marginTop: 16 }}>
             <span className="eyebrow" style={{ display: "block", marginBottom: 2 }}>Deadline</span>
-            <strong style={{ color: "#fff", fontSize: "1.15rem" }}>Tienes hasta el {fmtDay(wave.applicationDeadline)} a las 12:00 hrs.</strong>
+            <strong style={{ color: "#fff", fontSize: "1.15rem" }}>Tienes hasta el {fmtDay(wave.applicationDeadline)} a las 12:00 del mediodía (hora de Chile).</strong>
           </p>
         )}
         <div className="row" style={{ marginTop: 16 }}>

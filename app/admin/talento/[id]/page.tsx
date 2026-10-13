@@ -8,6 +8,7 @@ import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { TalentEditor } from "@/components/talent/TalentEditor";
 import { FollowUps } from "@/components/talent/FollowUps";
 import { Badge, fmtDate } from "@/components/ui";
+import { shownEmail } from "@/lib/talent/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export default async function TalentDetail({ params }: { params: Promise<{ id: s
       <div className="spread">
         <div>
           <h1 style={{ margin: 0 }}>{t.full_name} {t.high_talent && <Badge tone="brand">High Talent</Badge>}</h1>
-          <p className="muted" style={{ margin: "4px 0 0" }}>{t.email} · {t.specialty_family ?? "Sin cluster"} · {t.current_client ?? "—"}</p>
+          <p className="muted" style={{ margin: "4px 0 0" }}>{shownEmail(t.email)} · {t.specialty_family ?? "Sin cluster"} · {t.current_client ?? "—"}</p>
         </div>
         <Badge tone={t.service_status === "IN_SERVICE" ? "ok" : t.service_status === "BENCH" ? "warn" : "bad"}>{SERVICE_LABEL[t.service_status as ServiceStatus]}</Badge>
       </div>

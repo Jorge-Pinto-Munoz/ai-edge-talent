@@ -15,6 +15,11 @@ import { STAGE_STATUS } from "@/lib/journey/closure";
 import { LAYERS } from "@/lib/journey/rules";
 import { ExperienceByStage, ExperienceDetail, ExperienceSummary } from "@/components/pulse/WaveExperience";
 import { ShareExperience } from "@/components/pulse/ShareExperience";
+import { AiSummary } from "@/components/pulse/AiSummary";
+import { closingTexts } from "@/lib/pulse/summary-data";
+import { aiConfigured } from "@/lib/ai/client";
+import { CLOSING_LAYERS } from "@/lib/pulse/experience";
+import type { PulseSummary } from "@/lib/ai/pulse-summary";
 
 export const metadata = { title: "Avance y experiencia · Portal AET" };
 
@@ -61,6 +66,16 @@ export default async function PulsosReport({ params, searchParams }: { params: P
   const deliveries = [...new Set([...(team ?? []).map((t) => t.email), ...all.map((p) => p.delivery).filter(Boolean)])] as string[];
   const { data: dprof } = deliveries.length ? await supabaseService().from("profiles").select("email, full_name").in("email", deliveries) : { data: [] };
   const dName = (e: string | null) => (dprof ?? []).find((d) => d.email === e)?.full_name || e || "";
+  // Síntesis con IA guardadas (solo en "Por etapa", sobre toda la Wave: los filtros no aplican a la síntesis).
+  const ai: Partial<Record<(typeof CLOSING_LAYERS)[number], { initial: PulseSummary | null; stale: boolean; texts: number }>> = {};
+  if (nivel === "etapa") {
+    const { data: saved } = await supabaseService().from("ai_summaries").select("layer, input_hash, content").eq("wave_id", waveId);
+    for (const l of CLOSING_LAYERS) {
+      const t = await closingTexts(waveId, l);
+      const s = (saved ?? []).find((x) => x.layer === l);
+      ai[l] = { initial: (s?.content as PulseSummary) ?? null, stale: Boolean(s && s.input_hash !== t.hash), texts: t.rows.length };
+    }
+  }
   const qs = (k: string) => new URLSearchParams(Object.entries({ ...sp, nivel: k }).filter(([, v]) => v) as [string, string][]).toString();
   const enab = [["Pulso intermedio", r.enablementMid], ["Pulso de cierre", r.enablementClose]] as const;
   const readings = r.persons.filter((p) => p.pulse || p.alert);
@@ -96,7 +111,7 @@ export default async function PulsosReport({ params, searchParams }: { params: P
       )}
 
       {nivel === "resumen" && <ExperienceSummary ops={ops} exp={exp} />}
-      {nivel === "etapa" && <ExperienceByStage exp={exp} />}
+      {nivel === "etapa" && <ExperienceByStage exp={exp} extra={(l) => ai[l] ? <AiSummary waveId={waveId} layer={l} configured={aiConfigured()} {...ai[l]!} /> : null} />}
       {nivel === "detalle" && <ExperienceDetail people={people} deliveryName={dName} />}
 
       {nivel === "habilitacion" && (<>

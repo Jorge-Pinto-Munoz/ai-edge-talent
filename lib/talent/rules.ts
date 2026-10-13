@@ -62,6 +62,13 @@ const H: Record<string, string[]> = {
   certified: ["certificacion", "certificado", "ai cert", "aicert", "certificacion ai cert", "ai certs", "certifico"],
 };
 
+/** Dominio reservado (RFC 2606): nunca recibe correo. Marca a quien se cargó sin correo para completarlo después. */
+export const NO_EMAIL_DOMAIN = "sin-correo.invalid";
+export const hasRealEmail = (e: string | null | undefined) => Boolean(e) && !e!.toLowerCase().endsWith(`@${NO_EMAIL_DOMAIN}`);
+/** Cómo se muestra un correo que puede ser un marcador. */
+export const shownEmail = (e: string | null | undefined) => (hasRealEmail(e) ? e! : "Sin correo registrado");
+const slug = (s: string) => norm(s).replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "").slice(0, 40);
+
 export function waveIdFrom(v: string): string | null {
   const m = norm(v).match(/(\d+)/);
   return m ? `wave-${m[1]}` : null;
@@ -73,15 +80,18 @@ export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; error
   const col = (k: string) => fields.find((f) => H[k].includes(norm(f)));
   const c = Object.fromEntries(Object.keys(H).map((k) => [k, col(k)])) as Record<string, string | undefined>;
   const errors: string[] = [];
-  if (!c.full_name || !c.corporate_email || !c.wave) return { rows: [], errors: ["El archivo debe tener columnas Nombre, Correo y Wave."] };
+  if (!c.full_name || !c.wave) return { rows: [], errors: ["El archivo debe tener columnas Nombre y Wave (el Correo es recomendable)."] };
   const rows: HistoricalRow[] = [];
   p.data.forEach((r, i) => {
     const line = i + 2;
     const get = (k: string) => (c[k] ? (r[c[k]!] ?? "").trim() : "");
-    const email = get("corporate_email").toLowerCase();
+    const raw = get("corporate_email").toLowerCase();
     const wave = waveIdFrom(get("wave"));
-    if (!get("full_name") || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return errors.push(`Línea ${line}: nombre o correo inválido.`);
+    if (!get("full_name")) return errors.push(`Línea ${line}: falta el nombre.`);
+    if (raw && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw)) return errors.push(`Línea ${line}: correo inválido.`);
     if (!wave) return errors.push(`Línea ${line}: no se reconoce la Wave "${get("wave")}".`);
+    // Sin correo: queda registrada (cuenta para las cifras del programa) y el correo se completa después.
+    const email = raw || `${slug(get("full_name"))}.${wave}@${NO_EMAIL_DOMAIN}`;
     const res = norm(get("result"));
     const svc = norm(get("service"));
     const cert = norm(get("certified"));

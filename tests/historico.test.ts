@@ -27,3 +27,17 @@ describe("carga histórica (Waves 1 y 2)", () => {
     ]);
   });
 });
+
+describe("carga histórica sin correo", () => {
+  it("acepta filas sin correo con un marcador no entregable, y rechaza correos mal escritos", async () => {
+    const { hasRealEmail, shownEmail, NO_EMAIL_DOMAIN } = await import("@/lib/talent/rules");
+    const { rows, errors } = parseHistoricalCsv("Nombre;Correo;Wave;Certificación AI CERT\nAna Pérez;;Wave 2;Certificado\nLuis Soto;luis@;Wave 1;\nEva Ríos;eva@kibernum.com;Wave 1;En curso");
+    expect(rows.map((r) => r.corporate_email)).toEqual([`ana.perez.wave-2@${NO_EMAIL_DOMAIN}`, "eva@kibernum.com"]);
+    expect(rows[0].certified).toBe(true);
+    expect(rows[1].certified).toBeNull();
+    expect(errors).toEqual(["Línea 3: correo inválido."]);
+    expect(hasRealEmail(rows[0].corporate_email)).toBe(false);
+    expect(shownEmail(rows[0].corporate_email)).toBe("Sin correo registrado");
+    expect(shownEmail("eva@kibernum.com")).toBe("eva@kibernum.com");
+  });
+});

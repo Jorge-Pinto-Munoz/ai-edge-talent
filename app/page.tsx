@@ -49,8 +49,8 @@ export default function Home() {
           <Reveal>
             <div className="eyebrow">Wave 3 · Postulación abierta</div>
             <h2 style={{ fontSize: "var(--fs-h2)", color: "#fff", margin: "0 0 16px", letterSpacing: "-0.02em" }}>Así comienza Wave 3.</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-lead)", marginBottom: 28 }}>Postulas hasta el viernes 16 de octubre a las 12:00. Postular no significa quedar seleccionado/a: si te seleccionan, aceptas formalmente tu compromiso y empiezas.</p>
-            <Countdown to={WAVE3_DEADLINE} />
+            <p className="muted" style={{ fontSize: "var(--fs-lead)", marginBottom: 28 }}>Postulas hasta el viernes 16 de octubre a las 12:00 del mediodía (hora de Chile). Postular no significa quedar seleccionado/a: si te seleccionan, aceptas formalmente tu compromiso y empiezas.</p>
+            <Countdown to={WAVE3_DEADLINE} caption="Para el cierre: viernes 16 de octubre, 12:00 del mediodía (hora de Chile)" />
             <div className="actions" style={{ marginTop: 28, display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link className="pill accent lg" href="/wave-3/postular">Postular ahora <Icon name="arrowRight" size={18} /></Link>
               <Link className="pill ghost lg" href="/programa/assessment">Cómo es la postulación</Link>
@@ -103,7 +103,6 @@ export default function Home() {
                 <div>
                   <Link href={`/programa/${g.slug}`}><strong>{g.stage}</strong></Link>
                   <p>{g.how}</p>
-                  {g.dims && <ul className="gate-dims" aria-label="Qué se evalúa">{g.dims.map((d) => <li key={d}>{d}</li>)}</ul>}
                 </div>
                 <p className="gate-pass"><Icon name="check" size={18} /> {g.pass}</p>
               </Reveal>

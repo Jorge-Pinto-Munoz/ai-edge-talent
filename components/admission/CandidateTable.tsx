@@ -8,6 +8,7 @@ import { TEMPLATE_FOR_STATUS, TEMPLATE_LABEL, type EmailTemplate } from "@/lib/e
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { Badge, Callout, admissionTone } from "@/components/ui";
 import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
+import { shownEmail } from "@/lib/talent/rules";
 
 const REC_LABEL: Record<string, string> = { SELECTED: "Avanza", RESCUE_REQUIRED: "Repechaje", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No continúa" };
 const OUTCOMES = [
@@ -150,7 +151,7 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
                 {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
                 <td className="rt-title">
                   <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
-                  <br /><small className="muted">{c.corporate_email}</small>
+                  <br /><small className="muted">{shownEmail(c.corporate_email)}</small>
                 </td>
                 <td data-label="Cliente · Rol">{c.client_name ?? "—"}<br /><small className="muted">{c.role_title ?? ""}{c.specialty ? ` · ${c.specialty}` : ""}</small></td>
                 <td data-label="Estado"><Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge></td>

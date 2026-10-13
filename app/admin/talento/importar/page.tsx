@@ -13,7 +13,7 @@ export default async function ImportarHistorico() {
       <div className="eyebrow"><Link href="/admin/talento">← Pool de talento</Link></div>
       <h1>Cargar participantes de Waves pasadas</h1>
       <p className="muted">
-        CSV con columnas <strong>Nombre</strong>, <strong>Correo</strong>, <strong>Wave</strong> (p.ej. “Wave 1”) y opcionalmente Cliente, Rol, Especialidad, <strong>Resultado</strong> (Completó / No) y <strong>Estado servicio</strong> (En servicio / Banca / Salió).
+        CSV con columnas <strong>Nombre</strong> y <strong>Wave</strong> (p.ej. “Wave 1”); <strong>Correo</strong> recomendado (sin correo la persona queda registrada y se completa después) y opcionalmente Cliente, Rol, Especialidad, <strong>Certificación AI CERT</strong> (Sí / No), <strong>Resultado</strong> (Completó / No) y <strong>Estado servicio</strong> (En servicio / Banca / Salió).
         Si la persona ya existe, se reutiliza su ficha de talento.
       </p>
       <HistoricalImport />

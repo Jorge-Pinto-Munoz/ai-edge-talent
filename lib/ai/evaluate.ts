@@ -1,15 +1,13 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { EvaluationError, EvaluationSchema, SYSTEM_PROMPT, buildUserMessage, normalizeEvaluation, scoreEvaluation, type Evaluation } from "./rubric";
+import { AI_MODEL, aiConfigured, anthropic as client } from "./client";
 
-export const EVALUATION_MODEL = "claude-opus-5-5";
+export const EVALUATION_MODEL = AI_MODEL;
 
-let client: Anthropic | null = null;
 function anthropic() {
-  if (!process.env.ANTHROPIC_API_KEY) throw new EvaluationError("Falta ANTHROPIC_API_KEY en el servidor.");
-  client ??= new Anthropic();
-  return client;
+  if (!aiConfigured()) throw new EvaluationError("Falta ANTHROPIC_API_KEY en el servidor.");
+  return client();
 }
 
 /**

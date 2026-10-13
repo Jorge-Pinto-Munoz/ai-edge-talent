@@ -161,8 +161,8 @@ export const PUBLIC_STAGES: PublicStage[] = [
 export const stageBySlug = (slug: string) => PUBLIC_STAGES.find((s) => s.slug === slug);
 
 /** Cómo se evalúa y cómo avanzas en cada etapa (home y /programa). */
-export const STAGE_GATES: { stage: string; slug: string; how: string; dims?: string[]; pass: string }[] = [
-  { stage: "Postulación y Assessment", slug: "assessment", how: "Rúbrica de madurez en IA, conocida de antemano, aplicada a tus casos reales.", dims: ["Uso real de IA", "Profundidad del caso", "Reformulación del trabajo", "Aprendizaje autónomo", "Disposición"], pass: "Selección por evidencia, no por seniority. Si quedas bajo el corte, una segunda oportunidad con video." },
+export const STAGE_GATES: { stage: string; slug: string; how: string; pass: string }[] = [
+  { stage: "Postulación y Assessment", slug: "assessment", how: "Rúbrica de madurez en IA, conocida de antemano, aplicada a tus casos reales.", pass: "Selección por evidencia, no por seniority. Si quedas bajo el corte, una segunda oportunidad con video." },
   { stage: "AI First Mindset", slug: "mindset", how: "Contenido e-learning y un desafío evaluado sobre un caso real de tu trabajo.", pass: "Rediseñas con IA una actividad real, con criterio y evidencia propia." },
   { stage: "Role Enablement", slug: "role-enablement", how: "Ruta AI CERTs de tu rol: estudio autónomo en la plataforma y acompañamiento de tu AI Coach.", pass: "Certificación AI CERT aprobada y verificada." },
   { stage: "AI Lab & Showcase", slug: "ai-lab-showcase", how: "Construyes algo real y de impacto para el negocio: puedes levantarlo antes con tu cliente y lo desarrollas con el Hub AI.", pass: "Lo presentas con evidencia de impacto. La habilitación no queda en un curso y una certificación: genera valor real que devuelve la inversión." },
@@ -206,10 +206,10 @@ export const BENEFITS: { title: string; body: string; icon: IconName; size?: "wi
 
 export const WAVE3_TIMELINE: { when: string; title: string; body: string; done?: boolean }[] = [
   { when: "Ahora", title: "Postulación abierta", body: "Responde el Assessment con tus experiencias reales." },
-  { when: "Vie 16 oct · 12:00", title: "Cierre de postulación", body: "Después de esa hora no se reciben postulaciones." },
+  { when: "Vie 16 oct · 12:00 mediodía", title: "Cierre de postulación", body: "A las 12:00 del mediodía (hora de Chile). Después no se reciben postulaciones." },
   { when: "Después del cierre", title: "Resultados", body: "Recibes tu resultado por correo y en tu espacio." },
   { when: "Al inscribirte", title: "Compromiso y onboarding", body: "Aceptas formalmente tus condiciones y se activa tu espacio personal." },
-  { when: "Semana 1", title: "Comienza AI First Mindset", body: "Accedes al contenido e-learning y preparas tu primer trabajo con IA." },
+  { when: "Semana 1", title: "Comienza AI First Mindset", body: "Accedes al contenido e-learning y preparas tu desafío evaluado sobre un caso real." },
 ];
 
 export const WAVE3_DEADLINE = "2026-10-16T12:00:00-03:00";

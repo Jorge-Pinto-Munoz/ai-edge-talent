@@ -101,7 +101,6 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
         </form>
         <div className="auth-alt">
           <button type="button" className="link-btn" onClick={() => go("special")}>Solicitar acceso especial</button>
-          <span aria-hidden="true">·</span>
           <Link className="link-btn" href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Ingresar con un enlace por correo</Link>
         </div>
       </>

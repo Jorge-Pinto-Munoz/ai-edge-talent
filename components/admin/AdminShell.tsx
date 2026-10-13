@@ -5,11 +5,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
 import { Icon, type IconName } from "@/components/site/Icon";
+import { WavePicker } from "./WavePicker";
 
 export interface ShellWave {
   id: string;
   name: string;
   status: string;
+  /** Profesionales en la Wave (inscritos o en proceso). */
+  people?: number;
 }
 
 export type ShellRole = "admin" | "delivery" | "profesor" | "hub";
@@ -62,14 +65,7 @@ export function AdminShell({ waves, role, email, children }: { waves: ShellWave[
       <aside className="admin-side" aria-label="Portal de administración">
         <div className="admin-side-top">
           <div className="eyebrow" style={{ marginBottom: 6 }}>Portal AET</div>
-          <label htmlFor="wave-switch" className="sr-only">Wave</label>
-          <div className="wave-switch">
-            <Icon name="layers" size={18} />
-            <select id="wave-switch" value={wave} onChange={(e) => switchWave(e.target.value)}>
-              {waves.map((w) => <option key={w.id} value={w.id}>{w.name.replace("AI Edge Talent · ", "")}</option>)}
-            </select>
-            <Icon name="chevronDown" size={16} />
-          </div>
+          <WavePicker waves={waves} value={wave} onChange={switchWave} />
         </div>
         <nav className="admin-nav" aria-label="Secciones del portal">
           {sections.map((s) => (

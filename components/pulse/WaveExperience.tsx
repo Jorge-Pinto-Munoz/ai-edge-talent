@@ -1,6 +1,7 @@
 import { layerName, type Layer } from "@/lib/journey/rules";
 import { STAGE_STATUS, type StageStatus } from "@/lib/journey/closure";
 import { CLOSING_LAYERS, STAGE_REFERENCE_DAYS, TEXT_FIELDS, isDelayed, personSatisfaction, type ExpPerson, type experience, type operational, type StageExperience } from "@/lib/pulse/experience";
+import type { ReactNode } from "react";
 import { Kpi } from "@/components/ds/Status";
 
 type Ops = ReturnType<typeof operational>;
@@ -67,15 +68,15 @@ export function ExperienceSummary({ ops, exp, showExperience = true }: { ops: Op
 }
 
 /** Nivel 2 · Por etapa: tasa, satisfacción, distribución y textos agrupados. */
-export function ExperienceByStage({ exp, showNames = true }: { exp: Exp; showNames?: boolean }) {
+export function ExperienceByStage({ exp, showNames = true, extra }: { exp: Exp; showNames?: boolean; extra?: (l: Layer) => ReactNode }) {
   return (
     <>
-      {exp.stages.map((s) => <StageBlock key={s.layer} s={s} showNames={showNames} />)}
+      {exp.stages.map((s) => <StageBlock key={s.layer} s={s} showNames={showNames} extra={extra?.(s.layer)} />)}
     </>
   );
 }
 
-function StageBlock({ s, showNames }: { s: StageExperience; showNames: boolean }) {
+function StageBlock({ s, showNames, extra }: { s: StageExperience; showNames: boolean; extra?: ReactNode }) {
   const max = Math.max(1, ...s.distribution);
   return (
     <section className="card" aria-labelledby={`st-${s.layer}`}>
@@ -93,6 +94,7 @@ function StageBlock({ s, showNames }: { s: StageExperience; showNames: boolean }
               <ul>{s.distribution.map((n, i) => <li key={i}><span>{i + 1}</span><i style={{ width: `${(n / max) * 100}%` }} /><small>{n}</small></li>)}</ul>
             </div>
           )}
+          {extra}
           <div className="ex-texts">
             {TEXT_FIELDS.map(([f, label]) => (
               <details key={f}>

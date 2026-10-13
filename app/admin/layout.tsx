@@ -15,11 +15,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Profesor y Hub solo ven las Waves en que trabajan.
   const mine = viewer.role === "profesor" || viewer.role === "hub" ? await myStaffWaves(viewer) : null;
   const waves = mine ? (all ?? []).filter((w) => mine.includes(w.id)) : all;
-  // Las Waves abiertas primero; las cerradas al final.
-  const sorted = [...(waves ?? [])].sort((a, b) => Number(a.status === "CLOSED") - Number(b.status === "CLOSED"));
+  // En curso primero; después las anteriores. Dentro de cada grupo, de la más nueva a la más antigua (Wave 3, 2, 1).
+  const num = (id: string) => Number(id.match(/(\d+)/)?.[1] ?? 0);
+  const sorted = [...(waves ?? [])].sort((a, b) => Number(a.status === "CLOSED") - Number(b.status === "CLOSED") || num(b.id) - num(a.id));
+  const { data: people } = await db.from("candidates").select("wave_id").in("wave_id", sorted.map((w) => w.id));
+  const count = (id: string) => (people ?? []).filter((p) => p.wave_id === id).length;
   return (
     <Suspense>
-      <AdminShell waves={sorted} role={viewer.role as ShellRole} email={viewer.email}>
+      <AdminShell waves={sorted.map((w) => ({ ...w, people: count(w.id) }))} role={viewer.role as ShellRole} email={viewer.email}>
         {children}
       </AdminShell>
     </Suspense>

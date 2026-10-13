@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 /** Cuenta regresiva al cierre. Se calcula solo en el navegador para no desalinear el render del servidor. */
 /** `openPrefix` solo se muestra mientras la postulación sigue abierta (evita "abierta · cerrada"). */
-export function Countdown({ to, compact = false, openPrefix }: { to: string; compact?: boolean; openPrefix?: string }) {
+export function Countdown({ to, compact = false, openPrefix, caption }: { to: string; compact?: boolean; openPrefix?: string; caption?: string }) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
@@ -20,8 +20,8 @@ export function Countdown({ to, compact = false, openPrefix }: { to: string; com
   const h = Math.floor((ms % 86_400_000) / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   if (compact) return <span className="countdown">{openPrefix && <span className="cd-pre">{openPrefix}</span>}Cierra en {d > 0 ? `${d} d ${h} h` : `${h} h ${m} min`}</span>;
-  return (
-    <span className="countdown big" role="timer" aria-label={`Faltan ${d} días, ${h} horas y ${m} minutos`}>
+  const big = (
+    <span className="countdown big" role="timer" aria-label={`Faltan ${d} días, ${h} horas y ${m} minutos${caption ? `. ${caption}` : ""}`}>
       {[[d, "días"], [h, "horas"], [m, "min"]].map(([v, l]) => (
         <span key={l as string} className="cd-unit">
           <strong>{String(v).padStart(2, "0")}</strong>
@@ -30,4 +30,5 @@ export function Countdown({ to, compact = false, openPrefix }: { to: string; com
       ))}
     </span>
   );
+  return caption ? <span className="cd-wrap">{big}<small className="cd-caption">{caption}</small></span> : big;
 }
