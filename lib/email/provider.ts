@@ -1,26 +1,38 @@
-/** Configuración de correo (Resend por API REST). Solo servidor; sin dependencias para poder probarla. */
+/**
+ * Configuración de correo (solo servidor; sin dependencias para poder probarla).
+ * - SMTP (por defecto iCloud: smtp.mail.me.com:587) con una contraseña específica de app: entrega a cualquiera,
+ *   el remitente es esa cuenta. Tiene prioridad si están SMTP_USER y SMTP_PASS.
+ * - Resend por API REST: con dominio verificado entrega a cualquiera; con el remitente de prueba
+ *   (onboarding@resend.dev) solo al dueño de la cuenta, así que todo se redirige a RESEND_TEST_TO.
+ */
 export const RESEND_TEST_FROM = "AI Edge Talent <onboarding@resend.dev>";
 
 export type EmailConfig =
-  | { ok: true; apiKey: string; from: string; testMode: boolean; testTo: string | null }
+  | { ok: true; kind: "smtp"; host: string; port: number; user: string; pass: string; from: string; testMode: false; testTo: null }
+  | { ok: true; kind: "resend"; apiKey: string; from: string; testMode: boolean; testTo: string | null }
   | { ok: false; error: string };
 
 export function emailConfig(env: Record<string, string | undefined> = process.env): EmailConfig {
+  const user = env.SMTP_USER?.trim();
+  const pass = env.SMTP_PASS?.replace(/\s+/g, "");
+  if (user && pass) {
+    // iCloud y Gmail exigen que el remitente sea la misma cuenta; el nombre visible sí se elige.
+    const from = `${env.EMAIL_FROM_NAME?.trim() || "AI Edge Talent"} <${user}>`;
+    return { ok: true, kind: "smtp", host: env.SMTP_HOST?.trim() || "smtp.mail.me.com", port: Number(env.SMTP_PORT) || 587, user, pass, from, testMode: false, testTo: null };
+  }
   const apiKey = env.RESEND_API_KEY?.trim();
-  if (!apiKey) return { ok: false, error: "Envío de correos no configurado (falta RESEND_API_KEY)." };
+  if (!apiKey) return { ok: false, error: "Envío de correos no configurado (SMTP_USER/SMTP_PASS o RESEND_API_KEY)." };
   const from = env.RESEND_FROM?.trim() || RESEND_TEST_FROM;
-  // Con el remitente de prueba de Resend, solo se entrega al correo dueño de la cuenta de Resend.
   const testMode = /@resend\.dev>?$/i.test(from);
   const testTo = env.RESEND_TEST_TO?.trim().toLowerCase() || null;
   if (testMode && !testTo) return { ok: false, error: "Modo de prueba de Resend: falta RESEND_TEST_TO (el correo de tu cuenta de Resend)." };
-  return { ok: true, apiKey, from, testMode, testTo };
+  return { ok: true, kind: "resend", apiKey, from, testMode, testTo };
 }
 
-/**
- * En modo de prueba todo correo se redirige al dueño de la cuenta, indicando a quién iba dirigido.
- * Así el flujo completo se puede probar sin que Resend rechace a otros destinatarios.
- */
-export function routeMessage(cfg: Extract<EmailConfig, { ok: true }>, to: string[], subject: string, text: string, html?: string) {
+type Ready = Extract<EmailConfig, { ok: true }>;
+
+/** En modo de prueba de Resend todo se redirige al dueño de la cuenta, indicando a quién iba dirigido. */
+export function routeMessage(cfg: Ready, to: string[], subject: string, text: string, html?: string) {
   if (!cfg.testMode) return { to, subject, text, html };
   const original = to.join(", ");
   const note = `[Prueba] Este correo iba dirigido a: ${original}`;
@@ -33,11 +45,12 @@ export function routeMessage(cfg: Extract<EmailConfig, { ok: true }>, to: string
   };
 }
 
+/** El diagnóstico es público: el correo se muestra parcialmente. */
+export const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, "$1•••$2");
+
 /** Descripción sin secretos, para diagnóstico. */
 export function describeEmail(cfg: EmailConfig): string {
   if (!cfg.ok) return `FALTA · ${cfg.error}`;
-  return cfg.testMode ? `Resend (modo prueba) · remitente ${cfg.from} · todo se entrega a ${maskEmail(cfg.testTo!)}` : `Resend · remitente ${cfg.from}`;
+  if (cfg.kind === "smtp") return `SMTP ${cfg.host}:${cfg.port} · remitente ${cfg.from.replace(cfg.user, maskEmail(cfg.user))} · entrega a todos`;
+  return cfg.testMode ? `Resend (modo prueba) · remitente ${cfg.from} · todo se entrega a ${maskEmail(cfg.testTo!)}` : `Resend · remitente ${cfg.from} · entrega a todos`;
 }
-
-/** El diagnóstico es público: el correo se muestra parcialmente. */
-export const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, "$1•••$2");

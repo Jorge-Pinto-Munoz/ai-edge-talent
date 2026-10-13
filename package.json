@@ -19,6 +19,7 @@
     "@typeform/embed": "5.10.0",
     "exceljs": "^4.4.0",
     "next": "15.5.27",
+    "nodemailer": "10.1.0",
     "papaparse": "^5.7.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "22.15.3",
+    "@types/nodemailer": "8.0.2",
     "@types/papaparse": "^5.5.2",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",

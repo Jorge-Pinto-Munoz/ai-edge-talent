@@ -8,7 +8,7 @@ describe("emailConfig", () => {
   it("usa el remitente de prueba por defecto y exige el correo del dueño", () => {
     expect(emailConfig({ RESEND_API_KEY: "re_x" }).ok).toBe(false);
     const c = emailConfig({ RESEND_API_KEY: "re_x", RESEND_TEST_TO: "Yo@Ejemplo.com" });
-    expect(c).toEqual({ ok: true, apiKey: "re_x", from: RESEND_TEST_FROM, testMode: true, testTo: "yo@ejemplo.com" });
+    expect(c).toEqual({ ok: true, kind: "resend", apiKey: "re_x", from: RESEND_TEST_FROM, testMode: true, testTo: "yo@ejemplo.com" });
   });
   it("con dominio propio no está en modo prueba", () => {
     const c = emailConfig({ RESEND_API_KEY: "re_x", RESEND_FROM: "AET <aet@midominio.cl>" });
@@ -35,5 +35,19 @@ describe("routeMessage", () => {
     const c = emailConfig({ RESEND_API_KEY: "re_x", RESEND_FROM: "AET <aet@midominio.cl>" });
     if (!c.ok) throw new Error();
     expect(routeMessage(c, ["a@b.cl"], "S", "t").to).toEqual(["a@b.cl"]);
+  });
+});
+
+describe("SMTP de iCloud", () => {
+  it("con usuario y contraseña de app usa iCloud, entrega a todos y tiene prioridad sobre Resend", () => {
+    const c = emailConfig({ SMTP_USER: "persona@me.com", SMTP_PASS: "abcd-efgh-ijkl-mnop", RESEND_API_KEY: "re_x", RESEND_TEST_TO: "yo@ejemplo.com" });
+    expect(c).toMatchObject({ ok: true, kind: "smtp", host: "smtp.mail.me.com", port: 587, pass: "abcd-efgh-ijkl-mnop", from: "AI Edge Talent <persona@me.com>", testMode: false });
+    if (!c.ok) throw new Error();
+    expect(routeMessage(c, ["a@cliente.cl"], "S", "t").to).toEqual(["a@cliente.cl"]);
+  });
+  it("el diagnóstico no expone la contraseña", () => {
+    const d = describeEmail(emailConfig({ SMTP_USER: "persona@me.com", SMTP_PASS: "secreta-1234" }));
+    expect(d).not.toContain("secreta");
+    expect(d).toContain("pe•••@me.com");
   });
 });
