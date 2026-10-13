@@ -32,6 +32,7 @@ const CLAUDE_STEPS = [
   "En API Keys → Create Key, crea una clave sin vencimiento (o anota cuándo vence). Si aparece la ventana de “federación de identidades”, elige “Continuar con una clave de API”: el portal corre en Vercel.",
   "Cópiala en el momento: se muestra una sola vez. No la envíes por chat ni correo.",
   "En Vercel → Settings → Environment Variables: nombre ANTHROPIC_API_KEY, entorno Production, marcada como Sensitive. Luego Redeploy.",
+  "Si la llave no pertenece a un workspace (error “not scoped to a workspace”): crea la llave dentro de un workspace en Console → Workspaces, o agrega ANTHROPIC_WORKSPACE_ID (empieza con wrkspc_) en Vercel y haz Redeploy.",
   "En Cómo evaluamos, toca “Probar conexión”. Si falla, el mensaje dice la causa (clave inválida, sin créditos, límite o servicio saturado).",
   "Con la clave activa, cada postulación enviada se evalúa sola. Las anteriores: Admisión → seleccionar → “Evaluar con IA”.",
 ];

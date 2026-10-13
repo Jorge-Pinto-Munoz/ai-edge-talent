@@ -1,7 +1,7 @@
 "use server";
 
 import { requireRole } from "@/lib/admission/auth";
-import { AI_MODEL, aiConfigured, anthropic } from "./client";
+import { AI_MODEL, aiConfigured, aiErrorMessage, anthropic } from "./client";
 
 export type AiCheck = { ok: boolean; message: string; model?: string; ms?: number };
 
@@ -15,13 +15,7 @@ export async function testAiConnection(): Promise<AiCheck> {
     return { ok: true, message: "Conexión con Claude funcionando.", model: r.model, ms: Date.now() - t0 };
   } catch (e) {
     const status = (e as { status?: number }).status;
-    const msg =
-      status === 401 ? "La llave no es válida o fue revocada. Revisa ANTHROPIC_API_KEY en Vercel."
-      : status === 403 ? "La llave no tiene permiso para este modelo o la organización no tiene acceso."
-      : status === 404 ? `El modelo ${AI_MODEL} no está disponible para esta llave.`
-      : status === 429 ? "Límite de uso alcanzado o sin saldo: revisa Plans & Billing en la consola de Anthropic."
-      : status === 529 || status === 503 ? "El servicio de Claude está saturado en este momento. Intenta en unos minutos."
-      : "No pudimos conectar con Claude. Intenta de nuevo.";
+    const msg = aiErrorMessage(e);
     console.error("[ia] prueba de conexión", status ?? "", e instanceof Error ? e.message.slice(0, 200) : "");
     return { ok: false, message: msg };
   }

@@ -1,7 +1,8 @@
 import "server-only";
 import type { supabaseService } from "@/lib/supabase/server";
 import { evaluateApplication, EVALUATION_MODEL } from "@/lib/ai/evaluate";
-import { RUBRIC_VERSION } from "@/lib/ai/rubric";
+import { EvaluationError, RUBRIC_VERSION } from "@/lib/ai/rubric";
+import { aiErrorMessage } from "@/lib/ai/client";
 
 /** Módulo interno (no es server action): evalúa una postulación enviada y guarda la propuesta. */
 export async function evaluateOne(svc: ReturnType<typeof supabaseService>, candidateId: string, createdBy: string | null): Promise<string> {
@@ -39,7 +40,7 @@ export async function evaluateOne(svc: ReturnType<typeof supabaseService>, candi
     }
     return "ok";
   } catch (e) {
-    return `${c.full_name}: ${e instanceof Error ? e.message : String(e)}`;
+    return `${c.full_name}: ${e instanceof EvaluationError ? e.message : aiErrorMessage(e)}`;
   }
 }
 
