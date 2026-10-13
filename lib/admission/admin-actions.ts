@@ -224,3 +224,57 @@ export async function reviewRescue(waveId: string, candidateId: string, input: {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }
 }
+
+/* ───────── Borrar postulaciones (partir desde cero) ───────── */
+/**
+ * Borra postulaciones con todo su historial de admisión para que la persona pueda postular de nuevo con el mismo
+ * correo. Con `account`, borra además su cuenta del portal (solo si es Profesional y no tiene otras postulaciones),
+ * sus códigos, intentos de ingreso y el registro de correos. Nunca borra a personas inscritas ni cuentas internas.
+ */
+export async function deleteCandidates(waveId: string, candidateIds: string[], opts: { account: boolean; confirm: string }): Promise<ActionResult> {
+  try {
+    const viewer = await requireRole(["admin"]);
+    if (opts.confirm.trim().toUpperCase() !== "BORRAR") throw new Error('Para confirmar, escribe BORRAR.');
+    if (!candidateIds.length) throw new Error("Selecciona al menos una postulación.");
+    const svc = supabaseService();
+    const { data: rows } = await svc.from("candidates").select("id, full_name, corporate_email, status, user_id, wave_id").in("id", candidateIds).eq("wave_id", waveId);
+    const details: string[] = [];
+    let deleted = 0;
+    for (const c of rows ?? []) {
+      const email = c.corporate_email.toLowerCase();
+      const { data: rv } = await svc.from("rescue_videos").select("video_path").eq("candidate_id", c.id).maybeSingle();
+      const { error } = await svc.rpc("purge_candidate", { p_candidate: c.id });
+      if (error) { details.push(`${c.full_name}: ${/inscrita/.test(error.message) ? "ya está inscrita en el programa; no se borra" : "no se pudo borrar"}`); continue; }
+      deleted++;
+      if (rv?.video_path) await svc.storage.from("submissions").remove([rv.video_path]);
+      let accountNote = "";
+      if (opts.account) {
+        const [{ data: others }, { data: prof }] = await Promise.all([
+          svc.from("candidates").select("id", { count: "exact", head: false }).ilike("corporate_email", email).limit(1),
+          svc.from("profiles").select("id, role, principal").eq("email", email).maybeSingle(),
+        ]);
+        await Promise.all([
+          svc.from("email_messages").delete().eq("to_email", email),
+          svc.from("staff_login_codes").delete().eq("email", email),
+          svc.from("login_attempts").delete().eq("email", email),
+          svc.from("consents").delete().eq("email", email),
+        ]);
+        if (prof && prof.role === "kiber" && !prof.principal && !others?.length) {
+          const { error: delErr } = await svc.auth.admin.deleteUser(prof.id);
+          accountNote = delErr ? " (la cuenta del portal no se pudo borrar)" : " y su cuenta del portal";
+          if (!delErr) await svc.from("role_grants").delete().eq("email", email).eq("role", "kiber");
+        } else if (prof && prof.role !== "kiber") accountNote = " (su cuenta se mantiene: tiene un rol interno)";
+        else if (others?.length) accountNote = " (su cuenta se mantiene: tiene otra postulación)";
+      }
+      details.push(`${c.full_name}: postulación borrada${opts.account ? `, correos y códigos limpiados${accountNote}` : ""}.`);
+      await svc.from("audit_log").insert({
+        action: "candidate.deleted", actor: viewer.id, actor_email: viewer.email, target_email: email, wave_id: c.wave_id,
+        details: { name: c.full_name, status: c.status, account: opts.account },
+      });
+    }
+    revalidatePath(`/admin/admision/${waveId}`);
+    return { ok: deleted > 0, message: deleted ? `${deleted} postulación(es) borrada(s). Ya pueden postular de nuevo con el mismo correo.` : "No se borró ninguna postulación.", details };
+  } catch (e) {
+    return fail(e);
+  }
+}

@@ -71,3 +71,35 @@ do $$ begin
   exception when raise_exception then null; end;
 end $$;
 select 'queda al menos un admin activo', count(*) >= 1 from profiles where role = 'admin' and status = 'ACTIVE';
+
+-- Borrar postulación: solo con purge_candidate (servidor), nunca un DELETE directo ni un usuario con sesión.
+reset role;
+insert into candidates (wave_id, full_name, corporate_email, status) values ('wave-3', 'Borrar Prueba', 'borrar@correo.cl', 'IDENTIFIED');
+update candidates set status = 'APPLICATION_STARTED' where corporate_email = 'borrar@correo.cl';
+insert into applications (candidate_id, answers) select id, '{"q":"x"}' from candidates where corporate_email = 'borrar@correo.cl';
+do $$ begin
+  begin delete from admission_events where candidate_id = (select id from candidates where corporate_email = 'borrar@correo.cl');
+    raise notice 'MAL: historial borrado sin purge';
+  exception when raise_exception then null; end;
+end $$;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin
+  begin perform public.purge_candidate((select id from candidates where corporate_email = 'borrar@correo.cl'));
+    raise notice 'MAL: un usuario con sesión ejecutó purge_candidate';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+select public.purge_candidate(id) from candidates where corporate_email = 'borrar@correo.cl';
+select 'postulación borrada con su historial', not exists (select 1 from candidates where corporate_email = 'borrar@correo.cl');
+do $$ begin
+  begin delete from admission_events where id = (select min(id) from admission_events);
+    raise notice 'MAL: append-only desactivado después del purge';
+  exception when raise_exception then null; end;
+end $$;
+do $$ declare c uuid; begin
+  select id into c from candidates where status in ('CONDITIONS_ACCEPTED','ENROLLED','MINDSET_READY') limit 1;
+  if c is null then return; end if;
+  begin perform public.purge_candidate(c); raise notice 'MAL: se borró una persona inscrita';
+  exception when raise_exception then null; end;
+end $$;
