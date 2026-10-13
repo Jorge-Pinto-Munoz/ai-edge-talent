@@ -15,7 +15,9 @@ describe("emailConfig", () => {
     expect(c.ok && c.testMode).toBe(false);
   });
   it("el diagnóstico no expone la llave", () => {
-    expect(describeEmail(emailConfig({ RESEND_API_KEY: "re_secreta", RESEND_TEST_TO: "yo@ejemplo.com" }))).not.toContain("re_secreta");
+    const d = describeEmail(emailConfig({ RESEND_API_KEY: "re_secreta", RESEND_TEST_TO: "persona@ejemplo.com" }));
+    expect(d).not.toContain("re_secreta");
+    expect(d).toContain("pe•••@ejemplo.com");
   });
 });
 

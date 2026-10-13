@@ -36,5 +36,8 @@ export function routeMessage(cfg: Extract<EmailConfig, { ok: true }>, to: string
 /** Descripción sin secretos, para diagnóstico. */
 export function describeEmail(cfg: EmailConfig): string {
   if (!cfg.ok) return `FALTA · ${cfg.error}`;
-  return cfg.testMode ? `Resend (modo prueba) · remitente ${cfg.from} · todo se entrega a ${cfg.testTo}` : `Resend · remitente ${cfg.from}`;
+  return cfg.testMode ? `Resend (modo prueba) · remitente ${cfg.from} · todo se entrega a ${maskEmail(cfg.testTo!)}` : `Resend · remitente ${cfg.from}`;
 }
+
+/** El diagnóstico es público: el correo se muestra parcialmente. */
+export const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, "$1•••$2");
