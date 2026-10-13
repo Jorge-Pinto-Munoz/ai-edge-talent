@@ -1,0 +1,30 @@
+# Consulta de solo lectura: candidatos de la Wave 3 por estado, sin datos personales (correo y nombre
+# enmascarados). Se ejecuta al cambiar .github/pruebas/consulta.env en main, o a mano.
+name: Consulta de candidatos
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/pruebas/consulta.env"]
+
+jobs:
+  consultar:
+    runs-on: ubuntu-latest
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PGSSLMODE: require
+    steps:
+      - name: Candidatos y estados
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null 2>&1
+          psql "$DB_URL" -At -F ' | ' -c "
+            select c.status, left(c.full_name, 1) || '.', regexp_replace(lower(c.corporate_email), '^(.{2})[^@]*', '\1•••'),
+                   to_char(c.created_at at time zone 'America/Santiago', 'DD-MM HH24:MI'),
+                   coalesce(a.submitted_at is not null, false)::text as enviada,
+                   (select count(*) from jsonb_each_text(coalesce(a.answers, '{}')) e where trim(e.value) <> '')::text as respondidas,
+                   c.source
+            from public.candidates c left join public.applications a on a.candidate_id = c.id
+            where c.wave_id = 'wave-3' order by c.created_at" | while read -r l; do echo "::notice title=Candidato::$l"; done
+          psql "$DB_URL" -At -c "select 'Total Wave 3: ' || count(*) from public.candidates where wave_id = 'wave-3'" | while read -r l; do echo "::notice title=Total::$l"; done
+          psql "$DB_URL" -At -c "select 'Borrados registrados: ' || count(*) from public.audit_log where action = 'candidate.deleted'" | while read -r l; do echo "::notice title=Auditoría::$l"; done
