@@ -618,6 +618,8 @@ fieldset.preview-lock { border: 0; margin: 0; padding: 0; min-width: 0; display:
 .link-btn:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; border-radius: 6px; }
 .auth-foot { margin: 4px 0 0; color: var(--muted); font-size: 0.78rem; line-height: 1.45; text-align: center; }
 /* "¿No tienes cuenta?" arriba y "Crear cuenta" debajo, como acción secundaria. */
+.auth-typo { display: block; margin-top: 6px; color: var(--warn-text); }
+.auth-typo .link-btn { font-weight: 700; }
 .auth-forgot { justify-self: center; font-size: 0.92rem; }
 .auth-new { display: grid; gap: 10px; justify-items: center; margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.92rem; }
 .auth-new .btn { width: 100%; }

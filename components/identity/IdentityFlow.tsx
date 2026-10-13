@@ -8,6 +8,7 @@ import {
 } from "@/lib/identity/actions";
 import { Icon } from "@/components/site/Icon";
 import { PUBLIC_REQUEST_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
+import { suggestEmail } from "@/lib/identity/email-typo";
 
 export type FlowMode = "ingresar" | "activar" | "restablecer" | "especial";
 type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "change_pin" | "admin_code" | "create" | "create_done";
@@ -85,10 +86,12 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
     </p>
   ) : null;
   const devNote = msg?.devCode ? <p className="auth-dev">Desarrollo: tu código es <strong>{msg.devCode}</strong> (en producción llega por correo).</p> : null;
+  const fix = suggestEmail(email);
   const emailField = (
     <div className="field">
       <label htmlFor="id-e">Correo electrónico</label>
       <input id="id-e" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      {fix && <small className="auth-typo" role="status">¿Quisiste decir <button type="button" className="link-btn" onClick={() => setEmail(fix)}>{fix}</button>?</small>}
     </div>
   );
 
