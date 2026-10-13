@@ -36,6 +36,7 @@ const SECTIONS: Section[] = [
   { key: "soporte", label: "Soporte", icon: "help", href: () => "/admin/soporte", match: /^\/admin\/soporte/, roles: ADMIN },
   { key: "usuarios", label: "Usuarios y accesos", icon: "users", href: () => "/admin/usuarios", match: /^\/admin\/usuarios/, roles: ADMIN },
   { key: "asignaciones", label: "Equipo de la Wave", icon: "user", href: (w) => `/admin/asignaciones/${w}`, match: /^\/admin\/asignaciones/, roles: ADMIN, perWave: true },
+  { key: "guia", label: "Guía de accesos", icon: "help", href: () => "/admin/guia", match: /^\/admin\/guia/, roles: ADMIN },
   { key: "accesos", label: "Registro de ingresos", icon: "key", href: () => "/admin/accesos", match: /^\/admin\/accesos/, roles: ADMIN },
 ];
 
