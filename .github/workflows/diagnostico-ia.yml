@@ -1,0 +1,32 @@
+# Verifica en el sitio publicado que la llave de Claude funciona (consulta el modelo; no genera texto ni consume
+# créditos). Se ejecuta al cambiar .github/pruebas/diagnostico.env en main, o a mano.
+name: Diagnóstico de IA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/pruebas/diagnostico.env"]
+
+jobs:
+  diagnosticar:
+    runs-on: ubuntu-latest
+    env:
+      SITE: https://ai-edge-talent.vercel.app
+    steps:
+      - name: Claude desde producción
+        run: |
+          # Espera a que Vercel publique este commit (máx. 10 min).
+          for i in $(seq 60); do
+            curl -s "$SITE/api/diagnostico?ia=1" > d.json
+            grep -q "\"deploy\":\"${GITHUB_SHA:0:7}\"" d.json && break
+            sleep 10
+          done
+          python3 - <<'PY'
+          import json
+          d = json.load(open("d.json"))
+          for k in ("deploy", "anthropic", "anthropicWorkspace", "claude"):
+              print(f"::notice title={k}::{d.get(k)}")
+          if not str(d.get("claude", "")).startswith("OK"):
+              raise SystemExit(1)
+          PY
