@@ -7,7 +7,7 @@ import {
   checkTemporaryCode, forcedPinChange, loginWithPin, requestPinReset, setPinWithCode, requestAccount, verifyAdminStep, type FlowResult,
 } from "@/lib/identity/actions";
 import { Icon } from "@/components/site/Icon";
-import { ACCOUNT_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
+import { PUBLIC_REQUEST_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
 
 export type FlowMode = "ingresar" | "activar" | "restablecer" | "especial";
 type Screen = "login" | "activate" | "set_pin" | "forgot" | "forgot_sent" | "change_pin" | "admin_code" | "create" | "create_done";
@@ -71,7 +71,8 @@ export function IdentityFlow({ initialMode, initialEmail, next }: { initialMode:
       return;
     }
     if (r.step === "done" && r.redirect) { router.replace(r.redirect); router.refresh(); return; }
-    if (r.step === "admin_code") { setCode(""); setScreen("admin_code"); }
+    // Tras el cambio obligatorio, el segundo paso de administración valida con el código NUEVO.
+    if (r.step === "admin_code") { if (screen === "change_pin") setPin(p1); setCode(""); setScreen("admin_code"); }
     if (r.step === "change_pin") { setP1(""); setP2(""); setScreen("change_pin"); }
     if (r.step === "set_pin") { setP1(""); setP2(""); setScreen("set_pin"); }
     if (r.step === "code_sent") { setCode(""); setScreen("forgot_sent"); }
@@ -198,15 +199,16 @@ function CreateAccount({ email, setEmail, onDone, onBack }: { email: string; set
   return (
     <>
       <h1>Crear cuenta</h1>
-      <p className="muted">Cuéntanos quién eres y con qué rol participas. El Líder de producto revisa tu solicitud, te asigna el rol y te llega un correo para activar tu cuenta.</p>
+      <p className="muted">Cuéntanos quién eres. El Líder de producto revisa tu solicitud y te llega un correo para activar tu cuenta.</p>
       <form className="auth-form" onSubmit={(e) => { e.preventDefault(); start(async () => { const r = await requestAccount({ ...f, email }); if (!r.ok) setErr(r.message); onDone(r); }); }}>
         <div className="field"><label htmlFor="ca-n">Nombre completo</label><input id="ca-n" required autoComplete="name" value={f.name} onChange={set("name")} /></div>
         <div className="field"><label htmlFor="ca-e">Correo electrónico</label><input id="ca-e" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="field"><label htmlFor="ca-r">Tu rol</label>
-          <select id="ca-r" required value={f.role} onChange={set("role")}>
-            <option value="" disabled>Elige tu rol</option>
-            {ACCOUNT_ROLES.map((r) => <option key={r} value={r}>{r === "admin" ? "Líder de producto" : ROLE_LABEL[r]}</option>)}
+        <div className="field"><label htmlFor="ca-r">Participas como</label>
+          <select id="ca-r" required value={f.role} onChange={set("role")} aria-describedby="ca-r-h">
+            <option value="" disabled>Elige una opción</option>
+            {PUBLIC_REQUEST_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select>
+          <small id="ca-r-h" className="muted">Las cuentas de Delivery, Hub AI, AI Coach y Líder de producto las crea el administrador de la plataforma.</small>
         </div>
         <div className="field">
           <label htmlFor="ca-p">Teléfono <span className="muted">(opcional)</span></label>

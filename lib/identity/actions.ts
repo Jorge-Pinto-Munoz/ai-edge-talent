@@ -7,8 +7,9 @@ import { env } from "@/lib/supabase/env";
 import { openAccessSession } from "@/lib/staff/audit";
 import { IP_MAX_FAILS, PIN_LOCK_MIN, PIN_MAX_FAILS, hashPin, isPin, normalizeCLMobile, pinProblem, verifyPin } from "./pin";
 import { CODE_TTL, HOME_BY_ROLE, audit, checkCode, ipHash, issueCode, openSession, portalLink, sendIdentityEmail } from "./service";
-import { ROLE_LABEL, isAccountRole } from "./roles";
+import { ROLE_LABEL, isInternalRole, isPublicRequestRole } from "./roles";
 import { DEMO_READONLY, isDemoEmail } from "./demo";
+import { ensurePrincipalCredential } from "./principal";
 
 export type FlowResult = {
   ok: boolean;
@@ -64,6 +65,7 @@ export async function loginWithPin(rawEmail: string, pin: string, next?: string)
       const { count } = await svc.from("login_attempts").select("id", { count: "exact", head: true }).eq("ip_hash", ip).eq("success", false).gte("at", since);
       if ((count ?? 0) >= IP_MAX_FAILS) return { ok: false, message: `Demasiados intentos desde esta red. Espera ${PIN_LOCK_MIN} minutos.` };
     }
+    await ensurePrincipalCredential(email, svc).catch((e) => console.error("[identidad] cuenta principal", e instanceof Error ? e.message : "error"));
     const acc = await accountByEmail(email);
     const { data: cred } = acc ? await svc.from("user_credentials").select("pin_hash, must_change, failed_count, locked_until").eq("user_id", acc.id).maybeSingle() : { data: null };
     const fail = async (msg = BAD_LOGIN) => {
@@ -102,7 +104,8 @@ export async function verifyAdminStep(rawEmail: string, pin: string, code: strin
     const email = rawEmail.trim().toLowerCase();
     const svc = supabaseService();
     const acc = await accountByEmail(email);
-    if (!acc || acc.role !== "admin" || acc.status !== "ACTIVE") return { ok: false, message: BAD_LOGIN };
+    // PENDING: primera vez (cuenta recién creada); el PIN y el código por correo prueban que es la persona.
+    if (!acc || acc.role !== "admin" || (acc.status !== "ACTIVE" && acc.status !== "PENDING")) return { ok: false, message: BAD_LOGIN };
     const { data: cred } = await svc.from("user_credentials").select("pin_hash").eq("user_id", acc.id).maybeSingle();
     if (!verifyPin(pin, cred?.pin_hash ?? null)) return { ok: false, message: BAD_LOGIN };
     const r = await checkCode(email, ["ADMIN_STEP"], code, true, svc);
@@ -210,8 +213,10 @@ export async function changeMyPin(current: string, pin: string, pin2: string): P
 
 /** Solicitud de acceso especial (sin sesión). Llega a la bandeja del Líder de Servicio y se le avisa por correo. */
 /**
- * "Crear cuenta": la persona pide acceso e indica su rol. No crea la cuenta: llega como solicitud al Líder de
- * producto, que asigna el rol definitivo al aprobar (y entonces se envía el código de activación).
+ * "Crear cuenta": la persona pide acceso como Profesional o Business Partner. No crea la cuenta ni otorga permisos:
+ * llega como solicitud al Líder de producto, que decide el rol al aprobar (y entonces se envía el código de
+ * activación). Los roles internos (Líder de producto, Delivery, Hub AI, AI Coach, Profesor) nunca se piden aquí:
+ * solo los crea Administración. La base de datos rechaza además cualquier otro rol en una solicitud.
  * Respuesta igual exista o no una cuenta con ese correo (no revela quién está registrado).
  */
 export async function requestAccount(input: { name: string; email: string; phone: string; role: string; note: string; website?: string }): Promise<FlowResult> {
@@ -222,7 +227,8 @@ export async function requestAccount(input: { name: string; email: string; phone
     const note = input.note.trim().slice(0, 2000);
     if (name.length < 2) return { ok: false, message: "Cuéntanos tu nombre completo." };
     if (!EMAIL_RE.test(email)) return { ok: false, message: "Revisa tu correo electrónico." };
-    if (!isAccountRole(input.role)) return { ok: false, message: "Elige tu rol." };
+    if (isInternalRole(input.role) && !isPublicRequestRole(input.role)) return { ok: false, message: "Ese rol lo asigna solo el administrador de la plataforma. Si te corresponde, pídele que cree tu cuenta." };
+    if (!isPublicRequestRole(input.role)) return { ok: false, message: "Elige cómo participas." };
     const phone = input.phone.trim() ? normalizeCLMobile(input.phone) : null;
     if (input.phone.trim() && !phone) return { ok: false, message: "Revisa el teléfono: +56 9 y 8 dígitos." };
     const svc = supabaseService();

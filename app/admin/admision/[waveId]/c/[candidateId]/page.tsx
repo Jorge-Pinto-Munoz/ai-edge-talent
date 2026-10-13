@@ -4,6 +4,7 @@ import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
 import { DIMENSIONS, LEVEL_LABEL, LEVEL_MEANING, PL_LABEL, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
+import { ASSESSMENT_STATE_LABEL, answeredCount, assessmentState } from "@/lib/admission/assessment";
 import { Badge, admissionTone, fmtDate } from "@/components/ui";
 import { TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
@@ -20,7 +21,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
   const { data: c } = await db.from("candidates").select("id, wave_id, full_name, corporate_email, client_name, role_title, specialty, status").eq("id", candidateId).eq("wave_id", waveId).single();
   if (!c) notFound();
   const [{ data: app }, { data: events }, { data: emails }, { data: commitments }] = await Promise.all([
-    db.from("applications").select("id, answers, questions_snapshot, submitted_at").eq("candidate_id", c.id).maybeSingle(),
+    db.from("applications").select("id, answers, questions_snapshot, submitted_at, updated_at").eq("candidate_id", c.id).maybeSingle(),
     db.from("admission_events").select("from_status, to_status, at, actor_label").eq("candidate_id", c.id).order("at"),
     db.from("email_messages").select("template, status, subject, created_at, error").eq("candidate_id", c.id).order("created_at", { ascending: false }),
     db.from("commitment_acceptances").select("document_version, status, accepted_at, accepted_by").eq("candidate_id", c.id).order("presented_at"),
@@ -37,6 +38,8 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
   const { data: rescue } = showRescue ? await db.from("rescue_videos").select("*").eq("candidate_id", c.id).maybeSingle() : { data: null };
   const questions = (app?.questions_snapshot ?? []) as { id: string; prompt: string }[];
   const answers = (app?.answers ?? {}) as Record<string, string>;
+  const aState = assessmentState(c.status, app?.submitted_at);
+  const answered = answeredCount(questions.map((q) => ({ ...q, required: false })), answers);
 
   return (
     <div className="stack">
@@ -99,8 +102,14 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       {showRescue && <RescueReview waveId={waveId} candidateId={c.id} row={rescue as RescueRow | null} status={c.status} />}
 
       <div className="card">
-        <h2 className="h-card">Postulación {app?.submitted_at ? <small className="muted">· enviada {fmtDate(app.submitted_at)}</small> : <small className="muted">· no enviada</small>}</h2>
-        {questions.length === 0 && <p className="muted">Aún no inicia el formulario.</p>}
+        <h2 className="h-card">Postulación <span className={`ds-status s-${aState === "COMPLETED" ? "done" : aState === "IN_PROGRESS" ? "progress" : "pending"}`}>Assessment {ASSESSMENT_STATE_LABEL[aState].toLowerCase()}</span></h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          {app?.submitted_at
+            ? `Enviado ${fmtDate(app.submitted_at)} · ${answered} de ${questions.length} respondidas.`
+            : questions.length
+              ? `Borrador: ${answered} de ${questions.length} respondidas · último guardado ${fmtDate(app!.updated_at)}. Un borrador no se evalúa ni avanza de etapa.`
+              : "Aún no inicia el formulario."}
+        </p>
         {questions.map((q, i) => (
           <div key={q.id} style={{ marginBottom: 14 }}>
             <strong>{i + 1}. {q.prompt}</strong>

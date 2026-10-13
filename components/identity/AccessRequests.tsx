@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { decideAccessRequest, type AdminResult } from "@/lib/identity/admin-actions";
 import { LAYERS, type Layer } from "@/lib/journey/rules";
-import { ACCOUNT_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
+import { ASSIGNABLE_ROLES, ROLE_LABEL } from "@/lib/identity/roles";
 
 export interface RequestRow { id: string; created_at: string; name: string; email: string; phone: string | null; reason: string; description: string; status: string; decided_at: string | null; decision_note: string | null; resume_layer: string | null; kind?: string; requested_role?: string | null; granted_role?: string | null }
 const REASON: Record<string, string> = { CUENTA: "Crear cuenta", RETOMA: "Retoma el programa", WAVE_ANTERIOR: "Participó en una Wave anterior", HISTORICO: "Registros históricos", MIGRACION: "Problema de cuenta o migración", OTRO: "Otro caso" };
@@ -47,7 +47,7 @@ function Decide({ r, cands, account, onDone }: { r: RequestRow; cands: { id: str
       {r.description && <p className="muted" style={{ margin: "0 0 12px" }}>{r.description}</p>}
       {isAccount && (
         <div className="field"><label htmlFor={`ar-r-${r.id}`}>Rol que le asignas</label>
-          <select id={`ar-r-${r.id}`} value={role} onChange={(e) => setRole(e.target.value)}>{ACCOUNT_ROLES.map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}</select>
+          <select id={`ar-r-${r.id}`} value={role} onChange={(e) => setRole(e.target.value)}>{ASSIGNABLE_ROLES.map((x) => <option key={x} value={x}>{ROLE_LABEL[x]}</option>)}</select>
           {role === "admin" && <small className="error">Líder de producto tiene acceso total a la plataforma. Asígnalo solo si corresponde.</small>}
         </div>
       )}

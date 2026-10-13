@@ -9,6 +9,7 @@ insert into auth.users (id, email) values
 insert into wave_staff (wave_id, email, role) values ('wave-3', 'profe@kibernum.cl', 'profesor'), ('wave-3', 'hub@kibernum.cl', 'hub'), ('wave-1', 'otro.profe@kibernum.cl', 'profesor');
 select 'perfiles con rol nuevo', count(*) = 3 from profiles where role in ('profesor', 'hub');
 
+reset role; update profiles set status = 'ACTIVE' where status = 'PENDING' and not principal; -- las cuentas de prueba ya activaron su acceso
 set role authenticated;
 -- Profesor: ve participantes de su Wave y registra su clase con asistencia
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f1';

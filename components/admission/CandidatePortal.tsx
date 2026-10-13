@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { acknowledgeAndStart, acceptCommitmentByToken, saveAnswers } from "@/lib/admission/candidate-actions";
 import { getDocument } from "@/lib/content";
 import { ASSESSMENT_DIMENSIONS } from "@/lib/data/journey";
 import { CommitmentSummaryCard, LifecycleRail } from "@/components/journey";
 import { BrandHero, Callout, DocumentView, fmtDay, fmtDeadline } from "@/components/ui";
 import { RescueForm } from "./RescueForm";
+import { ASSESSMENT_STATE_LABEL, answeredCount, firstPending, missingRequired } from "@/lib/admission/assessment";
 
 export interface PortalData {
   token: string;
@@ -23,18 +24,21 @@ export interface PortalData {
   };
   questions: { id: string; position: number; prompt: string; help: string | null; kind: string; options: string[] | null; required: boolean }[];
   answers: Record<string, string>;
+  /** Último guardado del borrador en el servidor y fecha de envío definitivo. */
+  savedAt: string | null;
+  submittedAt: string | null;
   rescue: { at: string; reviewed: boolean } | null;
 }
 
 /** `inPortal`: la persona ya ingresó con su cuenta (no se le recuerda revisar el correo de credenciales). */
-export function CandidatePortal({ data, inPortal = false }: { data: PortalData; inPortal?: boolean }) {
+export function CandidatePortal({ data, inPortal = false, preview = false }: { data: PortalData; inPortal?: boolean; preview?: boolean }) {
   const s = data.candidate.status;
   const first = data.candidate.fullName.split(" ")[0];
   if (["NOMINATED", "INVITED", "IDENTIFIED"].includes(s)) return <BeforeApplying data={data} first={first} />;
-  if (s === "APPLICATION_STARTED") return <ApplicationForm data={data} />;
+  if (s === "APPLICATION_STARTED") return <ApplicationForm data={data} preview={preview} />;
   if (["APPLICATION_SUBMITTED", "ASSESSMENT_EVALUATED", "HUMAN_REVIEW"].includes(s))
     return (
-      <Message eyebrow="Postulación enviada" title="Recibimos tu postulación">
+      <Message eyebrow={`Assessment ${ASSESSMENT_STATE_LABEL.COMPLETED.toLowerCase()}${data.submittedAt ? ` · enviado el ${fmtDay(data.submittedAt)}` : ""}`} title="Recibimos tu postulación">
         {!inPortal && <p>¡Gracias por postular! Te enviamos un correo con tus credenciales para ingresar a tu portal: ahí ves el estado de tu postulación. Al ingresar por primera vez creas tu propio código de 4 dígitos.</p>}
         <p>El equipo AI Edge Talent revisará la evidencia y te comunicará el resultado y el próximo paso por correo y en tu portal.</p>
         <Callout tone="warn" title="Postular no significa estar seleccionado/a." />
@@ -127,30 +131,180 @@ function BeforeApplying({ data, first }: { data: PortalData; first: string }) {
   );
 }
 
-function ApplicationForm({ data }: { data: PortalData }) {
-  const [answers, setAnswers] = useState<Record<string, string>>(data.answers);
-  const [status, setStatus] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const router = useRouter();
-  const dirty = useRef(false);
+type SaveState = "idle" | "pending" | "saving" | "saved" | "offline" | "error";
+const draftKey = (token: string) => `aet-assessment-${token}`;
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("es-CL", { timeZone: "America/Santiago", hour: "2-digit", minute: "2-digit" });
 
-  // Autoguardado cada 20 s si hay cambios.
+/**
+ * Assessment con continuidad: cada cambio se guarda en la base (borrador) a los pocos segundos y, mientras tanto,
+ * queda una copia en este dispositivo. Si se corta la conexión o se cierra la pestaña, al volver se recupera lo
+ * que no alcanzó a guardarse. El envío definitivo es una acción aparte, con validación y confirmación.
+ */
+function ApplicationForm({ data, preview = false }: { data: PortalData; preview?: boolean }) {
+  const router = useRouter();
+  const [answers, setAnswers] = useState<Record<string, string>>(data.answers);
+  const [save, setSave] = useState<{ state: SaveState; at: string | null; note?: string }>({ state: data.savedAt && answeredCount(data.questions, data.answers) ? "saved" : "idle", at: data.savedAt });
+  const [missing, setMissing] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [recovered, setRecovered] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  /** Confirmación local del envío: se muestra aunque la sesión haya caducado (el formulario usa su enlace personal). */
+  const [finished, setFinished] = useState<null | "sent" | "already">(null);
+  const latest = useRef(answers);
+  const version = useRef(0);
+  const savedVersion = useRef(0);
+  const inflight = useRef<Promise<void> | null>(null);
+  const timer = useRef<number | null>(null);
+  const retry = useRef<number | null>(null);
+  const done = useRef(false);
+
+  const storeLocal = (a: Record<string, string>) => {
+    try { localStorage.setItem(draftKey(data.token), JSON.stringify({ answers: a, at: Date.now() })); } catch { /* sin almacenamiento local: igual se guarda en la base */ }
+  };
+  const clearLocal = () => { try { localStorage.removeItem(draftKey(data.token)); } catch { /* nada */ } };
+
+  /** Envía al servidor lo último escrito. Nunca hay dos guardados a la vez; si hubo cambios durante uno, sigue otro. */
+  const flush = useCallback(async (): Promise<void> => {
+    if (preview || done.current) return;
+    if (inflight.current) { await inflight.current; if (version.current > savedVersion.current) return flush(); return; }
+    if (version.current <= savedVersion.current) return;
+    const v = version.current;
+    setSave((s) => ({ ...s, state: "saving" }));
+    inflight.current = (async () => {
+      try {
+        const r = await saveAnswers(data.token, latest.current, false);
+        if (r.state === "submitted") { done.current = true; clearLocal(); setFinished("already"); return; }
+        if (!r.ok) { setSave((s) => ({ ...s, state: "error", note: r.message })); scheduleRetry(); return; }
+        savedVersion.current = Math.max(savedVersion.current, v);
+        if (savedVersion.current >= version.current) clearLocal();
+        setSave({ state: savedVersion.current >= version.current ? "saved" : "pending", at: r.savedAt ?? new Date().toISOString() });
+      } catch {
+        // Sin conexión o servidor no disponible: queda en este dispositivo y se reintenta.
+        setSave((s) => ({ ...s, state: navigator.onLine ? "error" : "offline", note: undefined }));
+        scheduleRetry();
+      } finally {
+        inflight.current = null;
+      }
+    })();
+    await inflight.current;
+    if (version.current > savedVersion.current && !retry.current) return flush();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.token, preview]);
+
+  const scheduleRetry = () => {
+    if (retry.current) return;
+    retry.current = window.setTimeout(() => { retry.current = null; void flush(); }, 8000);
+  };
+
+  // Al abrir: si en este dispositivo quedó algo más reciente que lo guardado en la base, se recupera y se sincroniza.
   useEffect(() => {
-    const t = window.setInterval(async () => {
-      if (!dirty.current) return;
-      dirty.current = false;
-      const r = await saveAnswers(data.token, answers, false);
-      setStatus(r.ok ? `Borrador guardado · ${new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}` : r.message);
-    }, 20000);
-    return () => window.clearInterval(t);
-  }, [answers, data.token]);
+    if (preview) return;
+    try {
+      const raw = localStorage.getItem(draftKey(data.token));
+      if (raw) {
+        const local = JSON.parse(raw) as { answers: Record<string, string>; at: number };
+        const serverAt = data.savedAt ? Date.parse(data.savedAt) : 0;
+        const differs = data.questions.some((q) => (local.answers[q.id] ?? "") !== (data.answers[q.id] ?? ""));
+        if (differs && local.at > serverAt) {
+          const merged = { ...data.answers, ...local.answers };
+          latest.current = merged;
+          setAnswers(merged);
+          version.current += 1;
+          setRecovered(true);
+          setSave((s) => ({ ...s, state: "pending" }));
+          void flush();
+        } else clearLocal();
+      }
+    } catch { /* copia local ilegible: se ignora */ }
+    // Retomar: lleva a la primera pregunta pendiente si ya había avance.
+    const first = firstPending(data.questions, latest.current);
+    if (first && answeredCount(data.questions, latest.current) > 0) document.getElementById(`q-${first}`)?.scrollIntoView({ block: "center" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Guardar al ocultar la pestaña, al volver la conexión y avisar si se intenta cerrar con cambios sin guardar.
+  useEffect(() => {
+    if (preview) return;
+    const onHide = () => { if (document.visibilityState === "hidden") void flush(); };
+    const onOnline = () => void flush();
+    const onOffline = () => setSave((s) => ({ ...s, state: "offline" }));
+    const onUnload = (e: BeforeUnloadEvent) => {
+      if (done.current || version.current <= savedVersion.current) return;
+      void flush();
+      e.preventDefault();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("beforeunload", onUnload);
+      if (timer.current) window.clearTimeout(timer.current);
+      if (retry.current) window.clearTimeout(retry.current);
+    };
+  }, [flush, preview]);
 
   const set = (id: string, v: string) => {
-    dirty.current = true;
-    setAnswers((a) => ({ ...a, [id]: v }));
+    const next = { ...latest.current, [id]: v };
+    latest.current = next;
+    setAnswers(next);
+    if (missing.includes(id) && v.trim()) setMissing((m) => m.filter((x) => x !== id));
+    if (preview) return;
+    version.current += 1;
+    storeLocal(next);
+    setSave((s) => ({ ...s, state: s.state === "offline" ? "offline" : "pending" }));
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => void flush(), 1200);
   };
-  const answered = data.questions.filter((q) => (answers[q.id] ?? "").trim()).length;
+
+  const submit = async () => {
+    if (submitting || preview) return;
+    setError(null);
+    const miss = missingRequired(data.questions, latest.current);
+    if (miss.length) {
+      setMissing(miss);
+      setError(`Te faltan ${miss.length} pregunta(s) obligatoria(s), marcadas abajo. Tus respuestas siguen guardadas.`);
+      document.getElementById(`q-${miss[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (!confirm("¿Enviar tu postulación? Después no podrás editarla.")) return;
+    setSubmitting(true);
+    if (timer.current) window.clearTimeout(timer.current);
+    try {
+      if (inflight.current) await inflight.current;
+      const r = await saveAnswers(data.token, latest.current, true);
+      if (r.ok) { done.current = true; clearLocal(); setFinished(r.message === "submitted" ? "sent" : "already"); return; }
+      if (r.missing?.length) { setMissing(r.missing); document.getElementById(`q-${r.missing[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      setError(`${r.message} Tus respuestas siguen guardadas.`);
+    } catch {
+      setError("No pudimos enviar tu postulación: parece que no hay conexión. Tus respuestas quedaron guardadas; vuelve a intentarlo en un momento.");
+    }
+    setSubmitting(false);
+  };
+
+  if (finished)
+    return (
+      <Message eyebrow={`Assessment ${ASSESSMENT_STATE_LABEL.COMPLETED.toLowerCase()}`} title="Recibimos tu postulación">
+        <p>{finished === "sent" ? "¡Gracias por postular! Tu Assessment quedó enviado y registrado." : "Tu postulación ya estaba enviada: quedó registrada una sola vez."}</p>
+        <p>Te enviamos un correo con el detalle. Puedes seguir el estado de tu postulación ingresando a tu portal con tu correo.</p>
+        <p><Link className="btn ghost" href="/mi-journey">Ir a mi portal</Link></p>
+      </Message>
+    );
+
+  const answered = answeredCount(data.questions, answers);
+  const total = data.questions.length;
+  const first = firstPending(data.questions, answers);
+  const label: Record<SaveState, string> = {
+    idle: "Tus respuestas se guardan solas mientras escribes.",
+    pending: "Cambios sin guardar…",
+    saving: "Guardando…",
+    saved: save.at ? `Guardado a las ${hhmm(save.at)}` : "Guardado",
+    offline: "Sin conexión: tus respuestas quedan en este dispositivo y se guardarán al volver la conexión.",
+    error: `No se pudo guardar${save.note ? ` (${save.note})` : ""}. Reintentaremos en unos segundos; no cierres la página.`,
+  };
 
   return (
     <div className="grid assess-grid">
@@ -160,16 +314,23 @@ function ApplicationForm({ data }: { data: PortalData }) {
           <h1>Tu Assessment</h1>
           <p className="lead">Queremos conocerte a través de experiencias reales.</p>
           <p>No buscamos respuestas perfectas ni conocimientos memorizados. Queremos conocer cómo estás utilizando IA, cómo abordas problemas, cómo aprendes y cómo imaginas la evolución de tu trabajo.</p>
-          <Callout title="Sé generoso/a en tus respuestas.">Usa ejemplos concretos. Tus respuestas se guardan automáticamente como borrador.</Callout>
+          <Callout title="Puedes hacerlo en varias veces.">Tus respuestas se guardan solas. Si cierras la página, vuelve con tu enlace o ingresando a tu portal con tu correo y continúa donde quedaste.</Callout>
         </div>
+        <div className="assess-bar" role="region" aria-label="Avance del Assessment">
+          <span className="ds-status s-progress">{ASSESSMENT_STATE_LABEL.IN_PROGRESS}</span>
+          <strong>{answered} de {total} respondidas</strong>
+          <span className={`assess-save s-${save.state}`} role="status" aria-live="polite">{label[save.state]}</span>
+          {first && answered > 0 && <button type="button" className="link-btn" onClick={() => document.getElementById(`q-${first}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}>Ir a la primera pendiente</button>}
+        </div>
+        {recovered && <Callout tone="ok" title="Recuperamos respuestas que no alcanzaron a guardarse">Estaban en este dispositivo; ya las estamos guardando.</Callout>}
         {data.questions.map((q, i) => (
-          <div key={q.id} className="card">
+          <div key={q.id} id={`q-${q.id}`} className={`card${missing.includes(q.id) ? " q-missing" : ""}`}>
             <label htmlFor={q.id}>
               {i + 1}. {q.prompt} {q.required && <span className="muted">*</span>}
             </label>
             {q.help && <div className="hint" style={{ marginBottom: 8 }}>{q.help}</div>}
             {q.kind === "single_choice" && q.options ? (
-              <div className="row">
+              <div className="row" role="radiogroup" aria-labelledby={`q-${q.id}`}>
                 {q.options.map((o) => (
                   <label key={o} className="check" style={{ marginBottom: 0 }}>
                     <input type="radio" name={q.id} checked={answers[q.id] === o} onChange={() => set(q.id, o)} />
@@ -178,34 +339,20 @@ function ApplicationForm({ data }: { data: PortalData }) {
                 ))}
               </div>
             ) : (
-              <textarea id={q.id} value={answers[q.id] ?? ""} onChange={(e) => set(q.id, e.target.value)} rows={q.kind === "short_text" ? 2 : 6} maxLength={8000} />
+              <textarea id={q.id} value={answers[q.id] ?? ""} onChange={(e) => set(q.id, e.target.value)} onBlur={() => void flush()} rows={q.kind === "short_text" ? 2 : 6} maxLength={8000} aria-invalid={missing.includes(q.id) || undefined} />
             )}
+            {missing.includes(q.id) && <small className="error">Esta pregunta es obligatoria para enviar.</small>}
           </div>
         ))}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="row">
-          <button
-            className="btn ghost"
-            disabled={pending}
-            onClick={() => start(async () => setStatus((await saveAnswers(data.token, answers, false)).message))}
-          >
-            Guardar borrador
+          <button className="btn ghost" type="button" disabled={submitting || save.state === "saving"} onClick={() => { version.current = Math.max(version.current, savedVersion.current + 1); void flush(); }}>
+            Guardar ahora
           </button>
-          <button
-            className="btn"
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                if (!confirm("¿Enviar tu postulación? Después no podrás editarla.")) return;
-                const r = await saveAnswers(data.token, answers, true);
-                if (!r.ok) setError(r.message);
-                else router.refresh();
-              })
-            }
-          >
-            {pending ? "Enviando…" : "Enviar mi postulación"}
+          <button className="btn" type="button" disabled={submitting} onClick={() => void submit()}>
+            {submitting ? "Enviando…" : "Enviar mi postulación"}
           </button>
-          <span className="muted"><small>{answered}/{data.questions.length} respondidas {status && `· ${status}`}</small></span>
+          <span className="muted"><small>{answered}/{total} respondidas</small></span>
         </div>
       </div>
       <aside className="card">

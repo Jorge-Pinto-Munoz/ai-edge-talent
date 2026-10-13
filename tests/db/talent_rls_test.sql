@@ -6,6 +6,7 @@ select 'cluster QA', specialty_family('QA Analyst') = 'Calidad', specialty_famil
 insert into candidates (wave_id, full_name, corporate_email, status, source) values ('wave-1', 'Ana Kiber', 'ANA@kibernum.cl', 'ENROLLED', 'historical');
 select 'una ficha por persona entre Waves', count(distinct talent_id) = 1 from candidates where lower(corporate_email) = 'ana@kibernum.cl';
 
+reset role; update profiles set status = 'ACTIVE' where status = 'PENDING' and not principal; -- las cuentas de prueba ya activaron su acceso
 set role authenticated;
 -- Delivery: lee y actualiza estado de servicio; no puede marcar high talent
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';

@@ -11,6 +11,7 @@ insert into group_mentors values ('10000000-0000-0000-0000-000000000001', '00000
 insert into capsules (wave_id, layer, title, published) values ('wave-3', 'AI_MINDSET', 'Cápsula publicada', true), ('wave-3', 'AI_MINDSET', 'Borrador', false);
 
 select id as beto_id from candidates where full_name = 'Beto Kiber' \gset
+reset role; update profiles set status = 'ACTIVE' where status = 'PENDING' and not principal; -- las cuentas de prueba ya activaron su acceso
 set role authenticated;
 -- Mentor
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e1';

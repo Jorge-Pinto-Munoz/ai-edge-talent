@@ -6,14 +6,16 @@ import { requireRole, type Viewer } from "@/lib/admission/auth";
 import { LAYERS, type Layer } from "@/lib/journey/rules";
 import { CODE_TTL, audit, ensureAccount, issueCode, portalLink, revokeSessions, sendIdentityEmail, setAuthBan } from "./service";
 import { normalizeCLMobile } from "./pin";
-import { isAccountRole } from "./roles";
+import { CREATABLE_ROLES, ROLE_LABEL, isRole, type CreatableRole, type Role } from "./roles";
 
 export type AdminResult = { ok: boolean; message: string; devCode?: string };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const dev = () => process.env.NODE_ENV !== "production";
 const fail = (e: unknown): AdminResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
-const ROLES = ["kiber", "delivery", "bp", "admin", "client", "mentor", "profesor", "hub"] as const;
-type Role = (typeof ROLES)[number];
+/** Mensaje legible si la base rechaza el cambio (cuenta principal, última cuenta admin). */
+const dbCheck = (error: { message: string } | null) => {
+  if (error) throw new Error(/administración|principal|autorizado/i.test(error.message) ? error.message : "No pudimos guardar el cambio.");
+};
 const done = (message: string, extra: Partial<AdminResult> = {}): AdminResult => {
   revalidatePath("/admin/usuarios");
   return { ok: true, message, ...extra };
@@ -42,9 +44,10 @@ async function sendAccessCode(t: { id: string; email: string; full_name: string 
 const sentMsg = (s: { sent: boolean; error: string | null }, ok: string) => (s.sent ? ok : `${ok.replace(/ y enviamos.*$/, "")}. El correo no salió: ${s.error ?? "error del proveedor"}. Puedes reenviarlo.`);
 
 // ───────────── Crear ─────────────
-export async function createUser(input: { kind: "kiber" | "delivery"; fullName: string; email: string; phone?: string; waveIds: string[]; clientName?: string; roleTitle?: string }): Promise<AdminResult> {
+export async function createUser(input: { kind: CreatableRole; fullName: string; email: string; phone?: string; waveIds: string[]; clientName?: string; roleTitle?: string }): Promise<AdminResult> {
   try {
     const actor = await admin();
+    if (!(CREATABLE_ROLES as readonly string[]).includes(input.kind)) throw new Error("Rol inválido.");
     const email = input.email.trim().toLowerCase();
     const fullName = input.fullName.trim();
     if (fullName.length < 2) throw new Error("Ingresa el nombre completo.");
@@ -53,16 +56,18 @@ export async function createUser(input: { kind: "kiber" | "delivery"; fullName: 
     if (input.phone?.trim() && !phone) throw new Error("Teléfono inválido: +56 9 y 8 dígitos.");
     const svc = supabaseService();
     const { data: existing } = await svc.from("profiles").select("id, role, status").eq("email", email).maybeSingle();
-    if (existing && existing.role !== input.kind && existing.role !== "kiber") throw new Error(`Ese correo ya tiene una cuenta con rol ${existing.role}. Cámbiale el rol desde su ficha.`);
+    if (existing && existing.role !== input.kind && existing.role !== "kiber") throw new Error(`Ese correo ya tiene una cuenta con rol ${ROLE_LABEL[existing.role] ?? existing.role}. Cámbiale el rol desde su ficha.`);
     if (existing && (existing.status === "DELETED" || existing.status === "REVOKED")) throw new Error("Ese correo tiene una cuenta revocada o eliminada. Reactívala desde su ficha.");
 
-    await svc.from("role_grants").upsert({ email, role: input.kind, client_name: null, granted_by: actor.id });
+    await svc.from("role_grants").upsert({ email, role: input.kind, client_name: null, granted_by: actor.id, full_name: fullName });
     const { userId, created } = await ensureAccount(email, fullName, svc);
-    await svc.from("profiles").update({ role: input.kind, full_name: fullName, ...(phone ? { phone } : {}), updated_at: new Date().toISOString() }).eq("id", userId);
+    const { error: upErr } = await svc.from("profiles").update({ role: input.kind, full_name: fullName, ...(phone ? { phone } : {}), updated_at: new Date().toISOString() }).eq("id", userId);
+    dbCheck(upErr);
+    if (existing && existing.role !== input.kind) await revokeSessions(userId, email, svc);
 
     if (input.kind === "delivery") {
       for (const w of input.waveIds) await svc.from("wave_staff").upsert({ wave_id: w, email, role: "delivery", added_by: actor.id });
-    } else if (input.waveIds[0]) {
+    } else if (input.kind === "kiber" && input.waveIds[0]) {
       // Un alta manual NO aprueba evaluaciones: el profesional queda invitado a postular en la Wave (o se vincula a su postulación).
       const w = input.waveIds[0];
       const { data: cand } = await svc.from("candidates").select("id").eq("wave_id", w).ilike("corporate_email", email).maybeSingle();
@@ -98,7 +103,7 @@ export async function updateUser(userId: string, input: { fullName: string; phon
 export async function changeRole(userId: string, role: Role, confirmEmail: string): Promise<AdminResult> {
   try {
     const actor = await admin();
-    if (!ROLES.includes(role)) throw new Error("Rol inválido.");
+    if (!isRole(role)) throw new Error("Rol inválido.");
     const t = await target(userId);
     if (confirmEmail.trim().toLowerCase() !== t.email) throw new Error("Para confirmar, escribe el correo de la cuenta.");
     if (t.id === actor.id) throw new Error("No puedes cambiar tu propio rol.");
@@ -107,11 +112,12 @@ export async function changeRole(userId: string, role: Role, confirmEmail: strin
       const { count } = await svc.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").eq("status", "ACTIVE");
       if ((count ?? 0) <= 1) throw new Error("Debe quedar al menos una cuenta de administración activa.");
     }
-    await svc.from("profiles").update({ role, updated_at: new Date().toISOString() }).eq("id", userId);
+    const { error } = await svc.from("profiles").update({ role, updated_at: new Date().toISOString() }).eq("id", userId);
+    dbCheck(error);
     await svc.from("role_grants").upsert({ email: t.email, role, granted_by: actor.id });
     await revokeSessions(userId, t.email, svc); // los permisos nuevos rigen desde el próximo ingreso
     await audit("user.role.changed", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: t.email, details: { from: t.role, to: role } }, svc);
-    return done(`Rol actualizado a ${role}. Sus sesiones se cerraron para aplicar los nuevos permisos.`);
+    return done(`Rol actualizado a ${ROLE_LABEL[role] ?? role}. Sus sesiones se cerraron para aplicar los nuevos permisos.`);
   } catch (e) {
     return fail(e);
   }
@@ -144,7 +150,8 @@ export async function setAccountStatus(userId: string, status: "ACTIVE" | "PAUSE
     if ((status === "DELETED" || status === "REVOKED") && confirmEmail?.trim().toLowerCase() !== t.email) throw new Error("Para confirmar, escribe el correo de la cuenta.");
     if (status !== "ACTIVE" && reason.trim().length < 5) throw new Error("Indica el motivo (queda en el historial).");
     const svc = supabaseService();
-    await svc.from("profiles").update({ status, updated_at: new Date().toISOString() }).eq("id", userId);
+    const { error } = await svc.from("profiles").update({ status, updated_at: new Date().toISOString() }).eq("id", userId);
+    dbCheck(error);
     if (status === "ACTIVE") {
       await setAuthBan(userId, false, svc);
       await svc.from("user_credentials").update({ failed_count: 0, locked_until: null }).eq("user_id", userId);
@@ -259,7 +266,7 @@ export async function decideAccessRequest(id: string, input: { decision: "APPROV
     // Aprobar: reutiliza la cuenta si existe (reactiva), nunca duplica.
     // Solicitud de cuenta: el admin asigna el rol definitivo (por defecto el pedido).
     const role = req.kind === "ACCOUNT" ? input.role || req.requested_role : null;
-    if (req.kind === "ACCOUNT" && (!role || !isAccountRole(role))) throw new Error("Elige el rol de la cuenta.");
+    if (req.kind === "ACCOUNT" && (!role || !isRole(role))) throw new Error("Elige el rol de la cuenta.");
     const { data: prof } = await svc.from("profiles").select("id, status, role").eq("email", req.email).maybeSingle();
     if (role) await svc.from("role_grants").upsert({ email: req.email, role, granted_by: actor.id }, { onConflict: "email" });
     else if (!prof) await svc.from("role_grants").upsert({ email: req.email, role: "kiber", granted_by: actor.id }, { onConflict: "email", ignoreDuplicates: true });

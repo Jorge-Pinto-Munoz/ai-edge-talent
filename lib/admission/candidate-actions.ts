@@ -14,6 +14,7 @@ import { getDocument } from "@/lib/content";
 import type { AdmissionStatus } from "@/lib/domain/types";
 import { isAcceptableVideoUrl } from "./rescue";
 import { deliveryDirectory } from "@/lib/identity/directory";
+import { cleanAnswers, missingRequired, type Question } from "./assessment";
 
 /**
  * Acciones del postulante. Se identifican con su enlace personal (token aleatorio de 144 bits): al registrarse
@@ -21,6 +22,8 @@ import { deliveryDirectory } from "@/lib/identity/directory";
  * El servidor valida el token y usa la clave secreta; nada de esto expone datos de otros candidatos.
  */
 export type CandidateResult = { ok: boolean; message: string };
+/** Guardado del Assessment: `savedAt` es la hora del servidor; `state` dice si ya quedó enviado. */
+export type SaveResult = CandidateResult & { savedAt?: string; state?: "draft" | "submitted"; missing?: string[] };
 
 const isEmail = (e: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
 
@@ -76,6 +79,16 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Candidat
   if (!row) return { ok: false, message: "No pudimos registrar tu postulación. Intenta nuevamente." };
   if (existing) await svc.from("candidates").update({ phone: data.phone }).eq("id", row.id);
   if (delivery) await linkDelivery(svc, row.id, waveId, delivery);
+  // Cuenta del portal desde el registro (sin correo todavía): si deja el Assessment a medias, puede volver a
+  // ingresar con su correo ("Olvidé mi código" le envía un código) y continuar donde quedó.
+  if (!existing) {
+    try {
+      const { userId } = await ensureAccount(data.corporate_email, data.full_name, svc);
+      await svc.from("candidates").update({ user_id: userId }).eq("id", row.id).is("user_id", null);
+    } catch (e) {
+      console.error("[postulación] cuenta al registrarse", e instanceof Error ? e.message : e);
+    }
+  }
   // Consentimiento opcional y trazable (texto y versión exactos).
   if (community) {
     await svc.from("consents").insert({ kind: "COMMUNITY", version: COMMUNITY_CONSENT.version, text_snapshot: `${COMMUNITY_CONSENT.text} ${COMMUNITY_CONSENT.detail}`, email: data.corporate_email, candidate_id: row.id });
@@ -180,31 +193,58 @@ export async function acknowledgeAndStart(token: string, checkedIds: string[]): 
 }
 
 /* ───────── Guardar borrador / enviar ───────── */
-export async function saveAnswers(token: string, answers: Record<string, string>, submit: boolean): Promise<CandidateResult> {
+/**
+ * Borrador: guarda todo lo escrito sin validar obligatorias y no cambia la etapa (sigue "En progreso").
+ * Envío: valida obligatorias y se aplica UNA sola vez aunque llegue dos veces (doble clic, dos pestañas, reintento
+ * tras perder la conexión): solo el primer envío marca submitted_at y dispara correos y evaluación.
+ */
+export async function saveAnswers(token: string, answers: Record<string, string>, submit: boolean): Promise<SaveResult> {
   try {
     const { svc, c } = await byToken(token);
-    if (c.status !== "APPLICATION_STARTED") return { ok: false, message: "Esta postulación ya fue enviada." };
-    if (deadlinePassed(c.waves)) return { ok: false, message: "El plazo de postulación cerró." };
-    const { data: app } = await svc.from("applications").select("id, questions_snapshot").eq("candidate_id", c.id).single();
+    const { data: app } = await svc.from("applications").select("id, questions_snapshot, submitted_at").eq("candidate_id", c.id).maybeSingle();
+    if (app?.submitted_at || !["APPLICATION_STARTED"].includes(c.status)) {
+      return app?.submitted_at
+        ? { ok: submit, state: "submitted", message: submit ? "Tu postulación ya estaba enviada." : "Esta postulación ya fue enviada; no se puede editar." }
+        : { ok: false, message: "Primero confirma las condiciones para postular." };
+    }
     if (!app) return { ok: false, message: "Primero confirma las condiciones para postular." };
-    const qs = (app.questions_snapshot ?? []) as { id: string; required: boolean }[];
-    const clean = Object.fromEntries(qs.map((q) => [q.id, String(answers[q.id] ?? "").slice(0, 8000)]));
+    if (deadlinePassed(c.waves)) return { ok: false, message: "El plazo de postulación cerró. Lo que alcanzaste a guardar quedó registrado." };
+    const qs = (app.questions_snapshot ?? []) as Question[];
+    const clean = cleanAnswers(qs, answers ?? {});
     if (submit) {
-      const missing = qs.filter((q) => q.required && !clean[q.id].trim()).length;
-      if (missing) return { ok: false, message: `Faltan ${missing} respuesta(s) obligatoria(s).` };
+      const missing = missingRequired(qs, clean);
+      if (missing.length) {
+        // Igual se guarda lo escrito: validar no debe hacer perder información.
+        await svc.from("applications").update({ answers: clean }).eq("id", app.id).is("submitted_at", null);
+        return { ok: false, missing, message: `Faltan ${missing.length} respuesta(s) obligatoria(s).` };
+      }
     }
     const now = new Date();
-    await svc.from("applications").update({ answers: clean, ...(submit ? { submitted_at: now.toISOString() } : {}) }).eq("id", app.id);
-    if (submit) {
+    // Condición atómica: solo se escribe si aún no está enviada. Si otra pestaña la envió, no se pisa.
+    const { data: upd, error } = await svc
+      .from("applications")
+      .update({ answers: clean, ...(submit ? { submitted_at: now.toISOString() } : {}) })
+      .eq("id", app.id)
+      .is("submitted_at", null)
+      .select("updated_at");
+    if (error) throw error;
+    if (!upd?.length) return { ok: submit, state: "submitted", message: submit ? "Tu postulación ya estaba enviada." : "Esta postulación ya fue enviada; no se puede editar." };
+    if (!submit) return { ok: true, state: "draft", savedAt: upd[0].updated_at, message: "Borrador guardado." };
+
+    try {
       await moveTo(svc, c.id, "APPLICATION_STARTED", "APPLICATION_SUBMITTED");
-      // Gracias por postular + credenciales del portal para seguir el estado.
-      await sendPortalAccess(svc, c.id, c.corporate_email, c.full_name, c.wave_id, c.waves.name);
-      // Aviso a su Delivery (si eligió uno al registrarse) con acceso a su vista de equipo.
-      await notifyDelivery(svc, c.id, c.wave_id, c.waves.name, c.full_name, now);
-      // Evaluación inmediata con IA después de responder (no bloquea al postulante). Es una propuesta: decide una persona.
-      if (process.env.ANTHROPIC_API_KEY) after(async () => void (await evaluateOne(supabaseService(), c.id, null)));
+    } catch (e) {
+      // Sin cambio de etapa no hay envío a medias: se revierte para que pueda reintentar.
+      await svc.from("applications").update({ submitted_at: null }).eq("id", app.id);
+      throw e;
     }
-    return { ok: true, message: submit ? "submitted" : "Borrador guardado." };
+    // Gracias por postular + credenciales del portal para seguir el estado.
+    await sendPortalAccess(svc, c.id, c.corporate_email, c.full_name, c.wave_id, c.waves.name);
+    // Aviso a su Delivery (si eligió uno al registrarse) con acceso a su vista de equipo.
+    await notifyDelivery(svc, c.id, c.wave_id, c.waves.name, c.full_name, now);
+    // Evaluación inmediata con IA después de responder (no bloquea al postulante). Es una propuesta: decide una persona.
+    if (process.env.ANTHROPIC_API_KEY) after(async () => void (await evaluateOne(supabaseService(), c.id, null)));
+    return { ok: true, state: "submitted", savedAt: upd[0].updated_at, message: "submitted" };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }

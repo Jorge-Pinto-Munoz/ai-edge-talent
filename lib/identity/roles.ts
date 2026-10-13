@@ -10,7 +10,26 @@ export const ROLE_LABEL: Record<string, string> = {
   client: "Cliente",
 };
 
-/** Roles que una persona puede pedir al crear su cuenta (el admin asigna el definitivo al aprobar). */
-export const ACCOUNT_ROLES = ["kiber", "delivery", "bp", "mentor", "hub", "admin"] as const;
-export type AccountRole = (typeof ACCOUNT_ROLES)[number];
-export const isAccountRole = (r: string): r is AccountRole => (ACCOUNT_ROLES as readonly string[]).includes(r);
+/** Todos los roles que Administración puede asignar. */
+export const ASSIGNABLE_ROLES = ["kiber", "delivery", "bp", "mentor", "hub", "profesor", "admin", "client"] as const;
+export type Role = (typeof ASSIGNABLE_ROLES)[number];
+export const isRole = (r: string): r is Role => (ASSIGNABLE_ROLES as readonly string[]).includes(r);
+
+/**
+ * Roles internos: solo los crea o asigna Administración (nunca un formulario público). La base de datos aplica la
+ * misma regla: una cuenta con rol interno no tiene permisos hasta activarse con un código enviado a su correo.
+ */
+export const INTERNAL_ROLES = ["admin", "delivery", "hub", "mentor", "profesor", "bp"] as const;
+export const isInternalRole = (r: string) => (INTERNAL_ROLES as readonly string[]).includes(r);
+
+/**
+ * Lo único que una persona puede pedir al crear su cuenta desde el sitio. Business Partner es una solicitud: el
+ * rol definitivo lo decide Administración al aprobar.
+ */
+export const PUBLIC_REQUEST_ROLES = ["kiber", "bp"] as const;
+export type PublicRequestRole = (typeof PUBLIC_REQUEST_ROLES)[number];
+export const isPublicRequestRole = (r: string): r is PublicRequestRole => (PUBLIC_REQUEST_ROLES as readonly string[]).includes(r);
+
+/** Roles que Administración puede crear directamente desde Usuarios y accesos. */
+export const CREATABLE_ROLES = ["kiber", "delivery", "hub", "mentor", "profesor", "bp", "admin"] as const;
+export type CreatableRole = (typeof CREATABLE_ROLES)[number];

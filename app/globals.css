@@ -277,6 +277,12 @@ details.faq p { margin-top: 8px; color: var(--muted); }
 
 .assess-grid { grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); align-items: start; }
 @media (max-width: 860px) { .assess-grid { grid-template-columns: 1fr; } }
+/* Barra de avance del Assessment: estado, respondidas y guardado, siempre visible al bajar. */
+.assess-bar { position: sticky; top: 8px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); box-shadow: 0 6px 18px rgba(8, 11, 16, 0.06); }
+.assess-save { font-size: 0.88rem; color: var(--muted); }
+.assess-save.s-saved { color: var(--ok-text); }
+.assess-save.s-offline, .assess-save.s-error { color: var(--warn-text); font-weight: 600; }
+.card.q-missing { border-color: var(--warn-text); box-shadow: 0 0 0 2px var(--warn-soft); }
 
 @media (max-width: 760px) {
   .container { padding: 0 16px; }

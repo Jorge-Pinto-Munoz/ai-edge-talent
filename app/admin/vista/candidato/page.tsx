@@ -16,7 +16,7 @@ export default async function VerCandidato({ searchParams }: { searchParams: Pro
     <div className="stack">
       <div className="jr-preview" role="note"><span><strong>Vista de admin</strong> · así ve su enlace personal {data.candidate.fullName}. Los envíos están desactivados.</span></div>
       <fieldset className="preview-lock" disabled>
-        <CandidatePortal data={data} />
+        <CandidatePortal data={data} preview />
       </fieldset>
     </div>
   );

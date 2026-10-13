@@ -7,7 +7,7 @@ import {
 } from "@/lib/identity/admin-actions";
 import { Icon } from "@/components/site/Icon";
 import { Sheet } from "@/components/site/Sheet";
-import { ROLE_LABEL } from "@/lib/identity/roles";
+import { CREATABLE_ROLES, ROLE_LABEL, type CreatableRole } from "@/lib/identity/roles";
 
 export interface UserRow {
   id: string; name: string; email: string; role: string; status: string; phone: string | null;
@@ -202,18 +202,21 @@ function confirmAndRun(text: string, f: () => void) {
 
 function CreateUser({ waves, onDone }: { waves: Wave[]; onDone: () => void }) {
   const { run, pending, out } = useAction();
-  const [f, setF] = useState({ kind: "kiber" as "kiber" | "delivery", fullName: "", email: "", phone: "", clientName: "", roleTitle: "" });
+  const [f, setF] = useState({ kind: "kiber" as CreatableRole, fullName: "", email: "", phone: "", clientName: "", roleTitle: "" });
   const [ws, setWs] = useState<string[]>([]);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
   const open = waves.filter((w) => w.status !== "CLOSED");
   return (
     <form className="ud" onSubmit={(e) => { e.preventDefault(); run(() => createUser({ ...f, waveIds: ws })); }}>
-      <div className="ds-seg uc-kind" role="radiogroup" aria-label="Perfil">
-        {(["kiber", "delivery"] as const).map((k) => <button key={k} type="button" role="radio" aria-checked={f.kind === k} className={f.kind === k ? "on" : ""} onClick={() => { setF((x) => ({ ...x, kind: k })); setWs([]); }}>{k === "kiber" ? "Profesional" : "Delivery"}</button>)}
+      <div className="field"><label htmlFor="cu-k">Rol de la cuenta</label>
+        <select id="cu-k" value={f.kind} onChange={(e) => { setF((x) => ({ ...x, kind: e.target.value as CreatableRole })); setWs([]); }}>
+          {CREATABLE_ROLES.map((k) => <option key={k} value={k}>{ROLE_LABEL[k]}</option>)}
+        </select>
+        {f.kind === "admin" && <small className="error">Líder de producto tiene acceso total a la plataforma, incluida la gestión de cuentas y permisos.</small>}
       </div>
       <div className="field"><label htmlFor="cu-n">Nombre completo</label><input id="cu-n" required value={f.fullName} onChange={set("fullName")} /></div>
       <div className="field"><label htmlFor="cu-e">Correo electrónico</label><input id="cu-e" type="email" required value={f.email} onChange={set("email")} />
-        <small className="muted">{f.kind === "delivery" ? "Correo corporativo de Kibernum: crear la cuenta es la autorización explícita de Administración." : "Cualquier dominio válido."}</small></div>
+        <small className="muted">{f.kind === "kiber" ? "Cualquier dominio válido." : "Crear la cuenta es la autorización explícita de Administración. La persona recibe un código temporal y crea su código personal."}</small></div>
       <div className="field"><label htmlFor="cu-p">Teléfono</label><div className="phone-cl"><span aria-hidden="true">+56 9</span><input id="cu-p" inputMode="numeric" maxLength={9} value={f.phone} onChange={set("phone")} /></div></div>
       {f.kind === "kiber" ? (
         <>
@@ -222,6 +225,8 @@ function CreateUser({ waves, onDone }: { waves: Wave[]; onDone: () => void }) {
           <div className="field"><label htmlFor="cu-r">Rol / cargo</label><input id="cu-r" value={f.roleTitle} onChange={set("roleTitle")} /></div>
           <p className="muted ud-note">Crear la cuenta no aprueba evaluaciones ni salta etapas: en la Wave queda invitado/a a postular, o se vincula a su postulación si ya existe.</p>
         </>
+      ) : f.kind !== "delivery" ? (
+        <p className="muted ud-note">Sus permisos quedan activos cuando la persona ingresa con el código temporal y crea su código personal. Puedes cambiar el rol o pausar la cuenta desde su ficha.</p>
       ) : (
         <fieldset className="ud-checks"><legend>Waves que acompaña</legend>{open.map((w) => <label key={w.id}><input type="checkbox" checked={ws.includes(w.id)} onChange={(e) => setWs((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>)}</fieldset>
       )}

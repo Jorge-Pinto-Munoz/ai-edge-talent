@@ -49,7 +49,9 @@ export function CandidateTable({ waveId, candidates, isAdmin, initialStatus = ""
     <div className="stack">
       <div className="kpi-row">
         <Kpi n={candidates.length} label="candidatos" />
-        <Kpi n={candidates.filter((c) => !["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(c.status)).length} label="completaron la postulación" />
+        <Kpi n={candidates.filter((c) => ["NOMINATED", "INVITED", "IDENTIFIED"].includes(c.status)).length} label="Assessment no iniciado" />
+        <Kpi n={candidates.filter((c) => c.status === "APPLICATION_STARTED").length} label="Assessment en progreso (borrador)" />
+        <Kpi n={candidates.filter((c) => !["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(c.status)).length} label="Assessment completado" />
         <Kpi n={candidates.filter((c) => ["ENROLLED", "MINDSET_READY"].includes(c.status)).length} label="inscritos (compromiso aceptado)" />
       </div>
 

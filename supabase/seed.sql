@@ -195,3 +195,47 @@ where g.email = p.email and g.role = 'delivery' and p.role = 'kiber';
 insert into public.wave_staff (wave_id, email, role)
 select 'wave-3', email, 'delivery' from public.role_grants where role = 'delivery' and email like '%@kibernum.com'
 on conflict do nothing;
+
+-- ═══════════════ Administración principal ═══════════════
+-- Jorge Pinto, Líder de producto: cuenta admin principal, creada una sola vez y protegida en la base (no se
+-- puede degradar, pausar ni eliminar; ver 20261025000000_control_accesos.sql). Su código inicial no vive aquí:
+-- el servidor lo toma del secreto ADMIN_INITIAL_CODE, lo guarda como hash y exige cambiarlo en el primer ingreso
+-- (lib/identity/principal.ts). Sin ese secreto, ingresa con "Olvidé mi código" (código a su correo).
+do $principal$
+declare
+  e text := 'jorge.pintom@kibernum.com';
+  n text := 'Jorge Pinto';
+  uid uuid;
+  col text;
+begin
+  insert into public.role_grants (email, role, full_name) values (e, 'admin', n)
+  on conflict (email) do update set role = 'admin', full_name = coalesce(public.role_grants.full_name, excluded.full_name);
+
+  select id into uid from auth.users where lower(email) = e;
+  if uid is null then
+    uid := gen_random_uuid();
+    insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', e, '', now(), '{"provider":"email","providers":["email"]}', jsonb_build_object('full_name', n), now(), now());
+    foreach col in array array['confirmation_token', 'recovery_token', 'email_change_token_new', 'email_change_token_current', 'email_change', 'phone_change', 'phone_change_token', 'reauthentication_token'] loop
+      if exists (select 1 from information_schema.columns where table_schema = 'auth' and table_name = 'users' and column_name = col) then
+        execute format('update auth.users set %I = coalesce(%I, %L) where id = %L', col, col, '', uid);
+      end if;
+    end loop;
+    if exists (select 1 from information_schema.columns where table_schema = 'auth' and table_name = 'identities' and column_name = 'provider_id') then
+      execute 'insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at) values ($1, $2, $3, ''email'', now(), now()) on conflict do nothing'
+        using uid::text, uid, jsonb_build_object('sub', uid::text, 'email', e, 'email_verified', true);
+    elsif exists (select 1 from information_schema.tables where table_schema = 'auth' and table_name = 'identities') then
+      execute 'insert into auth.identities (id, user_id, identity_data, provider, created_at, updated_at) values ($1, $2, $3, ''email'', now(), now()) on conflict do nothing'
+        using uid::text, uid, jsonb_build_object('sub', uid::text, 'email', e);
+    end if;
+  end if;
+
+  -- El perfil lo crea el trigger (PENDIENTE hasta el primer ingreso); se asegura por si la versión no lo dispara.
+  insert into public.profiles (id, email, full_name, role, status) values (uid, e, n, 'admin', 'PENDING') on conflict (id) do nothing;
+  if not exists (select 1 from public.profiles where principal and id <> uid) then
+    update public.profiles set role = 'admin', principal = true, full_name = coalesce(full_name, n),
+      status = case when status in ('PAUSED', 'REVOKED', 'DELETED') then 'PENDING' else status end
+    where id = uid and not principal;
+  end if;
+  insert into public.user_credentials (user_id) values (uid) on conflict (user_id) do nothing;
+end $principal$;
