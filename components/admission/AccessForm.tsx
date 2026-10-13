@@ -6,22 +6,22 @@ import { Callout } from "@/components/ui";
 
 export function AccessForm({ waves }: { waves: { id: string; name: string }[] }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "delivery" | "client" | "kiber" | "profesor" | "hub" | "mentor">("delivery");
+  const [role, setRole] = useState<"admin" | "delivery" | "client" | "kiber" | "hub" | "mentor">("delivery");
   const [wave, setWave] = useState(waves[0]?.id ?? "");
   const [client, setClient] = useState("");
   const [r, setR] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
   return (
-    <form className="card" onSubmit={(e) => { e.preventDefault(); start(async () => setR(await grantRole(email, role, client, role === "profesor" || role === "hub" ? wave : undefined))); }}>
+    <form className="card" onSubmit={(e) => { e.preventDefault(); start(async () => setR(await grantRole(email, role, client, role === "hub" ? wave : undefined))); }}>
       <div className="grid grid-3">
         <div className="field"><label htmlFor="ae">Correo</label><input id="ae" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
         <div className="field">
           <label htmlFor="ar">Rol</label>
           <select id="ar" value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
-            <option value="admin">Admin (liderazgo)</option><option value="delivery">Delivery</option><option value="profesor">Profesor</option><option value="hub">Líder Hub AI</option><option value="mentor">AI Coach</option><option value="client">Cliente</option><option value="kiber">Kiber</option>
+            <option value="admin">Admin (liderazgo)</option><option value="delivery">Delivery</option><option value="hub">Líder Hub AI</option><option value="mentor">AI Coach</option><option value="client">Cliente</option><option value="kiber">Kiber</option>
           </select>
         </div>
-        {(role === "profesor" || role === "hub") && (
+        {(role === "hub") && (
           <div className="field">
             <label htmlFor="aw">Wave</label>
             <select id="aw" value={wave} onChange={(e) => setWave(e.target.value)}>

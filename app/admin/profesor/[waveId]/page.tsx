@@ -4,7 +4,6 @@ import { supabaseUser } from "@/lib/supabase/server";
 import { layerName, type Layer } from "@/lib/journey/rules";
 import { attendanceByPerson, classDateLabel, todayChile, type AttendanceRow } from "@/lib/teacher/rules";
 import { ClassForm } from "@/components/teacher/ClassForm";
-import { WaveStaffManager } from "@/components/admin/WaveStaffManager";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { Badge } from "@/components/ui";
 
@@ -194,12 +193,6 @@ export default async function ProfesorWave({ params, searchParams }: { params: P
         </section>
       )}
 
-      {viewer.role === "admin" && (await (async () => {
-        const { data: staff } = await db.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "profesor");
-        const emails = (staff ?? []).map((s) => s.email);
-        const { data: sp } = emails.length ? await db.from("profiles").select("email, full_name").in("email", emails) : { data: [] };
-        return <WaveStaffManager waveId={waveId} role="profesor" people={emails.map((email) => ({ email, name: sp?.find((p) => p.email === email)?.full_name ?? null }))} />;
-      })())}
     </div>
   );
 }

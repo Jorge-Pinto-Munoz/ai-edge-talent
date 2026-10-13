@@ -4,6 +4,8 @@ import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
 import { DIMENSIONS, LEVEL_LABEL, LEVEL_MEANING, PL_LABEL, RUBRIC_VERSION, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { EVALUATION_MODEL } from "@/lib/ai/evaluate";
+import { aiConfigured } from "@/lib/ai/client";
+import { AiStatus } from "@/components/admin/AiStatus";
 
 export const metadata = { title: "Cómo evaluamos · Portal AET" };
 export const dynamic = "force-dynamic";
@@ -52,6 +54,8 @@ export default async function Evaluacion() {
         </div>
         <div className="adm-deadline"><small>Versión</small><strong>{RUBRIC_VERSION}</strong></div>
       </header>
+
+      <AiStatus configured={aiConfigured()} model={EVALUATION_MODEL} />
 
       <section className="adm-card">
         <div className="adm-card-head"><h2>Qué busca</h2></div>

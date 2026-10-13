@@ -6,7 +6,7 @@ import { env } from "@/lib/supabase/env";
 import { openAccessSession } from "@/lib/staff/audit";
 import { IP_MAX_FAILS, PIN_LOCK_MIN } from "./pin";
 import { normalizePhone } from "./phone";
-import { HOME_BY_ROLE, audit, checkCode, ipHash, openSession, sendIdentityEmail, sendLoginCode } from "./service";
+import { HOME_BY_ROLE, audit, checkCode, ensureAccount, ipHash, openSession, sendIdentityEmail, sendLoginCode } from "./service";
 import { ROLE_LABEL, isInternalRole, isPublicRequestRole } from "./roles";
 import { isDemoEmail } from "./demo";
 
@@ -56,6 +56,22 @@ async function finishLogin(acc: Account, next?: string): Promise<FlowResult> {
   return { ok: true, step: "done", message: "Listo.", redirect: safeNext(next) ?? HOME_BY_ROLE[acc.role] ?? "/inicio" };
 }
 
+/**
+ * Primer ingreso sin cuenta: se crea solo si el correo ya es conocido. Con un rol autorizado por Administración
+ * (role_grants, p. ej. los Delivery), queda con ese rol; si postuló o se registró, como Profesional. Un correo
+ * desconocido no crea nada (la respuesta es la misma igual).
+ */
+async function provisionOnFirstLogin(email: string): Promise<Account | null> {
+  const svc = supabaseService();
+  const [{ data: grant }, { data: cand }] = await Promise.all([
+    svc.from("role_grants").select("full_name").eq("email", email).maybeSingle(),
+    svc.from("candidates").select("full_name").ilike("corporate_email", email).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (!grant && !cand) return null;
+  await ensureAccount(email, grant?.full_name ?? cand?.full_name ?? null, svc);
+  return accountByEmail(email);
+}
+
 /** Paso 1: pide un código de ingreso. Misma respuesta exista o no la cuenta. */
 export async function requestLoginCode(rawEmail: string): Promise<FlowResult> {
   try {
@@ -70,7 +86,7 @@ export async function requestLoginCode(rawEmail: string): Promise<FlowResult> {
       if ((count ?? 0) >= IP_MAX_REQUESTS) return { ok: false, message: `Demasiadas solicitudes desde esta red. Espera ${PIN_LOCK_MIN} minutos.` };
       await svc.from("login_attempts").insert({ email, ip_hash: ip, success: true, kind: "request" });
     }
-    const acc = await accountByEmail(email);
+    const acc = (await accountByEmail(email)) ?? (await provisionOnFirstLogin(email));
     if (acc && !blocked(acc)) {
       const r = await sendLoginCode(email, { name: acc.full_name, userId: acc.id }, svc);
       // Espera o límite: misma respuesta que siempre (no revela la cuenta); el código anterior sigue vigente.

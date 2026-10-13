@@ -26,7 +26,7 @@ const SECTIONS: Section[] = [
   { key: "resumen", label: "Resumen", icon: "grid", href: (w) => `/admin?wave=${w}`, match: /^\/admin\/?$/, roles: STAFF, perWave: true },
   { key: "admision", label: "Admisión", icon: "users", href: (w) => `/admin/admision/${w}`, match: /^\/admin\/admision/, roles: STAFF, perWave: true },
   { key: "journey", label: "Journey", icon: "route", href: (w) => `/admin/journey/${w}`, match: /^\/admin\/journey/, roles: STAFF, perWave: true },
-  { key: "profesor", label: "Clases", icon: "calendar", href: (w) => `/admin/profesor/${w}`, match: /^\/admin\/profesor/, roles: ["admin", "delivery", "profesor"], perWave: true },
+  { key: "profesor", label: "Clases", icon: "calendar", href: (w) => `/admin/profesor/${w}`, match: /^\/admin\/profesor/, roles: ["admin", "delivery"], perWave: true },
   { key: "lab", label: "AI Lab & Showcase", icon: "flask", href: (w) => `/admin/lab/${w}`, match: /^\/admin\/lab/, roles: ["admin", "delivery", "hub"], perWave: true },
   { key: "pulsos", label: "Avance y experiencia", icon: "chat", href: (w) => `/admin/pulsos/${w}`, match: /^\/admin\/pulsos/, roles: ADMIN, perWave: true },
   { key: "contenido", label: "Contenido", icon: "book", href: (w) => `/admin/contenido/${w}`, match: /^\/admin\/contenido/, roles: ADMIN, perWave: true },

@@ -91,7 +91,7 @@ export default async function VerComo() {
         <div className="adm-card-head"><h2>Profesor, Líder Hub AI y Delivery</h2></div>
         <p style={{ marginTop: 0 }}>Como admin ya ves lo mismo que ellos, con permisos de edición:</p>
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <Link className="btn ghost small" href="/admin/profesor">Clases (Profesor)</Link>
+          <Link className="btn ghost small" href="/admin/profesor">Clases</Link>
           <Link className="btn ghost small" href="/admin/lab">AI Lab &amp; Showcase (Hub AI)</Link>
           <Link className="btn ghost small" href="/admin">Resumen (Delivery)</Link>
           <Link className="btn ghost small" href="/">Sitio público</Link>

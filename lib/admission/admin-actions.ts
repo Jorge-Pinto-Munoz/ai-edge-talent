@@ -149,7 +149,7 @@ export async function sendCandidateEmails(waveId: string, candidateIds: string[]
 }
 
 /* ───────── Accesos ───────── */
-export async function grantRole(email: string, role: "admin" | "delivery" | "client" | "kiber" | "profesor" | "hub" | "mentor", clientName: string, waveId?: string): Promise<ActionResult> {
+export async function grantRole(email: string, role: "admin" | "delivery" | "client" | "kiber" | "hub" | "mentor", clientName: string, waveId?: string): Promise<ActionResult> {
   try {
     const viewer = await requireRole(["admin"]);
     const db = await supabaseUser();
@@ -157,12 +157,12 @@ export async function grantRole(email: string, role: "admin" | "delivery" | "cli
     const { error } = await db.from("role_grants").upsert({ email: e, role, client_name: clientName || null, granted_by: viewer.id });
     if (error) throw error;
     await db.from("profiles").update({ role, client_name: clientName || null }).eq("email", e);
-    if ((role === "profesor" || role === "hub") && waveId) {
+    if ((role === "hub") && waveId) {
       const { error: e2 } = await db.from("wave_staff").upsert({ wave_id: waveId, email: e, role, added_by: viewer.id });
       if (e2) throw e2;
     }
     revalidatePath("/admin/accesos");
-    return { ok: true, message: `${e} tendrá rol ${ROLE_NAME[role]}${waveId && (role === "profesor" || role === "hub") ? ` en ${waveId}` : ""}.` };
+    return { ok: true, message: `${e} tendrá rol ${ROLE_NAME[role]}${waveId && (role === "hub") ? ` en ${waveId}` : ""}.` };
   } catch (e) {
     return fail(e);
   }
