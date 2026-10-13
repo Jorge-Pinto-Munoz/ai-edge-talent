@@ -44,7 +44,7 @@ export default function ProgramaPage() {
             <div className="stat-row">
               <div className="stat"><strong>30–45</strong><small>días de recorrido</small></div>
               <div className="stat"><strong>5</strong><small>etapas</small></div>
-              <div className="stat"><strong>~40 h</strong><small>de certificación</small></div>
+              <div className="stat"><strong>1</strong><small>caso real con impacto</small></div>
             </div>
           </Reveal>
           <Reveal delay={120}>

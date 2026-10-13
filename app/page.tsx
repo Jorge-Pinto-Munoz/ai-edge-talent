@@ -71,7 +71,7 @@ export default function Home() {
       </section>
 
       {/* 2 · El programa: etapas y cómo se evalúa */}
-      <section className="sec anchor" id="programa">
+      <section className="sec bleed anchor" id="programa">
         <div className="sec-inner">
           <Reveal className="sec-head">
             <div>
@@ -103,6 +103,7 @@ export default function Home() {
                 <div>
                   <Link href={`/programa/${g.slug}`}><strong>{g.stage}</strong></Link>
                   <p>{g.how}</p>
+                  {g.dims && <ul className="gate-dims" aria-label="Qué se evalúa">{g.dims.map((d) => <li key={d}>{d}</li>)}</ul>}
                 </div>
                 <p className="gate-pass"><Icon name="check" size={18} /> {g.pass}</p>
               </Reveal>

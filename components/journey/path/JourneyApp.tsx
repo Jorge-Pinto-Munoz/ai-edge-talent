@@ -34,7 +34,6 @@ const UNLOCK: Partial<Record<Layer, string>> = {
   CLOSURE: "Llega después de tu Showcase.",
 };
 /** Zigzag del camino (px), como una ruta que serpentea. */
-const ZIG = [0, 52, 78, 52, 0, -52, -78, -52];
 
 const nodeIcon = (n: PathNode): IconName => {
   if (n.state === "done") return "check";
@@ -43,6 +42,13 @@ const nodeIcon = (n: PathNode): IconName => {
   return { milestone: "flag", capsule: "play", cert: "badge", "lab-class": n.labClass === 2 ? "flask" : "users", presentation: "presentation", showcase: "star" }[n.kind] as IconName;
 };
 const stageVars = (l: Layer) => ({ "--stage": STAGE_COLOR[l].c, "--stage-d": STAGE_COLOR[l].d }) as CSSProperties;
+
+/** Reglas de cada etapa que el profesional aceptó en su compromiso: se recuerdan al estar en ella, no en el sitio público. */
+const REMIND: Partial<Record<Layer, string>> = {
+  AI_MINDSET: "tienes dos intentos para aprobar tu desafío (75/100 o más). Una revisión humana no consume intento.",
+  ROLE_ENABLEMENT: "Kibernum financia hasta dos intentos de examen AI CERT. Prepáralo con tu profesor y tu AI Coach.",
+  AI_LAB_SHOWCASE: "no hay un máximo de intentos: ajustas tu solución con el Hub AI hasta que esté lista para mostrar su impacto.",
+};
 
 type Tab = "camino" | "materiales" | "entregas";
 type Open = { type: "node"; node: PathNode; stage: PathStage } | { type: "guide"; stage: PathStage } | null;
@@ -96,6 +102,9 @@ export function JourneyApp({ v }: { v: JourneyView }) {
             </div>
           )}
           <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => setOpen({ type: "node", node: n, stage: stageOf(next!.stage) })} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
+          {REMIND[v.path.currentLayer] && !v.path.notStarted && (
+            <p className="jr-remind"><Icon name="alert" size={18} /><span><strong>Recuerda:</strong> en esta etapa {REMIND[v.path.currentLayer]}</span></p>
+          )}
           <StageChips stages={v.path.stages} />
           <PathView stages={v.path.stages} onNode={(node, stage) => setOpen({ type: "node", node, stage })} onGuide={(stage) => setOpen({ type: "guide", stage })} />
         </>
@@ -213,7 +222,7 @@ function StageChips({ stages }: { stages: PathStage[] }) {
 
 /* ───────── El camino ───────── */
 function PathView({ stages, onNode, onGuide }: { stages: PathStage[]; onNode: (n: PathNode, s: PathStage) => void; onGuide: (s: PathStage) => void }) {
-  const currentRef = useRef<HTMLDivElement>(null);
+  const currentRef = useRef<HTMLLIElement>(null);
   const [away, setAway] = useState<"up" | "down" | null>(null);
 
   // Botón "Ir a mi paso" cuando el nodo actual sale de la pantalla.
@@ -241,21 +250,18 @@ function PathView({ stages, onNode, onGuide }: { stages: PathStage[]; onNode: (n
             </button>
           </div>
 
-          <ol className="jr-nodes">
-            {s.nodes.map((n, i) => (
-              <li key={n.id} style={{ "--x": `${ZIG[i % ZIG.length]}px` } as CSSProperties}>
-                <div className="jr-node-wrap" ref={n.state === "current" ? currentRef : undefined}>
-                  {n.state === "current" && <span className="jr-bubble" aria-hidden="true">{s.done > 0 ? "Sigue aquí" : "Empieza aquí"}</span>}
-                  <button
-                    type="button"
-                    className={`jr-node ${n.state}`}
-                    onClick={() => onNode(n, s)}
-                    aria-label={`${n.title}. ${{ done: "Logrado", current: "Lo que toca ahora", available: "Disponible", review: "En revisión", locked: "Bloqueado" }[n.state]}`}
-                  >
-                    <Icon name={nodeIcon(n)} size={30} />
-                  </button>
-                  <span className="jr-node-label">{n.title}</span>
-                </div>
+          <ol className="jr-steps">
+            {s.nodes.map((n) => (
+              <li key={n.id} className={`jr-step ${n.state}`} ref={n.state === "current" ? currentRef : undefined}>
+                <button type="button" className="jr-step-btn" onClick={() => onNode(n, s)} aria-current={n.state === "current" ? "step" : undefined}>
+                  <span className="jr-dot" aria-hidden="true"><Icon name={nodeIcon(n)} size={n.state === "current" ? 24 : 20} /></span>
+                  <span className="jr-step-txt">
+                    {n.state === "current" && <span className="jr-step-now">{s.done > 0 ? "Sigue aquí" : "Empieza aquí"}</span>}
+                    <strong>{n.title}</strong>
+                    <small>{n.state === "done" ? "Logrado" : n.state === "review" ? "En revisión" : n.state === "locked" ? "Se desbloquea más adelante" : n.hint}</small>
+                  </span>
+                  {n.state === "current" ? <span className="jr-step-go">{n.cta ?? "Abrir"} <Icon name="arrowRight" size={16} /></span> : <Icon name={n.state === "locked" ? "lock" : "arrowRight"} size={18} className="jr-step-chev" />}
+                </button>
               </li>
             ))}
           </ol>

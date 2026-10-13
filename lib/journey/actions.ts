@@ -361,7 +361,7 @@ export interface FeedbackEntry {
 export async function saveWeeklyFeedback(groupId: string, entries: FeedbackEntry[], courseFeedback: string, blockers: string): Promise<Result> {
   try {
     const viewer = await getViewer();
-    if (!viewer || viewer.role !== "mentor") throw new Error("Solo mentores registran feedback semanal.");
+    if (!viewer || viewer.role !== "mentor") throw new Error("Solo los AI Coach registran feedback semanal.");
     const week = weekStart(new Date());
     const db = await supabaseUser();
     if (entries.length) {
@@ -385,7 +385,7 @@ export async function saveWeeklyFeedback(groupId: string, entries: FeedbackEntry
       .from("group_weekly_notes")
       .upsert({ group_id: groupId, mentor_id: viewer.id, week_start: week, course_feedback: courseFeedback.trim(), blockers: blockers.trim() || null }, { onConflict: "group_id,mentor_id,week_start" });
     if (e2) throw e2;
-    revalidatePath("/mentor");
+    revalidatePath("/ai-coach");
     return { ok: true, message: "Feedback de la semana guardado. Puedes editarlo hasta el domingo." };
   } catch (e) {
     return fail(e);

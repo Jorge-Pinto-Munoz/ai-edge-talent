@@ -62,8 +62,8 @@ export const PUBLIC_STAGES: PublicStage[] = [
     photoPos: "84% 30%",
     facts: [
       { label: "Formato", value: "Contenido e-learning + trabajo evaluado" },
-      { label: "Aprobación", value: "≥ 75/100 y hard gates" },
-      { label: "Intentos", value: "Dos" },
+      { label: "Evaluación", value: "Desafío sobre un caso real" },
+      { label: "Estándar", value: "≥ 75/100" },
     ],
     intro:
       "Accedes al contenido e-learning (cápsulas cortas, a tu ritmo) y luego realizas un pequeño trabajo evaluado: tomar una actividad real de tu rol y rediseñarla con IA. Descargas el material, practicas y subes tu entrega.",
@@ -71,12 +71,12 @@ export const PUBLIC_STAGES: PublicStage[] = [
       { title: "Accedes al contenido e-learning", body: "Cápsulas breves con material descargable, como en un curso online, ordenadas para avanzar sin perderte." },
       { title: "Eliges una actividad real", body: "Algo que haces todas las semanas y que puede mejorar con IA." },
       { title: "Haces el trabajo evaluado", body: "Una entrega corta con evidencia propia: antes, después y por qué funciona." },
-      { title: "Recibes feedback", body: "Se revisa con criterios conocidos de antemano. Una revisión humana no consume intento." },
+      { title: "Recibes feedback", body: "Se revisa con criterios conocidos de antemano y te decimos qué fortalecer." },
     ],
     youDo: ["Ver las cápsulas y descargar el material", "Entregar un rediseño con evidencia propia", "Conocer los criterios antes de entregar"],
     youGet: ["Un método para integrar IA a tu trabajo", "Feedback concreto sobre tu entrega", "Acceso a la certificación de tu rol"],
     advance: "Con tu tarea aprobada pasas a Role Enablement.",
-    ifNot: "Tienes dos intentos. Si el segundo no se aprueba, no avanzas a certificación, salvo excepción explícita.",
+    ifNot: "Si tu entrega aún no alcanza el estándar, recibes feedback concreto para fortalecerla. Las reglas de continuidad están en tu compromiso de participación.",
   },
   {
     slug: "role-enablement",
@@ -89,20 +89,20 @@ export const PUBLIC_STAGES: PublicStage[] = [
     facts: [
       { label: "Ruta", value: "Introductorio + especialista" },
       { label: "Avance", value: "Por tramos (1 a 5)" },
-      { label: "Intentos financiados", value: "Hasta dos" },
+      { label: "Acompañamiento", value: "Profesor y AI Coach" },
     ],
     intro:
       "Es la etapa de certificación técnica (AI CERTs) alineada a tu rol. Combinas autoestudio con un profesor y un canal de cohorte, y un AI Coach te acompaña con feedback semanal.",
     happens: [
       { title: "Estudias a tu ritmo", body: "Curso introductorio y luego el especialista de tu rol (por ejemplo, AI+ Developer Practitioner™), avanzando por tramos en la plataforma AI CERTs." },
       { title: "Te acompañan", body: "Profesor y canal de cohorte para dudas; AI Coach asignado que deja feedback cada semana." },
-      { title: "Rindes tu examen", body: "Kibernum financia hasta dos intentos." },
+      { title: "Rindes tu examen", body: "Kibernum financia tu certificación." },
       { title: "Registras tu certificación", body: "Subes el certificado a la plataforma y se verifica." },
     ],
     youDo: ["Mantener un avance semanal", "Participar del acompañamiento", "Rendir el examen con seriedad"],
     youGet: ["Una certificación reconocida en IA para tu rol", "Feedback semanal de tu AI Coach", "El pase a AI Lab"],
     advance: "Con la certificación aprobada y verificada entras a AI Lab.",
-    ifNot: "Si el segundo intento no se aprueba, el journey se cierra, salvo excepción explícita.",
+    ifNot: "Tu profesor y tu AI Coach te ayudan a prepararte. Las reglas de continuidad están en tu compromiso de participación.",
   },
   {
     slug: "ai-lab-showcase",
@@ -127,8 +127,8 @@ export const PUBLIC_STAGES: PublicStage[] = [
     ],
     youDo: ["Asistir a las dos sesiones", "Construir entre sesiones", "Cuidar la confidencialidad del cliente"],
     youGet: ["Un caso real en tu portafolio", "Una conversación de continuidad con el cliente", "Visibilidad como talento AET"],
-    advance: "El cliente valora la evidencia y decide si el caso continúa como piloto.",
-    ifNot: "No hay un máximo de intentos: ajustas y rediseñas hasta estar listo/a o hasta una decisión explícita.",
+    advance: "Muestras un resultado con impacto real para el negocio. Si genera valor, el caso puede continuar como piloto.",
+    ifNot: "Ajustas y mejoras tu solución con el Hub AI hasta que esté lista para mostrar su impacto.",
   },
   {
     slug: "cierre",
@@ -161,11 +161,11 @@ export const PUBLIC_STAGES: PublicStage[] = [
 export const stageBySlug = (slug: string) => PUBLIC_STAGES.find((s) => s.slug === slug);
 
 /** Cómo se evalúa y cómo avanzas en cada etapa (home y /programa). */
-export const STAGE_GATES: { stage: string; slug: string; how: string; pass: string }[] = [
-  { stage: "Postulación y Assessment", slug: "assessment", how: "Rúbrica conocida de cinco dimensiones sobre tus casos reales.", pass: "Selección por evidencia. Si quedas bajo el corte, una segunda oportunidad con video." },
-  { stage: "AI First Mindset", slug: "mindset", how: "Contenido e-learning y un pequeño trabajo evaluado sobre una actividad real.", pass: "75/100 o más, con dos intentos." },
-  { stage: "Role Enablement", slug: "role-enablement", how: "Curso introductorio y especialista de AI CERTs, avanzando por tramos.", pass: "Examen AI CERT aprobado y verificado. Hasta dos intentos financiados." },
-  { stage: "AI Lab & Showcase", slug: "ai-lab-showcase", how: "Dos clases con el Hub AI y un prototipo sobre un problema real del cliente.", pass: "Showcase con evidencia de valor. El cliente decide si continúa." },
+export const STAGE_GATES: { stage: string; slug: string; how: string; dims?: string[]; pass: string }[] = [
+  { stage: "Postulación y Assessment", slug: "assessment", how: "Rúbrica de madurez en IA, conocida de antemano, aplicada a tus casos reales.", dims: ["Uso real de IA", "Profundidad del caso", "Reformulación del trabajo", "Aprendizaje autónomo", "Disposición"], pass: "Selección por evidencia, no por seniority. Si quedas bajo el corte, una segunda oportunidad con video." },
+  { stage: "AI First Mindset", slug: "mindset", how: "Contenido e-learning y un desafío evaluado sobre un caso real de tu trabajo.", pass: "Rediseñas con IA una actividad real, con criterio y evidencia propia." },
+  { stage: "Role Enablement", slug: "role-enablement", how: "Ruta AI CERTs de tu rol: estudio autónomo en la plataforma y acompañamiento de tu AI Coach.", pass: "Certificación AI CERT aprobada y verificada." },
+  { stage: "AI Lab & Showcase", slug: "ai-lab-showcase", how: "Construyes algo real y de impacto para el negocio: puedes levantarlo antes con tu cliente y lo desarrollas con el Hub AI.", pass: "Lo presentas con evidencia de impacto. La habilitación no queda en un curso y una certificación: genera valor real que devuelve la inversión." },
   { stage: "Cierre y continuidad", slug: "cierre", how: "Cierre formal con evidencia y seguimiento al mes 1 y al mes 3.", pass: "Adopción sostenida e impacto medido antes y después." },
 ];
 
@@ -173,14 +173,14 @@ export const STAGE_GATES: { stage: string; slug: string; how: string; pass: stri
 export const EXPECTATIONS: { commit: { title: string; body: string; icon: IconName }[]; get: { title: string; body: string; icon: IconName }[] } = {
   commit: [
     { title: "2 a 3 horas por semana", body: "Espacios coordinados con tu Delivery dentro de la jornada, más tu tiempo de estudio.", icon: "clock" },
-    { title: "Unas 40 horas de certificación", body: "Curso introductorio y especialista a tu ritmo, en 3 a 4 semanas.", icon: "book" },
+    { title: "Completar tu proceso formativo", body: "Estudio autodidacta en la plataforma AI CERTs y trabajo con tu AI Coach, a tu ritmo.", icon: "book" },
     { title: "Asistir y participar", body: "Clases con tu profesor y las dos sesiones del AI Lab con el Hub AI.", icon: "users" },
     { title: "Entregar con evidencia propia", body: "Tu trabajo de Mindset y tu caso del AI Lab, con antes, después y por qué funciona.", icon: "upload" },
-    { title: "Cuidar al cliente", body: "Confidencialidad de la información con la que trabajas.", icon: "lock" },
+    { title: "Equilibrar trabajo y estudio", body: "Cumples con tu cliente mientras avanzas. Como todo proceso formativo de alto nivel, puede requerir tiempo propio.", icon: "target" },
     { title: "Contarnos cómo vas", body: "Pulsos de 2 minutos al cerrar cada etapa. No son evaluaciones.", icon: "chat" },
   ],
   get: [
-    { title: "100 % financiado", body: "Habilitación, certificación (hasta dos intentos) y AI Lab.", icon: "check" },
+    { title: "100 % financiado", body: "Habilitación, certificación AI CERT y AI Lab.", icon: "check" },
     { title: "Certificado AI CERTs y badge", body: "Diploma oficial verificable y badge para LinkedIn.", icon: "badge" },
     { title: "AI Coach y profesor", body: "Feedback semanal y apoyo para destrabarte.", icon: "chat" },
     { title: "Un caso real en tu portafolio", body: "Presentado al cliente en el Showcase.", icon: "presentation" },
@@ -198,7 +198,7 @@ export const MI_ESPACIO: { title: string; body: string; icon: IconName }[] = [
 
 export const BENEFITS: { title: string; body: string; icon: IconName; size?: "wide" | "full" }[] = [
   { title: "IA aplicada a tu rol real", body: "No es un curso genérico: todo termina en tu trabajo, con tu cliente.", icon: "target", size: "wide" },
-  { title: "Certificación AI CERTs", body: "Financiada por Kibernum, hasta dos intentos.", icon: "badge" },
+  { title: "Certificación AI CERTs", body: "Financiada 100 % por Kibernum.", icon: "badge" },
   { title: "AI Coach con feedback semanal", body: "Alguien que sigue tu avance y te ayuda a destrabarte.", icon: "chat" },
   { title: "Showcase con el cliente", body: "Presentas un caso real con evidencia de valor.", icon: "presentation", size: "wide" },
   { title: "Banca de talento", body: "Al cerrar, quedas visible como talento habilitado en IA para nuevas oportunidades.", icon: "star", size: "full" },
@@ -216,7 +216,7 @@ export const WAVE3_DEADLINE = "2026-10-16T12:00:00-03:00";
 
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: "¿Cuánto dura el programa?", a: "De 30 a 45 días, según tu ritmo: depende de la velocidad con que avances en cada etapa, sobre todo en la certificación." },
-  { q: "¿Cuánto tiempo debo dedicar?", a: "Espacios coordinados dentro de jornada, normalmente 2 a 3 horas por semana según la etapa, más tu tiempo de estudio. La certificación contempla unas 40 horas en 3 a 4 semanas." },
+  { q: "¿Cuánto tiempo debo dedicar?", a: "Espacios coordinados dentro de jornada, normalmente 2 a 3 horas por semana según la etapa, más tu estudio autónomo en la plataforma y con tu AI Coach. Como todo proceso formativo de alto nivel, puede requerir tiempo propio." },
   { q: "¿Postular significa quedar seleccionado/a?", a: "No. La selección depende de la evidencia de tu Assessment y de la capacidad de la Wave." },
   { q: "¿Quién me acompaña?", a: "Tu Delivery primero, un AI Coach con feedback semanal desde Role Enablement y el profesor de la certificación." },
 ];

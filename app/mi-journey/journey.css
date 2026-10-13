@@ -65,7 +65,8 @@
 /* ── El camino ── */
 .jr-path { position: relative; }
 .jr-unit { margin-top: 28px; scroll-margin-top: 140px; }
-.jr-unit-banner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 22px; background: var(--stage); color: var(--obsidian); box-shadow: 0 6px 0 var(--stage-d); }
+.jr-unit-banner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 22px; background: var(--stage); color: var(--obsidian); }
+.jr-unit.done .jr-unit-banner { background: color-mix(in srgb, var(--stage) 26%, var(--surface)); }
 .jr-unit-ico { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.4); }
 .jr-unit-txt span { display: block; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .jr-unit-txt h2 { margin: 0; font-size: 1.2rem; line-height: 1.2; color: var(--obsidian); }
@@ -73,29 +74,40 @@
 .jr-guide { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: rgba(8, 11, 16, 0.12); color: var(--obsidian); font: inherit; font-size: 0.85rem; font-weight: 800; cursor: pointer; }
 .jr-guide:hover { background: rgba(8, 11, 16, 0.2); }
 .jr-guide:focus-visible { outline: 3px solid var(--obsidian); outline-offset: 2px; }
-.jr-unit.locked .jr-unit-banner { background: var(--surface-2); color: var(--muted); box-shadow: 0 6px 0 var(--border); }
+.jr-unit.locked .jr-unit-banner { background: var(--surface-2); color: var(--muted); }
 .jr-unit.locked .jr-unit-txt h2 { color: var(--muted); }
 .jr-unit.locked .jr-guide { color: var(--text); background: var(--surface); }
 @media (max-width: 420px) { .jr-guide span { display: none; } .jr-guide { width: 40px; padding: 0; justify-content: center; } }
 
-.jr-nodes { list-style: none; margin: 0; padding: 36px 0 8px; display: grid; justify-items: center; gap: 22px; }
-.jr-nodes li { transform: translateX(var(--x)); }
-.jr-nodes li:has(.jr-bubble) { margin-top: 30px; }
-@media (max-width: 380px) { .jr-nodes li { transform: translateX(calc(var(--x) * 0.6)); } }
-.jr-node-wrap { position: relative; display: grid; justify-items: center; gap: 10px; }
-.jr-node { position: relative; width: 74px; height: 74px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: var(--stage); color: var(--obsidian); box-shadow: 0 7px 0 var(--stage-d); transition: transform 120ms ease-out, box-shadow 120ms ease-out, background 200ms ease; -webkit-tap-highlight-color: transparent; }
-.jr-node:hover { transform: translateY(-2px); box-shadow: 0 9px 0 var(--stage-d); }
-.jr-node:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--stage-d); }
-.jr-node:focus-visible { outline: 3px solid var(--cyan); outline-offset: 6px; }
-.jr-node.available { background: var(--surface); color: var(--stage-d); border: 3px solid var(--stage); box-shadow: 0 7px 0 var(--border); }
-.jr-node.available:active { box-shadow: 0 2px 0 var(--border); }
-.jr-node.current::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 4px solid var(--stage); opacity: 0.55; animation: jr-ring 1.8s var(--jr-ease) infinite; }
-.jr-node.review { background: #f7c46c; box-shadow: 0 7px 0 #c08a2c; }
-.jr-node.locked { background: var(--surface-2); color: var(--muted); box-shadow: 0 7px 0 var(--border); }
-.jr-node-label { max-width: 172px; text-align: center; font-size: 0.86rem; font-weight: 700; line-height: 1.25; color: var(--text); }
-.jr-unit.locked .jr-node-label { color: var(--muted); }
-.jr-bubble { position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 8px 14px; border-radius: 14px; background: var(--surface); border: 2px solid var(--stage-d); color: var(--text); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; box-shadow: var(--e1); animation: jr-bob 1.8s ease-in-out infinite; pointer-events: none; }
-.jr-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; width: 12px; height: 12px; background: var(--surface); border-right: 2px solid var(--stage-d); border-bottom: 2px solid var(--stage-d); transform: translate(-50%, -6px) rotate(45deg); }
+/* Pasos de cada etapa: una línea vertical continua con un punto por hito; el paso actual se destaca como tarjeta. */
+.jr-steps { list-style: none; position: relative; margin: 14px 0 0; padding: 0; display: grid; gap: 4px; }
+.jr-steps::before { content: ""; position: absolute; left: 31px; top: 28px; bottom: 28px; width: 3px; border-radius: 3px; background: var(--border); }
+.jr-unit.done .jr-steps::before, .jr-unit.current .jr-steps::before { background: linear-gradient(var(--stage), var(--border)); }
+.jr-unit.done .jr-steps::before { background: var(--stage); }
+.jr-step { scroll-margin-top: 160px; }
+.jr-step-btn { position: relative; width: 100%; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; min-height: 64px; padding: 8px 14px 8px 0; border: 2px solid transparent; border-radius: 20px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: background 160ms ease, border-color 160ms ease; -webkit-tap-highlight-color: transparent; }
+.jr-step-btn:hover { background: var(--surface); }
+.jr-step-btn:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.jr-dot { position: relative; z-index: 1; justify-self: center; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--stage); color: var(--obsidian); box-shadow: 0 0 0 5px var(--bg); }
+.jr-step.available .jr-dot { background: var(--surface); color: var(--stage-d); border: 2.5px solid var(--stage); }
+.jr-step.review .jr-dot { background: #f7c46c; }
+.jr-step.locked .jr-dot { background: var(--surface-2); color: var(--muted); }
+.jr-step-txt { min-width: 0; display: grid; gap: 2px; }
+.jr-step-txt strong { font-size: 0.98rem; line-height: 1.25; }
+.jr-step-txt small { color: var(--muted); font-size: 0.84rem; line-height: 1.35; }
+.jr-step.done .jr-step-txt small { color: var(--ok-text); font-weight: 700; }
+.jr-step.locked .jr-step-txt strong { color: var(--muted); font-weight: 600; }
+.jr-step-chev { color: var(--muted); opacity: 0.7; }
+.jr-step.current .jr-step-btn { min-height: 92px; padding: 14px 14px 14px 0; background: var(--surface); border-color: var(--stage); box-shadow: 0 10px 30px -14px color-mix(in srgb, var(--stage-d) 70%, transparent); }
+.jr-step.current .jr-dot { width: 52px; height: 52px; }
+.jr-step.current .jr-dot::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 3px solid var(--stage); opacity: 0.5; animation: jr-ring 1.8s var(--jr-ease) infinite; }
+.jr-step-now { justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--stage); color: var(--obsidian); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.jr-step-go { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--obsidian); color: #fff; font-size: 0.85rem; font-weight: 800; white-space: nowrap; }
+@media (max-width: 420px) {
+  .jr-step.current .jr-step-btn { grid-template-columns: 64px minmax(0, 1fr); }
+  .jr-step-go { grid-column: 2; justify-self: start; margin-top: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .jr-step.current .jr-dot::after { animation: none; } }
 
 .jr-back { position: fixed; z-index: 55; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom)); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--text); color: var(--bg); font: inherit; font-size: 0.86rem; font-weight: 800; box-shadow: var(--e2); cursor: pointer; animation: jr-in 220ms var(--jr-ease); }
 .jr-back svg.up { transform: rotate(-90deg); }
@@ -174,3 +186,8 @@
 .jr-hero, .cap-head { border: 1px solid rgba(255, 255, 255, 0.08); }
 .jr-group > h2.h-card { margin: 0 0 12px; }
 .jr .pulse-card { margin-top: 16px; }
+
+/* Recordatorio de reglas de la etapa (solo dentro del journey). */
+.jr-remind { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 0; padding: 12px 16px; border-radius: 16px; background: var(--surface); border: 1px dashed var(--border); color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
+.jr-remind svg { flex-shrink: 0; margin-top: 1px; color: var(--brand); }
+.jr-remind strong { color: var(--text); }

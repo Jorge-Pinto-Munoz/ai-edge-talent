@@ -10,7 +10,7 @@ export const AICERT = {
   format: [
     { k: "Ruta", v: "Curso introductorio + curso especialista de tu rol" },
     { k: "Avance", v: "Por tramos (1 a 5) en la plataforma AI CERTs, con clase semanal del profesor" },
-    { k: "Costo", v: "Kibernum financia el 100 %, incluidos hasta dos intentos de examen" },
+    { k: "Costo", v: "Kibernum financia el 100 %" },
   ],
   gate: "La certificación aprobada y verificada es la llave del AI Lab.",
 };

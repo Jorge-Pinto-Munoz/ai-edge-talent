@@ -62,7 +62,7 @@ export function audienceOfPath(path: string): Audience | null {
 }
 
 /** Portales con sesión: llevan su propia navegación y no muestran la del sitio público. */
-const PORTALS = ["/admin", "/mi-journey", "/mentor", "/cliente", "/inicio", "/sin-acceso"];
+const PORTALS = ["/admin", "/mi-journey", "/ai-coach", "/mentor", "/cliente", "/inicio", "/sin-acceso"];
 export function isPortalPath(path: string): boolean {
   return PORTALS.some((p) => path === p || path.startsWith(`${p}/`));
 }

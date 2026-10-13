@@ -193,7 +193,7 @@ export const LIFECYCLE: LifecycleStage[] = [
     id: "AI_CERTS",
     name: "AI CERTs",
     track: "PEDAGOGICO",
-    summary: "Certificación técnica alineada a tu rol: ~40 horas, normalmente en 3–4 semanas, autoestudio + profesor.",
+    summary: "Certificación técnica alineada a tu rol: estudio autónomo en la plataforma, profesor y AI Coach.",
     evaluates: "Examen de certificación. Kibernum financia hasta dos intentos.",
     ifNotPassed:
       "Segundo intento no aprobado: Kibernum no financia otro intento y el journey AET se cierra, salvo excepción explícita. Un intento adicional no se presenta como financiado ni como cobrado automáticamente.",

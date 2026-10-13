@@ -388,14 +388,15 @@ html, body { overflow-x: clip; }
 .anchor { scroll-margin-top: 104px; }
 .sub-h { font-size: clamp(1.4rem, 3vw, 1.9rem); margin: 0; letter-spacing: -0.02em; }
 .gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.gates li { display: grid; grid-template-columns: 44px minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px 20px; align-items: center; padding: 18px 22px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); }
-.gates li > div p, .gates .gate-pass { margin: 4px 0 0; color: var(--muted); }
-.gates li a { color: var(--text); text-decoration: none; }
-.gates li a:hover strong { color: var(--brand); }
+.gates > li { display: grid; grid-template-columns: 44px minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px 20px; align-items: center; padding: 18px 22px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); }
+.gates > li > div p, .gates .gate-pass { margin: 4px 0 0; color: var(--muted); }
+.gates > li a { color: var(--text); text-decoration: none; }
+.gates > li a:hover strong { color: var(--brand); }
 .gate-n { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--obsidian); color: var(--cyan); font-weight: 800; font-size: 1.1rem; }
 .gates .gate-pass { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-weight: 600; color: var(--text); }
 .gates .gate-pass svg { flex-shrink: 0; margin-top: 2px; color: var(--brand); }
-.expect { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; }
+.expect { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.expect > * { height: 100%; }
 .expect-col { padding: 28px; border-radius: 28px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); }
 .expect-col.get { background: linear-gradient(160deg, rgba(61, 201, 212, 0.16), rgba(199, 101, 192, 0.12)); }
 .expect-col h3 { margin: 0 0 18px; color: #fff; font-size: 1.15rem; }
@@ -414,7 +415,7 @@ html, body { overflow-x: clip; }
 .phone img { display: block; width: 100%; height: auto; border-radius: 24px; }
 .phone.p1 { transform: translateY(-28px); }
 @media (max-width: 960px) {
-  .gates li { grid-template-columns: 44px 1fr; }
+  .gates > li { grid-template-columns: 44px 1fr; }
   .gates .gate-pass { grid-column: 2; }
   .expect, .me-grid { grid-template-columns: 1fr; }
   .me-grid { gap: 32px; }
@@ -423,7 +424,7 @@ html, body { overflow-x: clip; }
   .phones { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin: 0 -16px; padding: 8px 16px 24px; scrollbar-width: none; }
   .phone { flex: 0 0 68%; scroll-snap-align: center; }
   .phone.p1 { transform: none; }
-  .gates li { padding: 16px; gap: 10px 14px; }
+  .gates > li { padding: 16px; gap: 10px 14px; }
   .expect-col { padding: 22px 18px; }
 }
 
@@ -476,3 +477,6 @@ html, body { overflow-x: clip; }
 .phones-note { margin: 18px 0 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 .phones:focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; border-radius: 12px; }
 .cat-teaser .eyebrow { color: var(--cyan); }
+
+.gate-dims { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.gate-dims li { padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-size: 0.82rem; font-weight: 700; }

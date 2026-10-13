@@ -53,11 +53,11 @@ export const PROGRAM_QA: { section: string; items: QA[] }[] = [
       },
       {
         q: "¿Qué evalúa cada etapa?",
-        a: "Assessment: evidencia real de uso de IA en cinco dimensiones (25/30/25/12/8). Mindset: rediseño de una actividad real con IA, ≥75/100 + hard gates. AI CERTs: examen de certificación técnica por rol. AI Lab: solución/prototipo demostrable con evidencia para READY FOR SHOWCASE. Showcase: validación del cliente y decisión de continuidad.",
+        a: "Assessment: evidencia real de uso de IA en cinco dimensiones (25/30/25/12/8). Mindset: rediseño de una actividad real con IA, ≥75/100 + hard gates. AI CERTs: examen de certificación técnica por rol. AI Lab: una solución real y de impacto para el negocio, con evidencia. Showcase: presentas ese impacto; la habilitación se convierte en valor real.",
       },
       {
         q: "¿Qué pasa si no apruebo?",
-        a: "Depende de la etapa. Mindset: hay dos intentos; si el segundo no se aprueba, no avanzas a AI CERTs salvo excepción explícita de Product Lead. AI CERTs: Kibernum financia hasta dos intentos; si el segundo no se aprueba, el journey AET se cierra salvo excepción explícita. AI Lab: no hay máximo fijo de intentos; se ajusta hasta alcanzar readiness o una decisión explícita. Un atraso operacional activa alerta, recovery y revisión: no es una expulsión automática.",
+        a: "Cada etapa tiene criterios conocidos de antemano y recibes feedback para avanzar. Las reglas de continuidad están en tu compromiso de participación, que lees y aceptas antes de comenzar. Un atraso operacional activa alerta y acompañamiento: no es una expulsión automática.",
       },
       {
         q: "¿Qué significa certificarse?",
@@ -208,7 +208,7 @@ export const CLIENT_PHASES: ClientPhase[] = [
   {
     n: 5,
     name: "AI CERTs",
-    whatHappens: "Certificación técnica alineada al rol (~40 h, normalmente 3–4 semanas).",
+    whatHappens: "Certificación técnica alineada al rol, con estudio autónomo y AI Coach.",
     canExpect: "Seguimiento activo de Delivery.",
     weNeed: "Habilitar tiempo según lo coordinado.",
     willReceive: "Inicio, progreso relevante, riesgo y resultado.",
