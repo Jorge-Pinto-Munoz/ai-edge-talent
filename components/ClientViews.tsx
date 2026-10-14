@@ -51,17 +51,17 @@ export function ClientJourney() {
       <div className="dark-band">
         <div className="eyebrow">AI Edge Talent · Cliente</div>
         <h1 style={{ color: "#fff" }}>Client Journey</h1>
-        <p className="muted" style={{ maxWidth: 720, margin: 0 }}>Su recorrido como cliente, desde conocer AET hasta la adopción piloto. Comienza antes de que exista un profesional seleccionado.</p>
+        <p className="muted" style={{ maxWidth: 720, margin: 0 }}>Tu recorrido como cliente, desde conocer AET hasta la adopción piloto. Comienza antes de que exista un profesional seleccionado.</p>
       </div>
       {picker}
       {!confirmed && (
-        <Callout title="Complete su onboarding de cliente">
+        <Callout title="Completa tu onboarding de cliente">
           <Link href="/client/onboarding">Ir al onboarding</Link>
         </Callout>
       )}
 
       <h2>Mis profesionales</h2>
-      <p className="muted">Usted ve el estado de postulación y avance. No ve ranking, puntajes ni evaluación detallada.</p>
+      <p className="muted">Aquí ves el estado de postulación y el avance de cada profesional.</p>
       <div className="table-wrap" tabIndex={0}>
         <table>
           <thead>
@@ -121,10 +121,10 @@ export function ClientJourney() {
           )}
           <div className="grid grid-3" style={{ marginTop: 10 }}>
             <Field t="Qué ocurre" v={p.whatHappens} />
-            <Field t="Qué puede esperar" v={p.canExpect} />
-            <Field t="Qué necesitamos de usted" v={p.weNeed} />
-            <Field t="Qué recibirá" v={p.willReceive} />
-            <Field t="Cuándo volveremos a contactarlo" v={p.nextContact} />
+            <Field t="Qué puedes esperar" v={p.canExpect} />
+            <Field t="Qué necesitamos de ti" v={p.weNeed} />
+            <Field t="Qué recibirás" v={p.willReceive} />
+            <Field t="Cuándo te volveremos a contactar" v={p.nextContact} />
           </div>
         </div>
       ))}
@@ -196,7 +196,7 @@ export function ClientNominate() {
       <h1>Nominar profesionales</h1>
       {picker}
       <Callout tone="warn" title="Nominar no significa seleccionar.">
-        Delivery revisa cada caso. Si corresponde, la persona recibe una invitación personal y decide si postula. Usted no completa el Assessment por ella.
+        Delivery revisa cada caso. Si corresponde, la persona recibe una invitación personal y decide si postula. Tú no completas el Assessment por ella.
       </Callout>
       <RoleNotice allowed={["CLIENT", "DELIVERY"]} />
       {!gate.open ? (

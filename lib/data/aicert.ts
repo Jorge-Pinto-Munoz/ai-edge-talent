@@ -48,18 +48,33 @@ export const AICERT_AFTER = [
   { when: "Siempre", title: "Banca de talento", body: "Quedas visible como talento habilitado en IA para nuevas oportunidades dentro de Kibernum." },
 ];
 
+/** Las mismas recompensas y el acompañamiento, contados al cliente (le hablamos de tú; el profesional va en tercera persona). */
+export const AICERT_REWARDS_CLIENT = [
+  { icon: "badge" as const, title: "Certificado oficial AI CERTs", body: "Diploma digital emitido por AI CERTs, con verificación en línea." },
+  { icon: "star" as const, title: "Badge para LinkedIn", body: "Insignia digital verificable para su perfil. Kibernum celebra públicamente su logro." },
+  { icon: "flask" as const, title: "Acceso al AI Lab", body: "Con la certificación verificada construye un caso real para tu empresa." },
+];
+export const AICERT_AFTER_CLIENT = [
+  { when: "Mes 1", title: "Adopción", body: "Validamos con el profesional y contigo qué herramientas de IA ya usa en su trabajo diario." },
+  { when: "Mes 3", title: "Impacto", body: "Medimos el impacto real: si se cumplió el compromiso de agilidad del Showcase y cómo se compara con el punto de partida." },
+  { when: "Siempre", title: "Aprendizaje continuo", body: "Acceso al catálogo de Coursera Enterprise (Google, Microsoft, AWS, Meta, IBM) y soporte del Hub AI." },
+  { when: "Siempre", title: "Banca de talento", body: "Queda visible como talento habilitado en IA para nuevas oportunidades dentro de Kibernum." },
+];
+
 /** Impacto que buscamos. */
 export const AICERT_IMPACT = {
   headline: "Hasta 30 % más productividad",
   body: "Buscamos que la IA reduzca tu carga operativa y mejore tu output mes a mes: con evidencia (un caso funcionando en tu cliente) y un compromiso de agilidad que medimos a los 3 meses.",
+  /** Para el cliente. */
+  clientBody: "Buscamos que la IA reduzca la carga operativa de tus profesionales y mejore su output mes a mes: con evidencia (un caso funcionando en tu empresa) y un compromiso de agilidad que medimos a los 3 meses.",
 };
 
-/** Versión para clientes: qué gana su equipo. */
+/** Versión para clientes: qué gana tu equipo (al cliente se le tutea). */
 export const AICERT_CLIENT = {
   intro: "Cada profesional se certifica en IA aplicada a su rol con AI CERTs, una certificadora internacional. Kibernum financia la certificación y la habilitación ocurre en paralelo al servicio, sin descontar horas.",
   receives: [
     "Un profesional con certificación técnica externa y verificable en su rol.",
-    "Un caso de IA funcionando en su operación, presentado en el Showcase.",
+    "Un caso de IA funcionando en tu operación, presentado en el Showcase.",
     "Un compromiso de agilidad con metas medibles, revisado al mes 1 y al mes 3.",
   ],
 };

@@ -62,7 +62,7 @@ export function CertCatalog({ compact = false }: { compact?: boolean }) {
       {!filtered && !all ? (
         <div className="cx-prompt">
           <Icon name="target" size={22} />
-          <p><strong>Elija un rol para ver sus certificaciones.</strong> Puede combinar varios.</p>
+          <p><strong>Elige un rol para ver sus certificaciones.</strong> Puedes combinar varios.</p>
           <button type="button" className="btn secondary small" onClick={() => setAll(true)}>Ver las {CATALOG.length} certificaciones</button>
         </div>
       ) : items.length === 0 ? (
@@ -104,7 +104,7 @@ export function CertCatalog({ compact = false }: { compact?: boolean }) {
             </section>
             <section className="cx-apply">
               <h3>Aplicación en el trabajo</h3>
-              <p>En AI Edge Talent la certificación no termina en el examen: el profesional aplica lo aprendido en el AI Lab, sobre un desafío real de su cliente, y lo presenta con evidencia de impacto.</p>
+              <p>En AI Edge Talent la certificación no termina en el examen: el profesional aplica lo aprendido en el AI Lab, sobre un desafío real del negocio, y lo presenta con evidencia de impacto.</p>
             </section>
             <p className="cat-note" style={{ margin: 0 }}>Síntesis en español de la malla oficial de AI CERTs. No reemplaza el material oficial.</p>
           </div>

@@ -32,7 +32,7 @@ const KNOWLEDGE = [
 ].join("\n");
 
 const SYSTEM = `Eres el asistente de Ayuda de AI Edge Talent, el programa de habilitación en IA de Kibernum para sus profesionales TI.
-Responde en español de Chile, cercano y claro, en 2 a 4 frases. Tutea al profesional; trata de usted al cliente.
+Responde en español de Chile, cercano y claro, en 2 a 4 frases. Tutea siempre, también al cliente.
 
 Usa únicamente la información oficial que sigue. Si la pregunta no se puede responder con ella (por ejemplo, el estado de una
 postulación en particular, datos personales, montos, fechas o excepciones que no aparecen), marca answerable = false y en answer

@@ -30,7 +30,7 @@ export default async function EtapaPage({ params, searchParams }: { params: Prom
   const q = (a: Audience) => (a === "profesional" ? "" : `?para=${a}`);
   const blocks: Record<Audience, { a: { title: string; items: string[]; icon: "check" }; b: { title: string; items: string[]; icon: "star" } }> = {
     profesional: { a: { title: "Lo que haces tú", items: stage.youDo, icon: "check" }, b: { title: "Lo que obtienes", items: stage.youGet, icon: "star" } },
-    cliente: { a: { title: "Tu rol como cliente", items: roles.client, icon: "check" }, b: { title: "Lo que recibes", items: ["Avisos al inicio y en cada cambio relevante", "Riesgos y bloqueos, si los hay", "Resultados y evidencia, nunca puntajes ni ranking"], icon: "star" } },
+    cliente: { a: { title: "Tu rol como cliente", items: roles.client, icon: "check" }, b: { title: "Lo que recibes", items: ["Avisos al inicio y en cada cambio relevante", "Riesgos y bloqueos, si los hay", "Resultados y evidencia"], icon: "star" } },
     equipo: { a: { title: "Qué hace Delivery", items: roles.delivery, icon: "check" }, b: { title: "Evidencia que se registra", items: roles.evidence, icon: "star" } },
   };
   const blk = blocks[aud];

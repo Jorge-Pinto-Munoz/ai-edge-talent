@@ -1,10 +1,10 @@
-import { AICERT, AICERT_AFTER, AICERT_CLIENT, AICERT_IMPACT, AICERT_REWARDS, ROLE_PATHS } from "@/lib/data/aicert";
+import { AICERT, AICERT_AFTER, AICERT_AFTER_CLIENT, AICERT_CLIENT, AICERT_IMPACT, AICERT_REWARDS, AICERT_REWARDS_CLIENT, ROLE_PATHS } from "@/lib/data/aicert";
 import { Icon } from "@/components/site/Icon";
 import type { CertStat } from "@/lib/aicert/stats";
 
 /**
  * AI CERT explicado de una vez: qué es, ruta por rol, qué recibes, cómo te acompañamos y qué impacto buscamos.
- * `audience` cambia el tono (profesional: "tú"; cliente: su equipo). `compact` para la hoja de Mi journey.
+ * `audience` cambia el tono (profesional: "tú"; cliente: "tu equipo"). `compact` para la hoja de Mi journey.
  */
 export function AiCertSection({ audience, stat, compact = false, id }: { audience: "profesional" | "cliente"; stat: CertStat | null; compact?: boolean; id?: string }) {
   const pro = audience === "profesional";
@@ -43,7 +43,7 @@ export function AiCertSection({ audience, stat, compact = false, id }: { audienc
       <div className="aic-block">
         <h3>{pro ? "Al aprobar recibes" : "Lo que recibe cada profesional"}</h3>
         <ul className="aic-rewards">
-          {AICERT_REWARDS.map((r) => (
+          {(pro ? AICERT_REWARDS : AICERT_REWARDS_CLIENT).map((r) => (
             <li key={r.title}>
               <span className="aic-ico"><Icon name={r.icon} size={22} /></span>
               <span><strong>{r.title}</strong><small>{r.body}</small></span>
@@ -61,7 +61,7 @@ export function AiCertSection({ audience, stat, compact = false, id }: { audienc
         <div className="aic-block">
           <h3>{pro ? "Después de certificarte, te seguimos acompañando" : "Acompañamiento después de la certificación"}</h3>
           <ol className="aic-after">
-            {AICERT_AFTER.map((a) => (
+            {(pro ? AICERT_AFTER : AICERT_AFTER_CLIENT).map((a) => (
               <li key={a.title}>
                 <span className="when">{a.when}</span>
                 <strong>{a.title}</strong>
@@ -76,7 +76,7 @@ export function AiCertSection({ audience, stat, compact = false, id }: { audienc
         <div>
           <span className="aic-eyebrow">Impacto que buscamos</span>
           <strong className="big">{AICERT_IMPACT.headline}</strong>
-          <p>{AICERT_IMPACT.body}</p>
+          <p>{pro ? AICERT_IMPACT.body : AICERT_IMPACT.clientBody}</p>
         </div>
         <div className="aic-stat" role="note">
           {stat ? (

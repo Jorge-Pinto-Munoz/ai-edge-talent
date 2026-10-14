@@ -72,7 +72,7 @@ export const LIFECYCLE: LifecycleStage[] = [
     expectations: {
       kiber: ["Aún no participas."],
       delivery: ["Completar onboarding del cliente", "Acordar disponibilidad según etapa", "No prometer ingreso"],
-      client: ["Confirmar las condiciones operativas de participación de sus profesionales"],
+      client: ["Confirmar las condiciones operativas de participación de tus profesionales"],
       aetEvidence: ["Confirmación de onboarding del cliente registrada"],
     },
   },
@@ -100,7 +100,7 @@ export const LIFECYCLE: LifecycleStage[] = [
     expectations: {
       kiber: ["Leer qué es AET antes de decidir", "Decidir personalmente si postulas"],
       delivery: ["Activar la invitación", "Resolver dudas sin prometer ingreso"],
-      client: ["Saber que su profesional fue invitado/a"],
+      client: ["Saber que tu profesional fue invitado/a"],
       aetEvidence: ["Invitación enviada con link único"],
     },
   },
@@ -129,7 +129,7 @@ export const LIFECYCLE: LifecycleStage[] = [
     expectations: {
       kiber: ["Responder personalmente", "Usar ejemplos concretos", "Enviar antes del deadline"],
       delivery: ["Monitorear completitud", "Resolver bloqueos", "Registrar resultado operacional", "Coordinar rescate cuando aplique", "Comunicar al cliente"],
-      client: ["Ver avance / no avance / rescate", "No recibe ranking ni evaluación detallada"],
+      client: ["Ver avance / no avance / rescate"],
       aetEvidence: ["Respuesta del Assessment asociada al applicationId", "Evaluación por dimensión"],
     },
   },
@@ -157,7 +157,7 @@ export const LIFECYCLE: LifecycleStage[] = [
     expectations: {
       kiber: ["Leer las condiciones completas", "Aceptar explícitamente con tu nombre"],
       delivery: ["Asegurar que la persona entendió las condiciones", "Resolver dudas antes de la aceptación"],
-      client: ["Saber que su profesional está por inscribirse"],
+      client: ["Saber que tu profesional está por inscribirse"],
       aetEvidence: ["CommitmentAcceptance con documentVersion y conditionsVersion"],
     },
   },

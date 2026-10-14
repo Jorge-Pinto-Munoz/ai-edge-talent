@@ -56,7 +56,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
   const path = usePathname();
   const [aud, setAud] = useState<HelpAudience>("profesional");
   const seq = useRef(0);
-  const hello = (a: HelpAudience): Msg => ({ id: seq.current++, from: "bot", text: a === "cliente" ? "Hola. ¿Sobre qué tema tiene dudas?" : "Hola. ¿Sobre qué tema tienes dudas?" });
+  const hello = (a: HelpAudience): Msg => ({ id: seq.current++, from: "bot", text: "Hola. ¿Sobre qué tema tienes dudas?" });
   const [msgs, setMsgs] = useState<Msg[]>(() => [hello("profesional")]);
   const [step, setStep] = useState<Step>({ kind: "topics" });
   const [draft, setDraft] = useState("");
@@ -69,7 +69,6 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
   const items = useMemo(() => HELP.filter((h) => h.aud.includes(aud)), [aud]);
   const topics = TOPIC_ORDER[aud].filter((t) => items.some((h) => h.topic === t));
   const say = (...m: Omit<Msg, "id">[]) => setMsgs((x) => [...x, ...m.map((y) => ({ ...y, id: seq.current++ }))]);
-  const you = aud === "cliente" ? "usted" : "tú";
 
   const pickTopic = (t: Topic) => { say({ from: "me", text: TOPIC_LABEL[t] }, { from: "bot", text: `Estas son las preguntas más comunes sobre ${TOPIC_LABEL[t].toLowerCase()}:` }); setStep({ kind: "questions", topic: t }); };
   const pickQuestion = (h: HelpItem) => { say({ from: "me", text: h.q }, { from: "bot", text: h.a }); setStep({ kind: "answered", topic: h.topic, item: h }); };
@@ -82,7 +81,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
     setStep({ kind: "thinking" });
     const r = await askHelp(text, aud, path).catch(() => ({ kind: "team" as const, message: "No pude responder ahora." }));
     if (r.kind === "ai") { say({ from: "bot", text: r.answer, ai: true }); setStep({ kind: "answered", topic: null, item: null }); }
-    else { say({ from: "bot", text: r.message.replace(/ ?Déjanos tus datos.*$/, "") || "No tengo una respuesta preparada para eso." }, { from: "bot", text: aud === "cliente" ? "Puede dejarnos una solicitud y el equipo le responde por correo, o seguir preguntando aquí." : "Puedes dejarnos una solicitud y el equipo te responde por correo, o seguir preguntando aquí." }); setStep({ kind: "unanswered", asked: text }); }
+    else { say({ from: "bot", text: r.message.replace(/ ?Déjanos tus datos.*$/, "") || "No tengo una respuesta preparada para eso." }, { from: "bot", text: "Puedes dejarnos una solicitud y el equipo te responde por correo, o seguir preguntando aquí." }); setStep({ kind: "unanswered", asked: text }); }
   };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,8 +89,8 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
     if (!text) return;
     setDraft("");
     say({ from: "me", text });
-    if (GREETING.test(text)) { say({ from: "bot", text: aud === "cliente" ? "¡Hola! Elija un tema o escríbame su pregunta." : "¡Hola! Elige un tema o escríbeme tu pregunta." }); setStep({ kind: "topics" }); return; }
-    if (text.length < 8) { say({ from: "bot", text: aud === "cliente" ? "Cuénteme un poco más de su pregunta, o elija un tema." : "Cuéntame un poco más de tu pregunta, o elige un tema." }); setStep({ kind: "topics" }); return; }
+    if (GREETING.test(text)) { say({ from: "bot", text: "¡Hola! Elige un tema o escríbeme tu pregunta." }); setStep({ kind: "topics" }); return; }
+    if (text.length < 8) { say({ from: "bot", text: "Cuéntame un poco más de tu pregunta, o elige un tema." }); setStep({ kind: "topics" }); return; }
     const m = bestMatch(text, items);
     if (m) { say({ from: "bot", text: `Creo que te refieres a: «${m.q}»` }, { from: "bot", text: m.a }); setStep({ kind: "confirm", item: m, asked: text }); }
     else void askAi(text);
@@ -138,7 +137,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
           )}
           {step.kind === "answered" && (
             <>
-              <button type="button" onClick={() => { say({ from: "me", text: "Sí, me sirvió" }, { from: "bot", text: `¡Qué bueno! Si ${you === "usted" ? "necesita" : "necesitas"} algo más, aquí estoy.` }); setStep({ kind: "topics" }); }}>Sí, me sirvió</button>
+              <button type="button" onClick={() => { say({ from: "me", text: "Sí, me sirvió" }, { from: "bot", text: `¡Qué bueno! Si necesitas algo más, aquí estoy.` }); setStep({ kind: "topics" }); }}>Sí, me sirvió</button>
               {step.topic && <button type="button" onClick={() => pickTopic(step.topic!)}>Otra pregunta de este tema</button>}
               <button type="button" className="ghost" onClick={restart}>Otro tema</button>
               <button type="button" className="ghost" onClick={() => toRequest(step.topic, step.item ? `Sobre «${step.item.q}»: ` : "")}>Dejar una solicitud</button>
@@ -161,7 +160,7 @@ export function HelpPanel({ inline = false }: { inline?: boolean }) {
 
       <form className="hc-input" onSubmit={submit}>
         <label htmlFor={inline ? "hc-q-inline" : "hc-q"} className="sr-only">Escribe tu pregunta</label>
-        <input id={inline ? "hc-q-inline" : "hc-q"} type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={aud === "cliente" ? "O escriba su pregunta…" : "O escribe tu pregunta…"} maxLength={600} disabled={step.kind === "thinking"} autoComplete="off" />
+        <input id={inline ? "hc-q-inline" : "hc-q"} type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={"O escribe tu pregunta…"} maxLength={600} disabled={step.kind === "thinking"} autoComplete="off" />
         <button className="btn small" disabled={!draft.trim() || step.kind === "thinking"} aria-label="Enviar pregunta"><Icon name="arrowRight" size={18} /></button>
       </form>
       </div>

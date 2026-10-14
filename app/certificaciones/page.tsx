@@ -54,8 +54,8 @@ export default async function Certificaciones() {
       <section className="sec-inner" style={{ paddingBottom: "var(--sp-section)" }}>
         <Reveal className="cta-band">
           <div>
-            <h2>¿Qué certificación necesita su equipo?</h2>
-            <p>Su Delivery le ayuda a elegir la ruta según el rol de cada profesional y el desafío de su operación.</p>
+            <h2>¿Qué certificación necesita tu equipo?</h2>
+            <p>Tu Delivery te ayuda a elegir la ruta según el rol de cada profesional y el desafío de tu operación.</p>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link className="pill accent lg" href="/clientes#nominar">Nominar profesionales <Icon name="arrowRight" size={18} /></Link>

@@ -35,9 +35,9 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
         {!preview && <div style={{ position: "absolute", top: 16, right: 16 }}><SignOut /></div>}
         <div className="eyebrow">AI Edge Talent · Cliente{clientName ? ` · ${clientName}` : ""}</div>
         <h1 style={{ color: "#fff", margin: 0 }}>En qué va el programa</h1>
-        <p className="muted" style={{ margin: "6px 0 0" }}>Vista general por Wave. Usted ve el avance de sus profesionales; no recibe puntajes ni evaluaciones detalladas.</p>
+        <p className="muted" style={{ margin: "6px 0 0" }}>Vista general por Wave: aquí ves cómo avanzan tus profesionales.</p>
       </div>
-      {journeyWaves.length === 0 && admissionWaves.length === 0 && <Callout title="Aún no hay profesionales de su organización en una Wave activa" />}
+      {journeyWaves.length === 0 && admissionWaves.length === 0 && <Callout title="Aún no hay profesionales de tu organización en una Wave activa" />}
       {admissionWaves.map((w) => {
         const counts = status.filter((s) => s.wave_id === w).reduce<Record<string, number>>((acc, s) => ({ ...acc, [s.visible_status]: (acc[s.visible_status] ?? 0) + 1 }), {});
         return (
@@ -61,10 +61,10 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
               <h2 style={{ margin: 0 }}>{w?.name ?? wid}</h2>
               {w && <span className="badge">{WAVE_STATUS_LABEL[w.status as WaveStatus]}</span>}
             </div>
-            <p className="muted">{mine.length} profesional(es) de su organización en el journey.</p>
+            <p className="muted">{mine.length} profesional(es) de tu organización en el journey.</p>
             {def && (
               <div style={{ marginBottom: 14 }}>
-                <PulseCard def={def} waveId={wid} preview={preview} text={due === "CLIENTE_INICIO" ? "Su punto de partida: con la misma pregunta al cierre medimos las horas ahorradas." : "Su mirada al cierre y las horas de hoy, para medir el antes y el después."} />
+                <PulseCard def={def} waveId={wid} preview={preview} text={due === "CLIENTE_INICIO" ? "Tu punto de partida: con la misma pregunta al cierre medimos las horas ahorradas." : "Tu mirada al cierre y las horas de hoy, para medir el antes y el después."} />
               </div>
             )}
             <div className="rail">
@@ -98,13 +98,13 @@ export async function ClientPortal({ clientName, preview }: { clientName?: strin
           </div>
         );
       })}
-      <Callout title="Su rol en el proceso">
+      <Callout title="Tu rol en el proceso">
         Habilitar la disponibilidad coordinada (normalmente 2–3 h/semana según etapa), ayudar a validar el problema en AI Lab y tomar una decisión de continuidad en el Showcase.
       </Callout>
       <div className="cat-teaser">
         <div>
           <div className="eyebrow">Certificaciones AI CERTs</div>
-          <h3>Explore el talento que puede desarrollar en su equipo</h3>
+          <h3>Explora el talento que puedes desarrollar en tu equipo</h3>
           <p>Por rol: qué certificación corresponde, qué aprende cada profesional y cómo lo aplica.{stat ? ` En Waves cerradas, ${stat.rate} % de los inscritos se certificó.` : ""}</p>
         </div>
         <a className="pill accent lg" href="/certificaciones">Ver certificaciones <Icon name="arrowRight" size={18} /></a>
