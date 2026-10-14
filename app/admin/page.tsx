@@ -1,3 +1,4 @@
+import { WAVE_CAPACITY } from "@/lib/waves/order";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -32,7 +33,8 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
   if (!d) return <Callout tone="warn" title="No encontramos esa Wave." />;
 
   const open = d.pending.filter((p) => p.count > 0);
-  const top = Math.max(1, d.funnel[0].count);
+  // Base del embudo: el cupo de la Wave (o más, si llegan más candidatos que cupos).
+  const top = Math.max(WAVE_CAPACITY, d.funnel[0].count);
   const deadlineFuture = d.wave.application_deadline && new Date(d.wave.application_deadline).getTime() > Date.now();
   const firstName = (viewer.fullName ?? viewer.email).split(/[ .@]/)[0];
 
@@ -95,7 +97,7 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
         <section className="adm-card">
           <div className="adm-card-head">
             <h2>Embudo de la Wave</h2>
-            <span className="muted">Cuántas personas llegan a cada etapa</span>
+            <span className="muted">Personas en cada etapa, sobre el cupo de {WAVE_CAPACITY}</span>
           </div>
           {d.total === 0 ? (
             <div className="empty">
@@ -107,8 +109,8 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
               {d.funnel.map((f) => (
                 <div key={f.label} className="funnel-row">
                   <span className="lbl">{f.label}</span>
-                  <span className="bar"><span style={{ "--w": f.count / top } as CSSProperties} /></span>
-                  <span className="n">{f.count}<small>{Math.round((f.count / top) * 100)}%</small></span>
+                  <span className="bar" role="img" aria-label={`${f.label}: ${f.count} de ${top}`}><span style={{ "--w": f.count / top } as CSSProperties} /></span>
+                  <span className="n">{f.count}<small>de {top}</small></span>
                 </div>
               ))}
             </Reveal>

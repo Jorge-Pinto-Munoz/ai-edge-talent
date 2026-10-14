@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { myStaffWaves, requireAnyRolePage } from "@/lib/admission/auth";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { LAB_CLASSES, LAB_STATUS, labDecisionLabel, labStatusLabel, labStatusTone, type LabDecision, type LabMode, type LabStatus } from "@/lib/hub/rules";
 import { LabSessionForm, PassToLab, ProjectForm, ShowcaseForm } from "@/components/hub/HubForms";
 import { LabFiles, type LabFile } from "@/components/hub/LabFiles";
@@ -25,23 +25,36 @@ type Project = {
   lab_project_files: (LabFile & { project_id: string })[];
 };
 
-export default async function LabWave({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ tab?: string }> }) {
+export default async function LabWave({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ tab?: string; como?: string }> }) {
   const { waveId } = await params;
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, como } = await searchParams;
   const tab = TABS.some((t) => t.key === rawTab) ? rawTab! : "pase";
-  const viewer = await requireAnyRolePage(`/admin/lab/${waveId}`, ["admin", "delivery", "hub"]);
+  const real = await requireAnyRolePage(`/admin/lab/${waveId}`, ["admin", "delivery", "hub"]);
   const db = await supabaseUser();
-  const allowed = viewer.role === "hub" ? (await myStaffWaves(viewer)).includes(waveId) : true;
+  // Ver como (solo admin): la página tal como la ve ese Líder Hub AI, en solo lectura.
+  const asHub = real.role === "admin" && como
+    ? (await supabaseService().from("profiles").select("id, email, full_name, role").eq("id", como).eq("role", "hub").maybeSingle()).data
+    : null;
+  const viewer = asHub ? { ...real, role: "hub" as const, email: asHub.email, fullName: asHub.full_name } : real;
+  const hubWaves = asHub
+    ? ((await supabaseService().from("wave_staff").select("wave_id").eq("email", asHub.email).eq("role", "hub")).data ?? []).map((w) => w.wave_id)
+    : viewer.role === "hub" ? await myStaffWaves(viewer) : [];
+  const allowed = viewer.role === "hub" ? hubWaves.includes(waveId) : true;
+  const banner = asHub && (
+    <div className="jr-preview" role="note"><span><strong>Vista de admin</strong> · así ve el AI Lab &amp; Showcase {asHub.full_name ?? asHub.email} (Líder Hub AI). Solo lectura.</span></div>
+  );
+  const q = asHub ? `&como=${asHub.id}` : "";
   const { data: wave } = allowed ? await db.from("waves").select("id, name").eq("id", waveId).maybeSingle() : { data: null };
   if (!wave) {
     return (
       <div className="adm">
+        {banner}
         <header className="adm-head"><div><div className="eyebrow">Líder Hub AI</div><h1>AI Lab & Showcase</h1></div></header>
         <section className="adm-card"><div className="empty"><Icon name="layers" size={28} /><strong>Aún no tienes una Wave asignada.</strong><span>El equipo AI Edge Talent te asignará como líder del Hub AI de una Wave.</span></div></section>
       </div>
     );
   }
-  const canEdit = viewer.role === "admin" || viewer.role === "hub";
+  const canEdit = !asHub && (viewer.role === "admin" || viewer.role === "hub");
 
   const { data: people } = await db
     .from("candidates")
@@ -86,6 +99,7 @@ export default async function LabWave({ params, searchParams }: { params: Promis
 
   return (
     <div className="adm">
+      {banner}
       <header className="adm-head">
         <div>
           <div className="eyebrow">{wave.name} · {viewer.role === "hub" ? "Líder Hub AI" : "Hub AI"}</div>
@@ -108,7 +122,7 @@ export default async function LabWave({ params, searchParams }: { params: Promis
 
       <nav className="view-toggle" aria-label="Secciones del Lab" style={{ alignSelf: "start", flexWrap: "wrap" }}>
         {TABS.map((t) => (
-          <Link key={t.key} href={`?tab=${t.key}`} aria-current={tab === t.key ? "true" : undefined}><Icon name={t.icon} size={16} /> {t.label}</Link>
+          <Link key={t.key} href={`?tab=${t.key}${q}`} aria-current={tab === t.key ? "true" : undefined}><Icon name={t.icon} size={16} /> {t.label}</Link>
         ))}
       </nav>
 

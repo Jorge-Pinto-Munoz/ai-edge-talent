@@ -195,13 +195,30 @@
 .support-msg { margin: 0; white-space: pre-wrap; padding: 12px 14px; border-radius: 14px; background: var(--bg); }
 
 /* ───── Ver como ───── */
-.vc-card { display: grid; gap: 16px; align-content: start; }
+/* Ver como: una tarjeta por rol (misma altura, acción al pie) y una fila por cada rol secundario */
+.vc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .vc-grid { grid-template-columns: 1fr; } }
+.vc-card { display: grid; grid-template-rows: auto 1fr; gap: 18px; }
 .vc-head { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
-.vc-head h2 { margin: 0; font-size: 1.1rem; }
-.vc-head p { margin: 4px 0 0; }
-.vc-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
-.vc-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-@media (max-width: 560px) { .vc-form { grid-template-columns: 1fr; } }
+.vc-head h2 { margin: 0; font-size: 1.15rem; }
+.vc-head p { margin: 4px 0 0; line-height: 1.45; }
+.vc-ico { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
+.vc-ico.sm { width: 36px; height: 36px; border-radius: 12px; }
+.vc-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-self: end; }
+.vc-form select { min-width: 0; text-overflow: ellipsis; }
+.vc-empty { margin: 0; align-self: end; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); color: var(--muted); }
+.vc-head .vc-meta { margin-top: 8px; font-size: 0.86rem; }
+.vc-rows { display: grid; }
+.vc-row { display: grid; grid-template-columns: auto minmax(160px, 1fr) minmax(0, 1.6fr); gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--border); }
+.vc-row:first-child { border-top: 0; padding-top: 4px; }
+.vc-row:last-child { padding-bottom: 0; }
+.vc-row > .btn, .vc-row-empty { justify-self: start; }
+.vc-row-txt { display: grid; gap: 2px; }
+@media (max-width: 700px) {
+  .vc-row { grid-template-columns: auto 1fr; }
+  .vc-row > .vc-form, .vc-row > .btn, .vc-row-empty { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) { .vc-form { grid-template-columns: 1fr; } .vc-form .btn { width: 100%; } }
 
 /* ───────── Panel de admisión ───────── */
 .adm-funnel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
