@@ -11,7 +11,7 @@ const ROLES: { perfil: string; crea: string; pasos: string; llega: string }[] = 
   { perfil: "Administración (Líder de producto)", crea: "La cuenta principal ya existe y está protegida: no se puede degradar, pausar ni eliminar. Otras cuentas admin las creas tú.", pasos: "Ingresar → correo → código de 6 dígitos.", llega: "Portal de administración completo." },
   { perfil: "Delivery", crea: "Nadie: los correos de Delivery cargados para la Wave reciben el rol solos en su primer ingreso. Para uno nuevo: Crear usuario con rol Delivery y su Wave.", pasos: "Ingresar → correo → código.", llega: "Equipo: sus postulantes y profesionales." },
   { perfil: "AI Coach", crea: "Tú, en Usuarios y accesos → Crear usuario, rol AI Coach.", pasos: "Le llega una invitación; ingresa con su correo y el código. Hasta su primer ingreso la cuenta queda pendiente y sin permisos.", llega: "Panel de AI Coach." },
-  { perfil: "Líder del Hub AI", crea: "Tú, en Crear usuario, rol Líder Hub AI. Luego súmalo a su Wave en AI Lab & Showcase → equipo del Hub.", pasos: "Igual que AI Coach.", llega: "AI Lab & Showcase de sus Waves." },
+  { perfil: "Líder del Hub AI", crea: "Tú, en Crear usuario, rol Líder Hub AI. Luego súmalo a su Wave en Journey → AI Lab & Showcase (equipo del Hub, al final).", pasos: "Igual que AI Coach.", llega: "AI Lab & Showcase de sus Waves." },
   { perfil: "Business Partner", crea: "Tú lo creas, o la persona lo pide en Crear cuenta y tú apruebas en Usuarios y accesos → Solicitudes.", pasos: "Si pidió cuenta, recibe un correo al aprobarse y desde ahí ingresa.", llega: "Equipo." },
   { perfil: "Profesional que postula", crea: "Se crea sola al registrarse en la postulación.", pasos: "Registro → verifica su correo con el código → Assessment (se guarda solo) → enviar.", llega: "Su postulación y luego Mi journey." },
   { perfil: "Profesional que vuelve tiempo después", crea: "Ya existe desde que postuló. Si postuló antes de las cuentas y nunca entró, se crea en su primer ingreso.", pasos: "Ingresar o \"Continuar aquí\" → correo → código.", llega: "Donde quedó: sigue con sus respuestas o ve el estado. No puede enviar dos veces." },
@@ -24,7 +24,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   { q: "¿Cómo quito el acceso a alguien?", a: "En su ficha de Usuarios y accesos: Pausar (temporal), Revocar acceso o Dar de baja. \"Cerrar sesiones\" lo saca de todos sus dispositivos. Siempre debe quedar al menos una cuenta admin activa." },
   { q: "¿Cómo cambio el rol de una persona?", a: "En su ficha, elige el rol y \"Aplicar rol\". Sus sesiones abiertas se cierran para que el cambio rija de inmediato." },
   { q: "Un profesional quiere partir de cero", a: <>En <Link href="/admin/admision">Admisión</Link>, menú &quot;···&quot; de su fila → Eliminar. Se borran su postulación, correos y códigos, y puede postular de nuevo. No se puede con personas ya inscritas.</> },
-  { q: "¿Qué pasó con el rol Profesor?", a: "Se eliminó. Las cuentas que lo tenían quedaron como Profesional; las clases las gestionan administración y Delivery en Clases." },
+  { q: "¿Qué pasó con el rol Profesor?", a: "Se eliminó. Las cuentas que lo tenían quedaron como Profesional; las clases las gestionan administración y Delivery en Journey (Clases y asistencia)." },
 ];
 
 const CLAUDE_STEPS = [
@@ -33,7 +33,7 @@ const CLAUDE_STEPS = [
   "Cópiala en el momento: se muestra una sola vez. No la envíes por chat ni correo.",
   "En Vercel → Settings → Environment Variables: nombre ANTHROPIC_API_KEY, entorno Production, marcada como Sensitive. Luego Redeploy.",
   "Si la llave no pertenece a un workspace (error “not scoped to a workspace”): crea la llave dentro de un workspace en Console → Workspaces, o agrega ANTHROPIC_WORKSPACE_ID (empieza con wrkspc_) en Vercel y haz Redeploy.",
-  "En Cómo evaluamos, toca “Probar conexión”. Si falla, el mensaje dice la causa (clave inválida, sin créditos, límite o servicio saturado).",
+  "En Journey → Assessment → Criterios de evaluación, toca “Probar conexión”. Si falla, el mensaje dice la causa (clave inválida, sin créditos, límite o servicio saturado).",
   "Con la clave activa, cada postulación enviada se evalúa sola. Las anteriores: Admisión → seleccionar → “Evaluar con IA”.",
 ];
 
@@ -98,7 +98,7 @@ export default async function GuiaAccesos() {
           {CLAUDE_STEPS.map((s) => <li key={s}>{s}</li>)}
         </ol>
         <p className="muted" style={{ marginBottom: 0 }}>
-          <small>Si la clave vence, la evaluación automática se detiene y las postulaciones quedan para revisión humana: crea una nueva antes y reemplázala en Vercel. <Link href="/admin/evaluacion">Ir a Cómo evaluamos</Link>.</small>
+          <small>Si la clave vence, la evaluación automática se detiene y las postulaciones quedan para revisión humana: crea una nueva antes y reemplázala en Vercel. <Link href="/admin/evaluacion">Ir a los criterios de evaluación</Link>.</small>
         </p>
       </section>
     </div>

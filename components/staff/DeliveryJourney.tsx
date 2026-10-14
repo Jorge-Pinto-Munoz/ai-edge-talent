@@ -81,7 +81,7 @@ export function DeliveryJourney({ stages, live, waveId }: { stages: DeliveryStag
                 </li>
               ))}
             </ul>
-            {waveId && <Link className="more-link" href={`/admin/journey/${waveId}?tab=aicert`}>Ver avance y alertas <Icon name="arrowRight" size={16} /></Link>}
+            {waveId && <Link className="more-link" href={`/admin/journey/${waveId}/role-enablement?tab=aicert`}>Ver avance y alertas <Icon name="arrowRight" size={16} /></Link>}
           </div>
         )}
 

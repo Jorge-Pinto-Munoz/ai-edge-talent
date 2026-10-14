@@ -55,10 +55,10 @@ export async function waveDashboard(waveId: string, isAdmin: boolean): Promise<W
     { key: "evaluate", label: "Postulaciones por evaluar", hint: "Enviadas y sin evaluación de IA", count: byStatus(["APPLICATION_SUBMITTED"]), href: `/admin/admision/${waveId}?estado=APPLICATION_SUBMITTED`, adminOnly: true },
     { key: "decide", label: "Decisiones pendientes", hint: "Evaluadas, en revisión humana o repechaje", count: byStatus(["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED"]), href: `/admin/admision/${waveId}?vista=columnas` },
     { key: "conditions", label: "Compromisos sin aceptar", hint: "Seleccionados que aún no firman", count: byStatus(["SELECTED", "CONDITIONS_PENDING"]), href: `/admin/admision/${waveId}?vista=columnas` },
-    { key: "submissions", label: "Entregas por revisar", hint: "Tareas de Mindset enviadas", count: subs.count ?? 0, href: `/admin/journey/${waveId}?tab=entregas` },
-    { key: "certs", label: "Certificaciones por verificar", hint: "AI CERT subidas por participantes", count: certs.count ?? 0, href: `/admin/journey/${waveId}?tab=certificaciones` },
-    { key: "concerns", label: "Alertas de asistencia", hint: "Dos clases seguidas sin asistir o asistencia bajo 75%", count: concerns.count ?? 0, href: `/admin/profesor/${waveId}` },
-    { key: "showcase", label: "Proyectos listos para Showcase", hint: "AI Lab: presentación lista, falta presentar", count: ready.count ?? 0, href: `/admin/lab/${waveId}?tab=showcase` },
+    { key: "submissions", label: "Entregas por revisar", hint: "Tareas de Mindset enviadas", count: subs.count ?? 0, href: `/admin/journey/${waveId}/mindset?tab=entregas` },
+    { key: "certs", label: "Certificaciones por verificar", hint: "AI CERT subidas por participantes", count: certs.count ?? 0, href: `/admin/journey/${waveId}/role-enablement?tab=certificaciones` },
+    { key: "concerns", label: "Alertas de asistencia", hint: "Dos clases seguidas sin asistir o asistencia bajo 75%", count: concerns.count ?? 0, href: `/admin/journey/${waveId}?vista=clases#seguimiento` },
+    { key: "showcase", label: "Proyectos listos para Showcase", hint: "AI Lab: presentación lista, falta presentar", count: ready.count ?? 0, href: `/admin/journey/${waveId}/ai-lab?tab=showcase` },
     { key: "followups", label: "Seguimientos vencidos", hint: "Mes 1 o Mes 3 sin registrar", count: fus.count ?? 0, href: "/admin/talento" },
   ].filter((p) => isAdmin || !p.adminOnly);
 
@@ -72,7 +72,7 @@ export async function waveDashboard(waveId: string, isAdmin: boolean): Promise<W
       { label: "Evaluados", count: byStatus(EVALUATED) },
       { label: "Seleccionados", count: byStatus(SELECTED) },
       { label: "Inscritos", count: byStatus(ENROLLED) },
-      { label: "AI Mindset", count: reached("AI_MINDSET") },
+      { label: "AI First Mindset", count: reached("AI_MINDSET") },
       { label: "Role Enablement", count: reached("ROLE_ENABLEMENT") },
       { label: "AI Lab & Showcase", count: reached("AI_LAB_SHOWCASE") },
       { label: "Cierre", count: reached("CLOSURE") },

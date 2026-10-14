@@ -315,7 +315,7 @@ export async function advanceLayer(waveId: string, candidateIds: string[], to: L
       moved++;
     }
     await syncMany(movedIds, viewer.id);
-    revalidatePath(`/admin/journey/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     return { ok: moved > 0, message: `${moved} persona(s) avanzaron a la nueva etapa.`, data: details };
   } catch (e) {
     return fail(e);
@@ -329,7 +329,7 @@ export async function createGroup(waveId: string, name: string): Promise<Result>
     const db = await supabaseUser();
     const { error } = await db.from("wave_groups").insert({ wave_id: waveId, name: name.trim() });
     if (error) throw new Error(error.code === "23505" ? "Ya existe un grupo con ese nombre." : error.message);
-    revalidatePath(`/admin/journey/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     return { ok: true, message: "Grupo creado." };
   } catch (e) {
     return fail(e);
@@ -345,7 +345,7 @@ export async function setGroupMembers(waveId: string, groupId: string, candidate
       const { error } = await db.from("group_members").insert(candidateIds.map((candidate_id) => ({ group_id: groupId, candidate_id })));
       if (error) throw error;
     }
-    revalidatePath(`/admin/journey/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     return { ok: true, message: `${candidateIds.length} persona(s) en el grupo.` };
   } catch (e) {
     return fail(e);
@@ -365,7 +365,7 @@ export async function addGroupMentor(waveId: string, groupId: string, email: str
     if (profile.role !== "mentor") await db.from("profiles").update({ role: "mentor" }).eq("id", profile.id);
     const { error } = await db.from("group_mentors").upsert({ group_id: groupId, mentor_id: profile.id });
     if (error) throw error;
-    revalidatePath(`/admin/journey/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     return { ok: true, message: `${e} asignado/a al grupo.` };
   } catch (e) {
     return fail(e);
@@ -377,7 +377,7 @@ export async function removeGroupMentor(waveId: string, groupId: string, mentorI
     await requireRole(["admin"]);
     const db = await supabaseUser();
     await db.from("group_mentors").delete().eq("group_id", groupId).eq("mentor_id", mentorId);
-    revalidatePath(`/admin/journey/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     return { ok: true, message: "AI Coach quitado/a del grupo." };
   } catch (e) {
     return fail(e);

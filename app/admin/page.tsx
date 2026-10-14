@@ -1,5 +1,6 @@
 import { WAVE_CAPACITY } from "@/lib/waves/order";
 import Link from "next/link";
+import { Fragment } from "react";
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { requireStaffPage } from "@/lib/admission/auth";
@@ -106,12 +107,15 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
             </div>
           ) : (
             <Reveal className="funnel">
-              {d.funnel.map((f) => (
-                <div key={f.label} className="funnel-row">
+              {d.funnel.map((f, i) => (
+                <Fragment key={f.label}>
+                {(i === 0 || i === 5) && <div className="funnel-group">{i === 0 ? "Admisión" : "Journey"}</div>}
+                <div className={`funnel-row${i >= 5 ? " journey" : ""}`}>
                   <span className="lbl">{f.label}</span>
                   <span className="bar" role="img" aria-label={`${f.label}: ${f.count} de ${top}`}><span style={{ "--w": f.count / top } as CSSProperties} /></span>
                   <span className="n">{f.count}<small>de {top}</small></span>
                 </div>
+                </Fragment>
               ))}
             </Reveal>
           )}
@@ -146,7 +150,7 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
           <div className="shortcuts">
             {[
               isAdmin && { href: `/admin/admision/${waveId}/importar`, label: "Importar candidatos", icon: "users" as IconName },
-              { href: `/admin/journey/${waveId}?tab=grupos`, label: "Grupos y AI Coaches", icon: "route" as IconName },
+              { href: `/admin/journey/${waveId}?vista=grupos#seguimiento`, label: "Grupos y AI Coaches", icon: "route" as IconName },
               isAdmin && { href: `/admin/contenido/${waveId}`, label: "Videos y cápsulas", icon: "play" as IconName },
               isAdmin && { href: "/admin/talento/importar", label: "Cargar Waves pasadas", icon: "layers" as IconName },
               { href: "/admin/talento", label: "Pool de talento", icon: "star" as IconName },

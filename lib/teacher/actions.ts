@@ -42,6 +42,7 @@ export async function saveClass(input: ClassInput): Promise<Result> {
       .upsert(input.attendance.map((a) => ({ class_id: cls.id, candidate_id: a.candidateId, attended: a.attended })), { onConflict: "class_id,candidate_id" });
     if (e2) throw e2;
     revalidatePath(`/admin/profesor/${input.waveId}`);
+    revalidatePath(`/admin/journey/${input.waveId}`, "layout");
     revalidatePath("/admin");
     const present = input.attendance.filter((a) => a.attended).length;
     return { ok: true, message: `Clase guardada · asistieron ${present} de ${input.attendance.length}.` };
@@ -57,6 +58,7 @@ export async function deleteClass(waveId: string, classId: string): Promise<Resu
     const { error } = await (await supabaseUser()).from("teacher_classes").delete().eq("id", classId);
     if (error) throw error;
     revalidatePath(`/admin/profesor/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     revalidatePath("/admin");
     return { ok: true, message: "Clase eliminada." };
   } catch (e) {

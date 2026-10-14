@@ -42,7 +42,7 @@ export async function saveAiCertProgress(input: AiCertInput): Promise<Result> {
       updated_by: viewer.id,
     });
     if (error) throw error;
-    revalidatePath(`/admin/journey/${input.waveId}`);
+    revalidatePath(`/admin/journey/${input.waveId}`, "layout");
     revalidatePath(`/admin/pulsos/${input.waveId}`);
     return { ok: true, message: "Avance guardado." };
   } catch (e) {

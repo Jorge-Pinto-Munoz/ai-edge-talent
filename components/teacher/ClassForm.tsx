@@ -84,7 +84,7 @@ export function ClassForm({ waveId, people, initial, attended }: { waveId: strin
         <div className="row" style={{ gap: 8 }}>
           <button className="btn" disabled={pending || people.length === 0}>{d.id ? "Guardar cambios" : "Guardar clase"}</button>
           {d.id && (
-            <button type="button" className="btn ghost danger" disabled={pending} onClick={() => { if (confirm("¿Eliminar esta clase y su asistencia?")) start(async () => { const r = await deleteClass(waveId, d.id!); setMsg(r); if (r.ok) router.push(`/admin/profesor/${waveId}`); }); }}>
+            <button type="button" className="btn ghost danger" disabled={pending} onClick={() => { if (confirm("¿Eliminar esta clase y su asistencia?")) start(async () => { const r = await deleteClass(waveId, d.id!); setMsg(r); if (r.ok) { const u = new URL(window.location.href); u.searchParams.delete("clase"); router.push(u.pathname + u.search); } }); }}>
               Eliminar clase
             </button>
           )}

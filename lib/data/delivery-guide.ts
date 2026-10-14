@@ -100,7 +100,7 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
     ],
     escalate: ["No asistencia a Mindset", "Desafío no aprobado según las reglas de continuidad (solo Product Lead puede hacer excepciones)"],
     never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Saltar Mindset para ir directo a la certificación", "Prometer intentos adicionales"],
-    where: [{ label: "Journey de la Wave", href: "/admin/journey/{wave}" }],
+    where: [{ label: "Journey · AI First Mindset", href: "/admin/journey/{wave}/mindset" }],
   },
   {
     id: "certs",
@@ -135,8 +135,8 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
     escalate: ["Una semana completa sin acompañamiento", "Sin avance en la plataforma por más de 2 semanas", "Examen no aprobado según las reglas de continuidad"],
     never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Presentar un intento adicional como financiado o cobrado al profesional", "Transformar un atraso en una sanción no definida por el programa"],
     where: [
-      { label: "Avance AI CERT", href: "/admin/journey/{wave}?tab=aicert" },
-      { label: "Clases y asistencia", href: "/admin/profesor/{wave}" },
+      { label: "Avance AI CERT", href: "/admin/journey/{wave}/role-enablement?tab=aicert" },
+      { label: "Clases y asistencia", href: "/admin/journey/{wave}?vista=clases#seguimiento" },
       { label: "Experiencia de tus profesionales", href: "/equipo?wave={wave}" },
     ],
   },
@@ -170,7 +170,7 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
     ],
     escalate: ["El cliente no habilita contexto o validación del problema", "Riesgo de confidencialidad o uso indebido de información"],
     never: ["Admitir al Lab sin certificación aprobada", "Imponer un máximo de intentos no vigente"],
-    where: [{ label: "AI Lab & Showcase", href: "/admin/lab/{wave}" }],
+    where: [{ label: "AI Lab & Showcase", href: "/admin/journey/{wave}/ai-lab" }],
   },
   {
     id: "showcase",
@@ -195,7 +195,7 @@ export const DELIVERY_STAGES: DeliveryStage[] = [
     risks: [{ risk: "Contraparte sin contexto del problema", mitigation: "Confirmar asistentes con el cliente antes de agendar." }],
     escalate: ["El cliente no dispone de una contraparte que reconozca el problema"],
     never: ["Responder el pulso por el profesional o sugerirle qué contestar: es su experiencia personal", "Agendar Showcase sin READY FOR SHOWCASE", "Cerrar sin siguiente paso registrado"],
-    where: [{ label: "AI Lab & Showcase", href: "/admin/lab/{wave}" }],
+    where: [{ label: "AI Lab & Showcase", href: "/admin/journey/{wave}/ai-lab" }],
   },
   {
     id: "closure",

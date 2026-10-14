@@ -169,7 +169,7 @@ export default async function PulsosReport({ params, searchParams }: { params: P
 
       <section className="card" aria-labelledby="hab">
         <h2 id="hab" style={{ marginTop: 0 }}>Habilitación (Role Enablement)</h2>
-        <p className="muted">TPV y TIIC usan el avance por tramo que registras en <Link href={`/admin/journey/${waveId}?tab=aicert`}>Avance AI CERT</Link>; la asistencia viene de las clases del profesor.</p>
+        <p className="muted">TPV y TIIC usan el avance por tramo que registras en <Link href={`/admin/journey/${waveId}/role-enablement?tab=aicert`}>Avance AI CERT</Link>; la asistencia viene de las clases del profesor.</p>
         {enab.map(([label, ind]) => (
           <div key={label} style={{ marginTop: 14 }}>
             <h3 style={{ margin: "0 0 8px" }}>{label} <small className="muted">· {ind.n} {ind.n === 1 ? "respuesta" : "respuestas"}</small></h3>

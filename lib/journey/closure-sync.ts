@@ -94,7 +94,7 @@ export async function syncStageClosure(candidateId: string, actor: string | null
     await audit("stage.unlocked", { actor, candidateId: c.id, waveId: c.wave_id, targetUser: c.user_id, details: { from: layer, to: d.next }, eventKey: `unlocked:${c.id}:${d.next}` }, svc);
   }
   revalidatePath("/mi-journey");
-  revalidatePath(`/admin/journey/${c.wave_id}`);
+  revalidatePath(`/admin/journey/${c.wave_id}`, "layout");
   return { layer, state: "closed", advancedTo: moved?.length ? d.next : null };
 }
 

@@ -34,6 +34,7 @@ async function projectWave(projectId: string): Promise<string> {
 
 const done = (waveId: string) => {
   revalidatePath(`/admin/lab/${waveId}`);
+  revalidatePath(`/admin/journey/${waveId}`, "layout");
   revalidatePath("/mi-journey");
 };
 
@@ -75,7 +76,7 @@ export async function passToLab(waveId: string, candidateIds: string[]): Promise
       moved++;
     }
     done(waveId);
-    revalidatePath(`/admin/journey/${waveId}`);
+    revalidatePath(`/admin/journey/${waveId}`, "layout");
     return { ok: moved > 0 || candidateIds.length === 0, message: `${moved} persona(s) pasaron a AI Lab & Showcase.`, data: details };
   } catch (e) {
     return fail(e);
