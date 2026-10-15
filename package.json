@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "bash tests/db/run.sh",
-    "audit:ux": "node qa/ux-audit.mjs"
+    "audit:ux": "node qa/ux-audit.mjs",
+    "check": "tsc --noEmit && vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

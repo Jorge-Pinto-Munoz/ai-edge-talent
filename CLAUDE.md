@@ -3,7 +3,8 @@
 ## Forma de trabajar (ahorro de tokens)
 - Respuestas cortas en español, trato de "tú". Informe final: qué cambió, qué se probó, qué falta. Sin repetir el pedido.
 - Leer solo lo necesario: `Grep` primero, luego `Read` con offset/limit. No releer archivos ya editados.
-- Validar en este orden y parar al primer fallo: `npx tsc --noEmit` → `npx vitest run` → (si toca SQL) `bash tests/db/run.sh` → build/E2E solo para cambios de UI o flujos.
+- Al empezar, leer `PENDIENTES.md` (no el historial). Al terminar, actualizarlo.
+- Validar en este orden y parar al primer fallo: `npm run check` (tipos + unitarias) → (si toca SQL) `bash tests/db/run.sh` → build/E2E solo para cambios de UI o flujos.
 - Capturas de pantalla solo si el cambio es visual; una por vista.
 - Cambios pequeños: un commit y push sin pasos intermedios. No crear PR salvo que se pida.
 
