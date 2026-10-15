@@ -38,6 +38,12 @@ do $$ begin
 
 -- Kiber Ana
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000b1';
+-- AI First Mindset bloqueada hasta que la Wave la abra (el acceso al portal no basta).
+reset role; delete from wave_stage_openings where wave_id = 'wave-3'; set role authenticated;
+select 'KIBER no ve AI First Mindset antes de la apertura', count(*) = 0 from capsules where layer = 'AI_MINDSET';
+reset role; insert into wave_stage_openings (wave_id, layer, opens_at) values ('wave-3', 'AI_MINDSET', now() + interval '2 days'); set role authenticated;
+select 'KIBER no ve AI First Mindset con apertura programada futura', count(*) = 0 from capsules where layer = 'AI_MINDSET';
+reset role; update wave_stage_openings set opens_at = now() - interval '1 minute' where wave_id = 'wave-3'; set role authenticated;
 select 'KIBER ve solo cápsulas publicadas', count(*) = 1 from capsules;
 select 'KIBER no ve feedback de mentores', count(*) = 0 from weekly_feedback;
 do $$ begin

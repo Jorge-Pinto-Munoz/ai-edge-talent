@@ -16,6 +16,8 @@ import { EvaluationGuide } from "@/components/admin/EvaluationGuide";
 import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
 import { Icon } from "@/components/site/Icon";
 import { Badge } from "@/components/ui";
+import { StageOpeningPanel } from "@/components/journey-admin/StageOpeningPanel";
+import { mindsetOpening, notifyStageOpen } from "@/lib/journey/opening";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,13 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         <div className="adm-kpi"><span className="ico"><Icon name="alert" size={20} /></span><strong>{sum.actions.reduce((n, a) => n + a.count, 0)}</strong><small>Requieren intervención</small></div>
         <div className="adm-kpi"><span className="ico"><Icon name="target" size={20} /></span><strong>{sum.pct === null ? "—" : `${sum.pct}%`}</strong><small>Avance de la Wave</small></div>
       </section>
+
+      {stage.layer === "AI_MINDSET" && (await (async () => {
+        // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).
+        await notifyStageOpen(waveId);
+        const o = await mindsetOpening(waveId);
+        return <StageOpeningPanel waveId={waveId} {...o} canEdit={isAdmin} />;
+      })())}
 
       <nav className="view-toggle jn-tabs" aria-label={`Secciones de ${stage.name}`}>
         {tabs.map((t) => {

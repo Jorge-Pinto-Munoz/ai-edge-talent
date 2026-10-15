@@ -7,6 +7,7 @@ import { COMMUNITY_CONSENT } from "@/lib/data/consents";
 
 import { after } from "next/server";
 import { supabaseService } from "@/lib/supabase/server";
+import { env } from "@/lib/supabase/env";
 import { statusPath } from "./status";
 import { evaluateOne } from "./evaluate-one";
 import { getDocument } from "@/lib/content";
@@ -255,43 +256,98 @@ export async function acceptCommitmentByToken(token: string, fullName: string, c
   }
 }
 
-/* ───────── Video de rescate (bajo el corte) ───────── */
+/* ───────── Video de rescate (bajo el corte, con invitación y plazo) ───────── */
 const RESCUE_MAX_MB = 50;
+const RESCUE_TYPES = /^video\/(webm|mp4|quicktime|x-m4v|3gpp)$/;
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : typeof e === "object" && e && "message" in e ? String((e as { message: unknown }).message) : String(e));
 
-/** URL firmada para subir el video directo a Storage (privado). Solo si la persona está en rescate. */
-export async function requestRescueUpload(token: string, fileName: string, sizeBytes: number): Promise<CandidateResult & { path?: string; uploadToken?: string }> {
+/** Invitación vigente o error claro. La hora que manda es la del servidor (la cuenta regresiva es solo visual). */
+async function openRescue(svc: ReturnType<typeof supabaseService>, c: { id: string; status: string }) {
+  if (c.status !== "RESCUE_REQUIRED") throw new Error("Tu postulación no tiene un rescate habilitado.");
+  const { data: inv } = await svc.from("rescue_invitations").select("expires_at, started_at").eq("candidate_id", c.id).maybeSingle();
+  if (!inv) throw new Error("Tu postulación no tiene un rescate habilitado.");
+  if (inv.expires_at && Date.now() > Date.parse(inv.expires_at)) throw new Error("El plazo para enviar tu video venció. Si tuviste un problema, escríbenos desde Ayuda.");
+  const { data: prev } = await svc.from("rescue_videos").select("reviewed_at").eq("candidate_id", c.id).maybeSingle();
+  if (prev?.reviewed_at) throw new Error("Tu video ya fue revisado.");
+  return inv;
+}
+
+/** La persona empezó a grabar o subir: "rescate en preparación" (solo la primera vez). */
+export async function markRescueStarted(token: string): Promise<CandidateResult> {
   try {
     const { svc, c } = await byToken(token);
-    if (c.status !== "RESCUE_REQUIRED") throw new Error("Tu postulación no tiene un rescate pendiente.");
-    if (sizeBytes > RESCUE_MAX_MB * 1024 * 1024) throw new Error(`El archivo supera ${RESCUE_MAX_MB} MB. Usa un enlace (YouTube no listado, Drive u OneDrive).`);
-    const safe = fileName.normalize("NFD").replace(/[^\w.\-]+/g, "_").slice(-80);
-    const path = `${c.id}/rescate-${Date.now()}-${safe}`;
-    const { data, error } = await svc.storage.from("submissions").createSignedUploadUrl(path);
-    if (error || !data) throw new Error("No se pudo preparar la subida. Intenta con un enlace.");
-    return { ok: true, message: "ok", path, uploadToken: data.token };
+    const inv = await openRescue(svc, c);
+    if (!inv.started_at) await svc.from("rescue_invitations").update({ started_at: new Date().toISOString() }).eq("candidate_id", c.id).is("started_at", null);
+    return { ok: true, message: "ok" };
   } catch (e) {
     return { ok: false, message: errMsg(e) };
   }
 }
 
-/** Registra el video (archivo subido o enlace). Se puede reemplazar mientras no haya sido revisado. */
-export async function submitRescue(token: string, input: { path?: string; url?: string; note?: string }): Promise<CandidateResult> {
+/** URL firmada para subir el video directo a Storage (privado). Solo con invitación vigente. */
+export async function requestRescueUpload(token: string, fileName: string, sizeBytes: number, contentType = ""): Promise<CandidateResult & { path?: string; uploadToken?: string; signedUrl?: string }> {
   try {
     const { svc, c } = await byToken(token);
-    if (c.status !== "RESCUE_REQUIRED") throw new Error("Tu postulación no tiene un rescate pendiente.");
+    await openRescue(svc, c);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) throw new Error("El archivo está vacío.");
+    if (sizeBytes > RESCUE_MAX_MB * 1024 * 1024) throw new Error(`El video pesa ${(sizeBytes / 1024 / 1024).toFixed(0)} MB y el máximo es ${RESCUE_MAX_MB} MB. Grábalo aquí (queda más liviano) o comparte un enlace.`);
+    const base = contentType.split(";")[0].trim().toLowerCase();
+    if (base && !RESCUE_TYPES.test(base)) throw new Error("Formato no compatible. Usa MP4, MOV o WebM.");
+    const safe = fileName.normalize("NFD").replace(/[^\w.\-]+/g, "_").slice(-80);
+    const path = `${c.id}/rescate-${Date.now()}-${safe}`;
+    const { data, error } = await svc.storage.from("submissions").createSignedUploadUrl(path);
+    if (error || !data) throw new Error("No se pudo preparar la subida. Intenta de nuevo o comparte un enlace.");
+    await svc.from("rescue_invitations").update({ started_at: new Date().toISOString() }).eq("candidate_id", c.id).is("started_at", null);
+    return { ok: true, message: "ok", path, uploadToken: data.token, signedUrl: data.signedUrl };
+  } catch (e) {
+    return { ok: false, message: errMsg(e) };
+  }
+}
+
+/** Revisa el archivo realmente subido: existe, no supera el máximo y es un video. Si no cumple, se borra. */
+async function verifyUploaded(svc: ReturnType<typeof supabaseService>, path: string): Promise<void> {
+  const dir = path.slice(0, path.lastIndexOf("/"));
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const { data } = await svc.storage.from("submissions").list(dir, { search: name, limit: 5 });
+  const obj = (data ?? []).find((o) => o.name === name);
+  if (!obj) throw new Error("No encontramos el video subido. Vuelve a intentarlo.");
+  const meta = (obj.metadata ?? {}) as { size?: number; mimetype?: string };
+  const tooBig = (meta.size ?? 0) > RESCUE_MAX_MB * 1024 * 1024;
+  const badType = meta.mimetype ? !RESCUE_TYPES.test(meta.mimetype.split(";")[0]) : false;
+  if (tooBig || badType || (meta.size ?? 1) === 0) {
+    await svc.storage.from("submissions").remove([path]);
+    throw new Error(tooBig ? `El video supera ${RESCUE_MAX_MB} MB.` : "El archivo subido no es un video compatible.");
+  }
+}
+
+/** Registra el video (archivo subido o enlace). Se puede reemplazar dentro del plazo mientras no se haya revisado. */
+export async function submitRescue(token: string, input: { path?: string; url?: string; note?: string; recorded?: boolean }): Promise<CandidateResult> {
+  try {
+    const { svc, c } = await byToken(token);
+    await openRescue(svc, c);
     const url = input.url?.trim() || null;
     const path = input.path && input.path.startsWith(`${c.id}/rescate-`) ? input.path : null;
-    if (!path && !url) throw new Error("Sube tu video o pega un enlace.");
-    if (url && !isAcceptableVideoUrl(url)) throw new Error("Usa un enlace https de YouTube, Vimeo, Loom, Google Drive, OneDrive o Dropbox.");
-    const { data: prev } = await svc.from("rescue_videos").select("reviewed_at").eq("candidate_id", c.id).maybeSingle();
-    if (prev?.reviewed_at) throw new Error("Tu video ya fue revisado.");
+    if (!path && !url) throw new Error("Graba, sube o enlaza tu video.");
+    if (url && !isAcceptableVideoUrl(url)) throw new Error("Usa un enlace https de Google Drive, OneDrive, SharePoint, YouTube, Vimeo, Loom o Dropbox.");
+    if (path) await verifyUploaded(svc, path);
+    const { data: prev } = await svc.from("rescue_videos").select("video_path").eq("candidate_id", c.id).maybeSingle();
+    // La base de datos vuelve a validar el plazo (trigger rescue_videos_window).
     const { error } = await svc.from("rescue_videos").upsert({ candidate_id: c.id, video_path: path, video_url: url, candidate_note: input.note?.trim() || null, submitted_at: new Date().toISOString() });
-    if (error) throw error;
-    await svc.from("admission_events").insert({ candidate_id: c.id, from_status: "RESCUE_REQUIRED", to_status: "RESCUE_REQUIRED", actor_label: "postulante", note: "Envió video de rescate" });
-    return { ok: true, message: "Recibimos tu video. El equipo AI Edge Talent lo revisará y te escribirá con el resultado." };
+    if (error) throw new Error(/plazo/i.test(error.message) ? "El plazo para enviar tu video venció." : "No pudimos registrar tu video. Intenta de nuevo.");
+    if (prev?.video_path && prev.video_path !== path) await svc.storage.from("submissions").remove([prev.video_path]);
+    await svc.from("admission_events").insert({ candidate_id: c.id, from_status: "RESCUE_REQUIRED", to_status: "RESCUE_REQUIRED", actor_label: "postulante", note: `Envió video de rescate (${path ? (input.recorded ? "grabado en la plataforma" : "archivo") : "enlace"})` });
+    await audit("admission.rescue.submitted", { candidateId: c.id, waveId: c.wave_id, targetEmail: c.corporate_email, details: { kind: path ? (input.recorded ? "recorded" : "file") : "link" } }, svc);
+    // Aviso a Administración (una vez por candidato; si reemplaza el video no se repite).
+    const first = await audit("admission.rescue.admin_notified", { candidateId: c.id, waveId: c.wave_id, eventKey: `rescue-submitted:${c.id}` }, svc);
+    if (first) {
+      const { data: admins } = await svc.from("profiles").select("email").eq("role", "admin").eq("status", "ACTIVE");
+      const link = `${env.appUrl}/admin/admision/${c.wave_id}?filtro=rescate`;
+      for (const a of admins ?? []) await sendIdentityEmail("RESCUE_SUBMITTED_ADMIN", a.email, { extra: c.full_name, wave: (c.waves as { name?: string } | null)?.name?.replace("AI Edge Talent · ", ""), link }, { candidateId: c.id, waveId: c.wave_id }, svc);
+      await svc.from("rescue_invitations").update({ admin_notified_at: new Date().toISOString() }).eq("candidate_id", c.id);
+    }
+    return { ok: true, message: "Recibimos tu video. El equipo AI Edge Talent lo revisará junto con tu Assessment y te escribirá con el resultado." };
   } catch (e) {
-    console.error("[rescate]", e);
+    console.error("[rescate]", errMsg(e));
     return { ok: false, message: errMsg(e) };
   }
 }

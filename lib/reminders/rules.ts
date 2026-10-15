@@ -26,5 +26,5 @@ export function deliveryAlertDue(c: PendingClosure, s: ReminderSettings, now: Da
 }
 
 /** Plantillas cuyo cuerpo guardado puede reenviarse tal cual (las que llevan código no: el código se guarda enmascarado). */
-export const RETRYABLE = new Set(["PULSE_REMINDER", "DELIVERY_PULSE_ALERT", "ACCESS_UPDATED", "ACCESS_REQUEST_ADMIN", "ACCESS_REQUEST_REJECTED"]);
+export const RETRYABLE = new Set(["PULSE_REMINDER", "DELIVERY_PULSE_ALERT", "ACCESS_UPDATED", "ACCESS_REQUEST_ADMIN", "ACCESS_REQUEST_REJECTED", "SELECTED_WELCOME", "RESCUE_INVITE", "RESCUE_SUBMITTED_ADMIN", "STAGE_OPEN"]);
 export const MAX_EMAIL_ATTEMPTS = 3;

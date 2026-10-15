@@ -239,3 +239,10 @@ begin
   end if;
   insert into public.user_credentials (user_id) values (uid) on conflict (user_id) do nothing;
 end $principal$;
+
+-- Wave de demostración (ficticia): AI First Mindset abierta. Idempotente. Las Waves reales las abre Administración.
+insert into public.wave_stage_openings (wave_id, layer, opens_at, notified_at)
+select w.id, 'AI_MINDSET'::public.journey_layer, now(), now()
+from public.waves w
+where w.id = 'wave-demo'
+on conflict (wave_id, layer) do nothing;

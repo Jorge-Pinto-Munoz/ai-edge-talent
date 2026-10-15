@@ -4,7 +4,8 @@
  */
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
-  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS";
+  | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -22,6 +23,10 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACCESS_REQUEST_ADMIN: "Solicitud de acceso especial",
   ACCESS_REQUEST_APPROVED: "Solicitud aprobada",
   ACCESS_REQUEST_REJECTED: "Solicitud no aprobada",
+  SELECTED_WELCOME: "Bienvenida: seleccionado/a",
+  RESCUE_INVITE: "Invitación al rescate",
+  RESCUE_SUBMITTED_ADMIN: "Aviso: video de rescate recibido",
+  STAGE_OPEN: "Primer reto disponible",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -34,16 +39,63 @@ function layout(title: string, paras: string[], opts: { code?: string; cta?: { l
 <tr><td style="background:#080b10;padding:20px 28px;color:#3dc9d4;font-weight:bold;letter-spacing:2px;font-size:12px">KIBERNUM · AI EDGE TALENT</td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25">${esc(title)}</h1>
-${paras.map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${esc(p)}</p>`).join("")}
+${paras.map((p) => (p.startsWith("# ") ? `<h2 style="margin:22px 0 8px;font-size:16px">${esc(p.slice(2))}</h2>` : `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${esc(p)}</p>`)).join("")}
 ${opts.code ? `<p style="margin:20px 0;text-align:center"><span style="display:inline-block;padding:14px 22px;border-radius:14px;background:#e3f5f7;font-size:30px;font-weight:bold;letter-spacing:10px">${esc(opts.code)}</span></p>` : ""}
 ${opts.cta ? `<p style="margin:22px 0;text-align:center"><a href="${esc(opts.cta.href)}" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#3dc9d4;color:#080b10;font-weight:bold;text-decoration:none">${esc(opts.cta.label)}</a></p>` : ""}
 ${opts.foot ? `<p style="margin:18px 0 0;font-size:12px;color:#4b5763">${esc(opts.foot)}</p>` : ""}
 </td></tr></table></td></tr></table></body></html>`;
 }
 
-export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string }): Rendered {
+/** Texto plano: los subtítulos ("# …") pierden la marca. */
+const plain = (p: string[]) => p.map((x) => (x.startsWith("# ") ? x.slice(2).toUpperCase() : x));
+
+export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string; wave?: string; questions?: string[] }): Rendered {
   const hi = c.name ? `Hola ${c.name.split(" ")[0]}:` : "Hola:";
   switch (t) {
+    case "SELECTED_WELCOME": {
+      // `when`: fecha real de apertura del primer reto (si está programada). Sin fecha, no se promete un plazo.
+      const p = [
+        `Hola, ${c.name?.split(" ")[0] ?? ""}:`.replace(" :", ":"),
+        "¡Tenemos buenas noticias!",
+        "Después de revisar tu postulación y los resultados de tu Assessment, has sido seleccionado para participar en AI Edge Talent, el programa de Kibernum que busca habilitar profesionales para trabajar con inteligencia artificial y llevar sus capacidades a un nuevo nivel.",
+        "# ¿Qué viene ahora?",
+        "Ya puedes ingresar a la plataforma y conocer tu recorrido, las etapas del programa y los próximos pasos. Al entrar, confirma tu compromiso de participación: con eso quedas inscrito.",
+        "Tu primera etapa será AI First Mindset, donde comenzarás a explorar cómo incorporar la inteligencia artificial a tu manera de pensar, resolver problemas y trabajar.",
+        c.when ? `El primer reto estará disponible el ${c.when}, de acuerdo con la apertura programada para tu Wave.` : "Te avisaremos por correo apenas el primer reto esté disponible, según la apertura programada para tu Wave.",
+        "Mientras tanto, te invitamos a ingresar y familiarizarte con el entorno. Ingresas con tu correo y un código de 6 dígitos que te enviamos en el momento: no necesitas contraseña.",
+        ...(c.wave ? [`Tu Wave: ${c.wave}`] : []),
+        "Te acompañaremos durante este recorrido.",
+        "¡Bienvenido a AI Edge Talent!",
+      ];
+      return { subject: "¡Estás dentro! Tu camino en AI Edge Talent comienza aquí", text: [...plain(p), "", `Ingresa aquí: ${c.link}`, "", "Equipo AI Edge Talent", "Kibernum"].join("\n"), html: layout("¡Estás dentro!", p, { cta: { label: "INGRESAR A LA PLATAFORMA", href: c.link ?? "" }, foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "RESCUE_INVITE": {
+      // `extra`: explicación individual revisada por Administración (desde la rúbrica). `when`: vencimiento real.
+      const q = c.questions ?? [];
+      const p = [
+        `Hola, ${c.name?.split(" ")[0] ?? ""}:`.replace(" :", ":"),
+        "Gracias por participar en el proceso de selección de AI Edge Talent.",
+        "Revisamos tu Assessment y, en esta primera evaluación, tu resultado todavía no alcanza los criterios requeridos para avanzar directamente a la siguiente etapa.",
+        ...(c.extra ? [c.extra] : []),
+        "Sabemos que una evaluación puede mostrar solo una parte de las capacidades de una persona. Por eso queremos darte una oportunidad adicional para compartir tu motivación, tu manera de pensar y cómo enfrentarías los desafíos del programa.",
+        "# Tu oportunidad de rescate",
+        "Te invitamos a grabar un video de máximo 3 minutos respondiendo estas preguntas:",
+        ...q.map((x, i) => `${i + 1}. ${x}`),
+        `Tienes 24 horas para enviarlo, contadas desde la activación de esta oportunidad${c.when ? ` (hasta el ${c.when})` : ""}.`,
+        "Puedes hacerlo directamente desde la plataforma: allí podrás grabarte con la cámara de tu computador o teléfono, subir un video o compartir un enlace.",
+        "El video será revisado por el equipo del programa junto con los resultados de tu Assessment. Esta instancia complementa tu evaluación y nos permitirá tomar una decisión final.",
+        "Gracias por el tiempo y el interés que has puesto en este proceso.",
+      ];
+      return { subject: "AI Edge Talent | Una nueva oportunidad para continuar tu postulación", text: [...plain(p), "", `Grabar o enviar mi video: ${c.link}`, "", "Equipo AI Edge Talent", "Kibernum"].join("\n"), html: layout("Una nueva oportunidad para continuar tu postulación", p, { cta: { label: "GRABAR O ENVIAR MI VIDEO", href: c.link ?? "" }, foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "RESCUE_SUBMITTED_ADMIN": {
+      const p = [hi, `${c.extra ?? "Un candidato"} envió su video de rescate${c.wave ? ` (${c.wave})` : ""}. Está pendiente de tu revisión en Admisión.`];
+      return { subject: `AI Edge Talent | Video de rescate recibido: ${c.extra ?? ""}`.trim(), text: [...p, "", `Revisar: ${c.link}`].join("\n"), html: layout("Video de rescate recibido", p, { cta: { label: "REVISAR RESCATE", href: c.link ?? "" } }) };
+    }
+    case "STAGE_OPEN": {
+      const p = [hi, `Tu primer reto de ${c.stage ?? "AI First Mindset"} ya está disponible.`, "Ingresa a tu portal y toca «Comenzar primer reto». Ingresas con tu correo y un código de 6 dígitos de un solo uso."];
+      return { subject: `AI Edge Talent | Tu primer reto de ${c.stage ?? "AI First Mindset"} está disponible`, text: [...p, "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout("Tu primer reto está disponible", p, { cta: { label: "COMENZAR PRIMER RETO", href: c.link ?? "" } }) };
+    }
     case "ACTIVATION": {
       const p = [
         "¡Felicitaciones!",

@@ -29,6 +29,8 @@ export interface JourneyView {
   showStageRules: boolean;
   /** Avance AI CERT por tramos (lo actualiza el líder del programa). */
   aicert: { label: string; course: "INTRO" | "SPECIALIST"; tramo: number; percent: number; overall: number; introCourse: string | null; specialistCourse: string | null; examDate: string | null; updatedAt: string } | null;
+  /** Solo mientras la persona está en AI First Mindset: si la Wave ya abrió la etapa y cuándo abre. */
+  mindsetGate: { open: boolean; opensAt: string | null; firstCapsuleId: string | null } | null;
   firstName: string;
   subtitle: string;
   waveName: string;

@@ -3,192 +3,86 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CandidateListItem } from "@/lib/admission/queries";
-import { decideCandidates, deleteCandidates, evaluateCandidates, resendCandidateAccess, sendCandidateEmails, type ActionResult } from "@/lib/admission/admin-actions";
-import { TEMPLATE_FOR_STATUS, TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
+import { deleteCandidates, evaluateCandidates, resendCandidateAccess, type ActionResult } from "@/lib/admission/admin-actions";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { Callout } from "@/components/ui";
-import { PhaseBadge } from "./PhaseBadge";
-import { PHASES, PHASE_STATE, needsAction, phasesOf, type PhaseKey, type PhaseState } from "@/lib/admission/phases";
+import { phasesOf } from "@/lib/admission/phases";
+import { PRIMARY_LABEL, QUEUE_CHIPS, queueView, type QueueChip } from "@/lib/admission/queue";
 import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
 import { shownEmail } from "@/lib/talent/rules";
+import { EvaluationDrawer } from "./EvaluationDrawer";
 
-const REC_LABEL: Record<string, string> = { SELECTED: "Avanza", RESCUE_REQUIRED: "Repechaje", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No continúa" };
-const OUTCOMES = [
-  ["SELECTED", "Seleccionado/a"],
-  ["RESCUE_REQUIRED", "Repechaje por video"],
-  ["HUMAN_REVIEW", "Revisión humana"],
-  ["NOT_SELECTED", "No continúa (todavía no)"],
-] as const;
+const REC_LABEL: Record<string, string> = { SELECTED: "Seleccionar", RESCUE_REQUIRED: "Activar rescate", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No seleccionar" };
 
-export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus = "" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialStatus?: string }) {
+/**
+ * Admisión de la Wave en cuatro columnas: Candidato, Delivery, Estado y Evaluación y acción. Primero lo que
+ * espera una decisión; una acción principal por fila y el resto en el menú. Delivery solo lee.
+ */
+export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip = "todos" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialChip?: QueueChip }) {
   const [q, setQ] = useState("");
-  // Filtro por estado de fase. Acepta un estado de fase o, por compatibilidad, un estado del sistema (?estado=…).
-  const [state, setState] = useState<PhaseState | "">(() => toPhaseState(initialStatus));
-  const [phase, setPhase] = useState<PhaseKey | "">("");
+  const [chip, setChip] = useState<QueueChip>(initialChip);
   const [delivery, setDelivery] = useState("");
-  const [onlyAction, setOnlyAction] = useState(false);
-  const [rec, setRec] = useState("");
   const [sel, setSel] = useState<string[]>([]);
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
-  const [outcome, setOutcome] = useState<(typeof OUTCOMES)[number][0]>("SELECTED");
-  const [note, setNote] = useState("");
-  const [template, setTemplate] = useState<EmailTemplate>("INVITATION");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<string[] | null>(null);
-  // Eliminados en esta sesión: desaparecen de la lista y de los indicadores al instante (el servidor confirma).
+  // Eliminados en esta sesión: desaparecen de la lista al instante (el servidor confirma).
   const [removed, setRemoved] = useState<string[]>([]);
   const candidates = useMemo(() => all.filter((c) => !removed.includes(c.id)), [all, removed]);
-  const withPhases = useMemo(() => candidates.map((c) => ({ c, p: phasesOf(c.status) })), [candidates]);
+  const withView = useMemo(
+    () => candidates.map((c) => ({ c, v: queueView({ status: c.status, hasEval: Boolean(c.eval), rescue: c.rescue, emailFailed: c.welcomeFailed }) })),
+    [candidates],
+  );
+  const count = (k: QueueChip) => (k === "todos" ? withView.length : withView.filter(({ v }) => v.chips.includes(k)).length);
 
   const rows = useMemo(
     () =>
-      withPhases
-        .filter(({ c }) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.specialty ?? ""} ${c.delivery_owner ?? ""}`.toLowerCase().includes(q.toLowerCase()))
-        .filter(({ p }) => !state || p[phaseOfState(state)] === state)
-        .filter(({ p }) => !phase || p.current === phase)
+      withView
+        .filter(({ c }) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.delivery_owner ?? ""}`.toLowerCase().includes(q.toLowerCase()))
+        .filter(({ v }) => chip === "todos" || v.chips.includes(chip))
         .filter(({ c }) => !delivery || (delivery === NO_DELIVERY ? !c.delivery_owner : c.delivery_owner === delivery))
-        .filter(({ c }) => !onlyAction || needsAction(c.status))
-        .filter(({ c }) => !rec || c.eval?.recommendation === rec)
-        .sort((a, b) => Number(needsAction(b.c.status)) - Number(needsAction(a.c.status)) || b.c.last_activity.localeCompare(a.c.last_activity))
-        .map(({ c, p }) => ({ ...c, phases: p })),
-    [withPhases, q, state, phase, delivery, onlyAction, rec],
+        .sort((a, b) => a.v.priority - b.v.priority || b.c.last_activity.localeCompare(a.c.last_activity)),
+    [withView, q, chip, delivery],
   );
-  // Listas grandes: se muestran de a PAGE filas; cambiar filtros vuelve al inicio.
   const [limit, setLimit] = useState(PAGE);
-  useEffect(() => { setLimit(PAGE); }, [q, state, phase, delivery, onlyAction, rec]);
+  useEffect(() => { setLimit(PAGE); }, [q, chip, delivery]);
   const visible = rows.slice(0, limit);
   const deliveries = [...new Set(candidates.map((c) => c.delivery_owner).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "es"));
-  const allSel = rows.length > 0 && rows.every((r) => sel.includes(r.id));
+  const allSel = rows.length > 0 && rows.every(({ c }) => sel.includes(c.id));
   const run = (fn: () => Promise<ActionResult>) => start(async () => { setResult(await fn()); setSel([]); });
-  // Selección rápida: el admin elige; la IA solo sugiere.
-  const pick = (pred: (c: CandidateListItem) => boolean) => setSel(rows.filter(pred).map((r) => r.id));
-  const countState = (s: PhaseState) => withPhases.filter(({ p }) => p[phaseOfState(s)] === s).length;
-  const actionCount = candidates.filter((c) => needsAction(c.status)).length;
-  const filtered = Boolean(state || phase || delivery || onlyAction || rec || q);
-  const clear = () => { setState(""); setPhase(""); setDelivery(""); setOnlyAction(false); setRec(""); setQ(""); };
+  const evaluateOne = (id: string) => { setBusyId(id); start(async () => { setResult(await evaluateCandidates(waveId, [id])); setBusyId(null); }); };
 
   return (
     <div className="stack adm-board">
-      <nav className="adm-flow" aria-label="Flujo de admisión: filtra por fase y estado">
-        {PHASES.map((ph, i) => (
-          <section key={ph.key} className={`adm-flow-phase${phase === ph.key ? " on" : ""}`} aria-labelledby={`fl-${ph.key}`}>
-            <button type="button" className="adm-flow-head" id={`fl-${ph.key}`} aria-pressed={phase === ph.key} onClick={() => { setPhase(phase === ph.key ? "" : ph.key); setState(""); }}>
-              <span className="n">{i + 1}</span>
-              <strong>{ph.label}</strong>
-              <span className="muted">{withPhases.filter(({ p }) => p.current === ph.key).length} hoy aquí</span>
-            </button>
-            <ul>
-              {ph.states.filter((s) => s !== "sin_iniciar" || countState(s) > 0).map((s) => (
-                <li key={s}>
-                  <button type="button" className={`adm-flow-state${state === s ? " on" : ""}`} aria-pressed={state === s} title={PHASE_STATE[s].hint} onClick={() => { setState(state === s ? "" : s); setPhase(""); }}>
-                    <PhaseBadge state={s} />
-                    <strong>{countState(s)}</strong>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </nav>
-
-      <div className="card adm-toolbar">
-        <div className="adm-filters wide">
-          <input type="search" placeholder="Buscar por nombre, correo, cliente o Delivery" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar candidatos" />
-          <select value={phase} onChange={(e) => { setPhase(e.target.value as PhaseKey | ""); setState(""); }} aria-label="Filtrar por fase">
-            <option value="">Todas las fases</option>
-            {PHASES.map((ph) => <option key={ph.key} value={ph.key}>{ph.label}</option>)}
-          </select>
-          <select value={state} onChange={(e) => { setState(e.target.value as PhaseState | ""); setPhase(""); }} aria-label="Filtrar por estado">
-            <option value="">Todos los estados</option>
-            {PHASES.map((ph) => (
-              <optgroup key={ph.key} label={ph.label}>{ph.states.map((s) => <option key={s} value={s}>{PHASE_STATE[s].label}</option>)}</optgroup>
-            ))}
-          </select>
-          <select value={delivery} onChange={(e) => setDelivery(e.target.value)} aria-label="Filtrar por Delivery">
-            <option value="">Todo Delivery</option>
-            {deliveries.map((d) => <option key={d} value={d}>{d}</option>)}
-            <option value={NO_DELIVERY}>Sin Delivery</option>
-          </select>
-          {isAdmin && (
-            <select value={rec} onChange={(e) => setRec(e.target.value)} aria-label="Filtrar por propuesta IA">
-              <option value="">Toda propuesta IA</option>
-              {Object.entries(REC_LABEL).map(([k, v]) => <option key={k} value={k}>IA: {v}</option>)}
-            </select>
-          )}
-          <button type="button" className={`adm-pill attention${onlyAction ? " on" : ""}`} aria-pressed={onlyAction} onClick={() => setOnlyAction(!onlyAction)}>
-            Requieren intervención <strong>{actionCount}</strong>
+      <div className="adm-chips" role="toolbar" aria-label="Filtrar candidatos">
+        {QUEUE_CHIPS.map((k) => (
+          <button key={k.key} type="button" className={`adm-chip${chip === k.key ? " on" : ""}${k.key === "decision" && count("decision") ? " attention" : ""}`} aria-pressed={chip === k.key} onClick={() => setChip(k.key)}>
+            {k.label} <strong>{count(k.key)}</strong>
           </button>
-        </div>
-        {isAdmin && (
-          <div className="adm-quick">
-            <span className="muted">Selección rápida</span>
-            <button className="adm-pill" onClick={() => pick((c) => c.status === "APPLICATION_SUBMITTED" && !c.eval)}>Enviados sin evaluar</button>
-            <button className="adm-pill" onClick={() => pick((c) => (c.eval?.pl ? c.eval.pl === "SELECCIONAR" || c.eval.pl === "SELECCIONAR_CON_SEGUIMIENTO" : c.eval?.recommendation === "SELECTED") && !c.decision)}>IA propone avanzar</button>
-            <button className="adm-pill" onClick={() => pick((c) => c.eval?.recommendation === "RESCUE_REQUIRED" && !c.decision)}>IA propone repechaje</button>
-            <button className="adm-pill" onClick={() => pick((c) => ["INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(c.status))}>Sin postulación enviada</button>
-            <button className="adm-pill" onClick={() => pick(() => true)}>Todos los visibles</button>
-          </div>
-        )}
+        ))}
+      </div>
+      <div className="adm-filters">
+        <input type="search" placeholder="Buscar por nombre, correo, cliente o Delivery" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar candidatos" />
+        <select value={delivery} onChange={(e) => setDelivery(e.target.value)} aria-label="Filtrar por Delivery">
+          <option value="">Todo Delivery</option>
+          {deliveries.map((d) => <option key={d} value={d}>{d}</option>)}
+          <option value={NO_DELIVERY}>Sin Delivery</option>
+        </select>
       </div>
 
       <div className="adm-showing" role="status" aria-live="polite">
-        <span>Mostrando <strong>{rows.length}</strong> de {candidates.length} candidato{candidates.length === 1 ? "" : "s"}{isAdmin && rows.length > limit ? " · «Seleccionar todo» incluye también las filas aún no visibles" : ""}</span>
-        {filtered && (
-          <>
-            {phase && <span className="adm-tag">Fase: {PHASES.find((p) => p.key === phase)!.label}</span>}
-            {state && <span className="adm-tag">{PHASE_STATE[state].label}</span>}
-            {delivery && <span className="adm-tag">Delivery: {delivery === NO_DELIVERY ? "sin asignar" : delivery}</span>}
-            {onlyAction && <span className="adm-tag">Requieren intervención</span>}
-            {rec && <span className="adm-tag">IA: {REC_LABEL[rec]}</span>}
-            {q && <span className="adm-tag">“{q}”</span>}
-            <button type="button" className="link-btn" onClick={clear}>Limpiar filtros</button>
-          </>
-        )}
+        <span>Mostrando <strong>{rows.length}</strong> de {candidates.length}</span>
+        {(q || delivery || chip !== "todos") && <button type="button" className="link-btn" onClick={() => { setQ(""); setDelivery(""); setChip("todos"); }}>Limpiar filtros</button>}
       </div>
 
       {isAdmin && sel.length > 0 && (
-        <section className="card adm-bulk" aria-label="Acciones sobre la selección">
-          <header>
-            <strong>{sel.length} seleccionado{sel.length === 1 ? "" : "s"}</strong>
-            <button type="button" className="link-btn" onClick={() => setSel([])}>Quitar selección</button>
-          </header>
-          <div className="adm-actions">
-            <div className="adm-act">
-              <span className="adm-step">1 · Evaluar con IA</span>
-              <p>Propuesta por dimensión. No decide.</p>
-              <button className="btn small" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, sel))}>Evaluar con IA</button>
-            </div>
-            <div className="adm-act">
-              <span className="adm-step">2 · Registrar decisión</span>
-              <select value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)} aria-label="Decisión">
-                {OUTCOMES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <input type="text" placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Nota de la decisión" />
-              <button className="btn small" disabled={pending} onClick={() => confirm(`¿Registrar "${OUTCOMES.find((o) => o[0] === outcome)![1]}" para ${sel.length} candidato(s)? Queda registrado a tu nombre.`) && run(() => decideCandidates(waveId, sel, outcome, note))}>Registrar decisión</button>
-            </div>
-            <div className="adm-act">
-              <span className="adm-step">3 · Enviar correo</span>
-              <select value={template} onChange={(e) => setTemplate(e.target.value as EmailTemplate)} aria-label="Plantilla">
-                {Object.entries(TEMPLATE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <button
-                className="btn small"
-                disabled={pending}
-                onClick={() => {
-                  const mismatch = candidates.filter((c) => sel.includes(c.id) && TEMPLATE_FOR_STATUS[c.status] !== template).length;
-                  const warn = mismatch ? `\n\nAtención: ${mismatch} seleccionado(s) no están en el estado que corresponde a esta plantilla.` : "";
-                  if (confirm(`¿Enviar "${TEMPLATE_LABEL[template]}" a ${sel.length} persona(s)?${warn}`)) run(() => sendCandidateEmails(waveId, sel, template));
-                }}
-              >
-                Enviar correo
-              </button>
-            </div>
-            <div className="adm-act danger">
-              <span className="adm-step">Eliminar</span>
-              <p>La persona podrá postular de nuevo desde cero.</p>
-              <button className="btn small adm-danger" disabled={pending} onClick={() => setToDelete(sel)}>Eliminar {sel.length === 1 ? "candidato" : `${sel.length} candidatos`}</button>
-            </div>
-          </div>
+        <section className="card adm-bulk compact" aria-label="Acciones sobre la selección">
+          <strong>{sel.length} seleccionado{sel.length === 1 ? "" : "s"}</strong>
+          <button className="btn small" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, sel))}>Evaluar con IA</button>
+          <button className="btn small adm-danger" disabled={pending} onClick={() => setToDelete(sel)}>Eliminar</button>
+          <button type="button" className="link-btn" onClick={() => setSel([])}>Quitar selección</button>
         </section>
       )}
 
@@ -207,7 +101,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
         />
       )}
 
-      {pending && <p className="muted">Procesando… (la evaluación con IA puede tardar unos segundos por postulación)</p>}
+      {pending && <p className="muted" role="status">Procesando… (la evaluación con IA puede tardar unos segundos por postulación)</p>}
       {result && (
         <Callout tone={result.ok ? "ok" : "bad"} title={result.message}>
           {result.details && result.details.length > 0 && <ul style={{ margin: 0 }}>{result.details.map((d) => <li key={d}><small>{d}</small></li>)}</ul>}
@@ -215,54 +109,63 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
       )}
 
       <div className="table-wrap" tabIndex={0}>
-        <table className="rtable adm-table">
+        <table className="rtable adm-table adm-q">
           <thead>
             <tr>
-              {isAdmin && <th><input type="checkbox" aria-label="Seleccionar todo" checked={allSel} onChange={(e) => setSel(e.target.checked ? rows.map((r) => r.id) : [])} /></th>}
-              <th>Candidato/a</th>
+              {isAdmin && <th className="rt-check"><input type="checkbox" aria-label="Seleccionar todo" checked={allSel} onChange={(e) => setSel(e.target.checked ? rows.map(({ c }) => c.id) : [])} /></th>}
+              <th>Candidato</th>
               <th>Delivery</th>
-              <th>Postulación</th>
-              <th>Assessment</th>
-              <th>Decisión</th>
-              <th>Incorporación</th>
-              <th>Última actividad</th>
-              {isAdmin && <th><span className="sr-only">Acciones</span></th>}
+              <th>Estado</th>
+              <th>{isAdmin ? "Evaluación y acción" : "Próximo paso"}</th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((c) => (
-              <tr key={c.id} className={needsAction(c.status) ? "needs" : undefined}>
-                {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
-                <td className="rt-title">
-                  <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
-                  <br /><small className="muted">{shownEmail(c.corporate_email)}</small>
-                  {(c.client_name || c.role_title) && <><br /><small className="muted">{[c.client_name, c.role_title].filter(Boolean).join(" · ")}</small></>}
-                </td>
-                <td data-label="Delivery">{c.delivery_owner ?? <span className="muted">Sin asignar</span>}</td>
-                <td data-label="Postulación"><PhaseBadge state={c.phases.postulacion} /></td>
-                <td data-label="Assessment">
-                  {c.phases.assessment ? <PhaseBadge state={c.phases.assessment} /> : <span className="muted">—</span>}
-                  {isAdmin && c.eval && <><br /><small className="muted">IA {c.eval.total.toFixed(0)} · nivel {c.eval.level}{c.eval.pl ? ` · ${PL_LABEL[c.eval.pl as PlRecommendation]}` : ""}</small></>}
-                </td>
-                <td data-label="Decisión">
-                  {c.phases.decision ? <PhaseBadge state={c.phases.decision} /> : <span className="muted">—</span>}
-                  {isAdmin && c.decision?.agrees_with_ai === false && <><br /><small className="pending-def">Difiere de la IA</small></>}
-                </td>
-                <td data-label="Incorporación">{c.phases.incorporacion ? <PhaseBadge state={c.phases.incorporacion} /> : <span className="muted">—</span>}</td>
-                <td data-label="Última actividad"><small>{fmtActivity(c.last_activity)}</small>{c.lastEmail?.status === "failed" && <><br /><small className="error">Último correo falló</small></>}</td>
-                {isAdmin && (
-                  <td className="rt-actions">
-                    <RowMenu
-                      name={c.full_name}
-                      detailHref={`/admin/admision/${waveId}/c/${c.id}`}
-                      onResend={() => run(() => resendCandidateAccess(waveId, c.id))}
-                      onDelete={() => setToDelete([c.id])}
-                    />
+            {visible.map(({ c, v }) => {
+              const rec = c.eval ? (c.eval.pl ? PL_LABEL[c.eval.pl as PlRecommendation] : REC_LABEL[c.eval.recommendation]) : null;
+              return (
+                <tr key={c.id} className={v.priority <= 3 ? "needs" : undefined}>
+                  {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
+                  <td className="rt-title">
+                    <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
+                    <br /><small className="muted">{shownEmail(c.corporate_email)}</small>
                   </td>
-                )}
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={9} className="muted">{candidates.length ? "No hay candidatos con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
+                  <td data-label="Delivery">{c.delivery_owner ?? <span className="muted">Sin asignar</span>}</td>
+                  <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span></td>
+                  <td data-label={isAdmin ? "Evaluación" : "Próximo paso"}>
+                    {isAdmin ? (
+                      <div className="adm-evcell">
+                        <span className="adm-ev">
+                          {c.eval ? <><strong>{Math.round(c.eval.total)}</strong><small>/100</small>{rec && <small className="muted"> · {rec}</small>}</> : <small className="muted">Sin evaluación</small>}
+                          {c.welcomeFailed && <><br /><small className="error">Correo de bienvenida falló</small></>}
+                        </span>
+                        <span className="adm-evact">
+                          {v.primary && (
+                            <button
+                              type="button"
+                              className={`btn small${v.primary === "evaluate_ai" ? " ghost" : ""}`}
+                              disabled={pending && busyId === c.id}
+                              onClick={() => (v.primary === "evaluate_ai" ? evaluateOne(c.id) : setDrawer(c.id))}
+                            >
+                              {pending && busyId === c.id ? "Evaluando…" : PRIMARY_LABEL[v.primary]}
+                            </button>
+                          )}
+                          <RowMenu
+                            name={c.full_name}
+                            detailHref={`/admin/admision/${waveId}/c/${c.id}`}
+                            onEvaluate={c.eval && v.primary !== "review" && v.primary !== "review_rescue" ? () => setDrawer(c.id) : undefined}
+                            onResend={() => run(() => resendCandidateAccess(waveId, c.id))}
+                            onDelete={() => setToDelete([c.id])}
+                          />
+                        </span>
+                      </div>
+                    ) : (
+                      <small>{v.next}</small>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && <tr><td colSpan={isAdmin ? 5 : 4} className="muted">{candidates.length ? "No hay candidatos con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -273,25 +176,16 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
           <button type="button" className="link-btn" onClick={() => setLimit(rows.length)}>Ver todos</button>
         </div>
       )}
+      {drawer && isAdmin && <EvaluationDrawer candidateId={drawer} waveId={waveId} onClose={() => setDrawer(null)} />}
     </div>
   );
 }
 
 const PAGE = 50;
 const NO_DELIVERY = "__sin__";
-const phaseOfState = (s: PhaseState): PhaseKey => PHASES.find((ph) => ph.states.includes(s))!.key;
-const fmtActivity = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
-
-function toPhaseState(v: string): PhaseState | "" {
-  if (!v) return "";
-  if (v in PHASE_STATE) return v as PhaseState;
-  const p = phasesOf(v);
-  return (p[p.current] as PhaseState | null) ?? "";
-}
-
 
 /** Menú de acciones de una fila (···): ver detalle, reenviar acceso y eliminar (acción destructiva, al final). */
-function RowMenu({ name, detailHref, onResend, onDelete }: { name: string; detailHref: string; onResend: () => void; onDelete: () => void }) {
+function RowMenu({ name, detailHref, onEvaluate, onResend, onDelete }: { name: string; detailHref: string; onEvaluate?: () => void; onResend: () => void; onDelete: () => void }) {
   const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const open = pos !== null;
   const setOpen = (v: boolean) => { if (!v) setPos(null); else place(); };
@@ -327,7 +221,8 @@ function RowMenu({ name, detailHref, onResend, onDelete }: { name: string; detai
       </button>
       {open && (
         <div className="row-menu-pop" role="menu" aria-label={`Acciones para ${name}`} style={pos ?? undefined}>
-          <Link role="menuitem" href={detailHref} onClick={() => setOpen(false)}>Ver detalle</Link>
+          <Link role="menuitem" href={detailHref} onClick={() => setOpen(false)}>Ver ficha completa</Link>
+          {onEvaluate && <button role="menuitem" type="button" onClick={item(onEvaluate)}>Ver evaluación</button>}
           <button role="menuitem" type="button" onClick={item(onResend)}>Reenviar acceso</button>
           <hr />
           <button role="menuitem" type="button" className="danger" onClick={item(onDelete)}>Eliminar candidato</button>

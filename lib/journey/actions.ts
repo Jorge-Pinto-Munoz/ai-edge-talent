@@ -89,6 +89,9 @@ export async function markCapsuleComplete(capsuleId: string, done: boolean): Pro
   try {
     const { candidate } = await requireParticipant();
     const db = await supabaseUser();
+    // Solo cápsulas que la persona puede ver (una etapa aún no abierta no se puede marcar).
+    const { data: cap } = await db.from("capsules").select("id").eq("id", capsuleId).maybeSingle();
+    if (!cap) throw new Error("Esta cápsula aún no está disponible.");
     if (done) await db.from("capsule_progress").upsert({ candidate_id: candidate.id, capsule_id: capsuleId });
     else await db.from("capsule_progress").delete().eq("candidate_id", candidate.id).eq("capsule_id", capsuleId);
     revalidatePath("/mi-journey");

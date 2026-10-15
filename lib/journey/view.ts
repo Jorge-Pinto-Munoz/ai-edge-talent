@@ -9,6 +9,7 @@ import { pulseDef } from "@/lib/pulse/definitions";
 import { duePulses } from "@/lib/pulse/rules";
 import { CLOSING_PULSE, STAGE_STATUS, stageRequirements, stageStatus, type StageStatus } from "./closure";
 import { LAYERS } from "./rules";
+import { supabaseService } from "@/lib/supabase/server";
 
 type Journey = NonNullable<Awaited<ReturnType<typeof myJourney>>>;
 
@@ -91,6 +92,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
         }
       : null,
     preview,
+    mindsetGate: await mindsetGate(j),
     firstName: j.candidate.full_name.split(" ")[0],
     subtitle: [j.candidate.role_title, j.candidate.client_name].filter(Boolean).join(" · "),
     waveName: j.wave?.name ?? "AI Edge Talent",
@@ -145,4 +147,18 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
   };
 
   return view;
+}
+
+/**
+ * AI First Mindset por Wave: el contenido se habilita en la apertura que decide Administración (la base lo exige con
+ * RLS). Antes de eso la persona ve su próxima etapa y la fecha del primer reto, sin poder abrirlo por URL.
+ */
+async function mindsetGate(j: Journey): Promise<JourneyView["mindsetGate"]> {
+  if ((j.candidate.journey_layer ?? "AI_MINDSET") !== "AI_MINDSET") return null;
+  const { data } = await supabaseService().from("wave_stage_openings").select("opens_at").eq("wave_id", j.candidate.wave_id).eq("layer", "AI_MINDSET").maybeSingle();
+  const opensAt = data?.opens_at ?? null;
+  const open = Boolean(opensAt && new Date(opensAt).getTime() <= Date.now());
+  const first = j.capsules.filter((c) => c.layer === "AI_MINDSET").sort((a, b) => a.position - b.position)[0];
+  const untouched = first ? !j.completed.has(first.id) && !j.submissions.some((s) => s.capsule_id === first.id) : false;
+  return { open, opensAt, firstCapsuleId: open && first && untouched ? first.id : null };
 }

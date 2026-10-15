@@ -6,26 +6,10 @@
 export const RESCUE_MAX_MINUTES = 3;
 
 export const RESCUE_QUESTIONS: { key: "commitment" | "interest" | "ai_affinity" | "autonomy"; question: string; why: string }[] = [
-  {
-    key: "commitment",
-    question: "¿Por qué quieres entrar a AI Edge Talent ahora y cómo vas a organizar tu tiempo para estudiar, certificarte y construir durante las próximas semanas?",
-    why: "Compromiso: motivación propia y un plan realista para sostener el proceso.",
-  },
-  {
-    key: "ai_affinity",
-    question: "Cuéntanos (o muéstranos en pantalla) una tarea real de esta semana en la que usaste IA: qué le pediste, qué te entregó y qué corregiste o decidiste tú.",
-    why: "Afinidad con la IA: uso real con criterio propio, no solo declarado.",
-  },
-  {
-    key: "interest",
-    question: "¿Qué problema concreto de tu trabajo con tu cliente te gustaría resolver con IA en el AI Lab, y cómo sabrías que funcionó?",
-    why: "Interés concreto: una oportunidad real de aplicación y una noción de valor.",
-  },
-  {
-    key: "autonomy",
-    question: "¿Qué aprendiste por tu cuenta sobre IA en el último mes y dónde lo aprendiste?",
-    why: "Aprendizaje autónomo: iniciativa para mantenerse al día.",
-  },
+  { key: "commitment", question: "¿Qué te motiva a ser parte de AI Edge Talent?", why: "Compromiso: motivación propia para sostener el proceso." },
+  { key: "ai_affinity", question: "¿Cómo crees que la inteligencia artificial puede transformar tu manera de trabajar?", why: "Afinidad con la IA: una visión concreta de su uso en el trabajo." },
+  { key: "interest", question: "Cuéntanos un desafío real de tu trabajo y cómo utilizarías IA para abordarlo.", why: "Interés concreto: una oportunidad real de aplicación." },
+  { key: "autonomy", question: "¿Qué estás dispuesto a aprender o cambiar para aprovechar esta oportunidad?", why: "Disposición: apertura a aprender y cambiar." },
 ];
 
 /** Criterios con que el Product Lead reevalúa el video (1–5 cada uno). */
@@ -46,4 +30,72 @@ export function isAcceptableVideoUrl(raw: string): boolean {
   } catch {
     return false;
   }
+}
+
+/* ───────── Ventana de rescate (24 h) y estado ───────── */
+
+/** Plazo para entregar el video desde que Administración ofrece el rescate. */
+export const RESCUE_WINDOW_HOURS = 24;
+
+export type RescueState = "none" | "available" | "preparing" | "submitted" | "in_review" | "approved" | "not_approved" | "expired";
+
+export const RESCUE_STATE_LABEL: Record<RescueState, string> = {
+  none: "Rescate no habilitado",
+  available: "Rescate disponible",
+  preparing: "Rescate en preparación",
+  submitted: "Rescate enviado",
+  in_review: "Rescate en revisión",
+  approved: "Rescate aprobado",
+  not_approved: "Rescate no aprobado",
+  expired: "Plazo vencido",
+};
+
+export interface RescueInput {
+  status: string;
+  invitation: { expires_at: string | null; started_at: string | null } | null;
+  video: { submitted_at: string; reviewed_at: string | null } | null;
+}
+
+/**
+ * Estado del rescate, derivado de la invitación, el video y el estado de admisión. Solo existe si Administración
+ * ofreció el rescate. "Aprobado"/"no aprobado" es la decisión final registrada después de revisar el video.
+ */
+export function rescueState(r: RescueInput, now = new Date()): RescueState {
+  if (!r.invitation) return "none";
+  if (r.video) {
+    if (r.status === "SELECTED" || r.status === "CONDITIONS_PENDING" || r.status === "CONDITIONS_ACCEPTED" || r.status === "ENROLLED" || r.status === "MINDSET_READY") return "approved";
+    if (r.status === "NOT_SELECTED") return "not_approved";
+    return r.video.reviewed_at ? "in_review" : "submitted";
+  }
+  if (r.status === "NOT_SELECTED") return "expired";
+  if (r.invitation.expires_at && new Date(r.invitation.expires_at).getTime() < now.getTime()) return "expired";
+  return r.invitation.started_at ? "preparing" : "available";
+}
+
+/** ¿Se puede entregar o reemplazar el video ahora? (la base de datos aplica la misma regla). */
+export function rescueOpen(r: RescueInput, now = new Date()): boolean {
+  if (!r.invitation || r.status !== "RESCUE_REQUIRED") return false;
+  if (r.video?.reviewed_at) return false;
+  return !r.invitation.expires_at || new Date(r.invitation.expires_at).getTime() >= now.getTime();
+}
+
+/** Tiempo restante legible ("23 h 10 min", "8 min"). */
+export function timeLeft(expiresAt: string, now = new Date()): string {
+  const ms = new Date(expiresAt).getTime() - now.getTime();
+  if (ms <= 0) return "0 min";
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return h > 0 ? `${h} h ${m} min` : `${Math.max(1, m)} min`;
+}
+
+/**
+ * Elegibilidad para ofrecer rescate (regla de la especificación v1): quien queda bajo el corte según la rúbrica
+ * (nivel D o recomendación de rescate), con resultado de Assessment y sin un rescate previo.
+ */
+export function rescueEligibility(input: { status: string; level: string | null; recommendation: string | null; pl: string | null; hadInvitation: boolean }): { ok: boolean; reason: string } {
+  if (input.hadInvitation) return { ok: false, reason: "Ya tuvo una oportunidad de rescate en esta Wave." };
+  if (!["ASSESSMENT_EVALUATED", "HUMAN_REVIEW"].includes(input.status)) return { ok: false, reason: "El rescate se ofrece al decidir sobre un Assessment evaluado." };
+  if (!input.level) return { ok: false, reason: "Primero se necesita el resultado del Assessment." };
+  const under = input.level === "D" || input.recommendation === "RESCUE_REQUIRED" || input.pl === "ACTIVAR_RESCATE";
+  return under ? { ok: true, reason: "Quedó bajo el corte: puede complementar con un video." } : { ok: false, reason: "El rescate es para quienes quedan bajo el corte (nivel D) según la rúbrica." };
 }

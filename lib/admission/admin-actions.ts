@@ -247,7 +247,10 @@ export async function deleteCandidates(waveId: string, candidateIds: string[], o
       const { error } = await svc.rpc("purge_candidate", { p_candidate: c.id });
       if (error) { details.push(`${c.full_name}: ${/inscrita/.test(error.message) ? "ya está inscrita en el programa; no se borra" : "no se pudo borrar"}`); continue; }
       deleted++;
-      if (rv?.video_path) await svc.storage.from("submissions").remove([rv.video_path]);
+      // Videos de rescate: el vigente y cualquier subida que no se alcanzó a registrar.
+      const { data: files } = await svc.storage.from("submissions").list(c.id, { limit: 100 });
+      const paths = [...new Set([...(rv?.video_path ? [rv.video_path] : []), ...(files ?? []).filter((f) => f.name.startsWith("rescate-")).map((f) => `${c.id}/${f.name}`)])];
+      if (paths.length) await svc.storage.from("submissions").remove(paths);
       let accountNote = "";
       if (opts.account) {
         const [{ data: others }, { data: prof }] = await Promise.all([

@@ -6,6 +6,7 @@ import { listCandidates } from "@/lib/admission/queries";
 import { admissionCounts } from "@/lib/admission/phases";
 import { waveReference } from "@/lib/waves/reference";
 import { CandidateTable } from "@/components/admission/CandidateTable";
+import { chipFromParams } from "@/lib/admission/queue";
 import { CandidateBoard } from "@/components/admission/CandidateBoard";
 import { CapacityMeter } from "@/components/admission/CapacityMeter";
 import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
@@ -18,9 +19,9 @@ export const metadata = { title: "Admisión · Portal AET" };
 export const dynamic = "force-dynamic";
 
 /** Admisión de una Wave: indicadores, referencia de selección, flujo por fases y gestión de candidatos. */
-export default async function WaveAdmission({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ vista?: string; estado?: string }> }) {
+export default async function WaveAdmission({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ vista?: string; estado?: string; filtro?: string }> }) {
   const { waveId } = await params;
-  const { vista, estado } = await searchParams;
+  const { vista, estado, filtro } = await searchParams;
   const board = vista === "columnas";
   const viewer = await requireStaffPage(`/admin/admision/${waveId}`);
   const isAdmin = viewer.role === "admin";
@@ -75,7 +76,7 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
       {board ? (
         <CandidateBoard waveId={waveId} candidates={candidates} isAdmin={isAdmin} />
       ) : (
-        <CandidateTable waveId={waveId} candidates={candidates} isAdmin={isAdmin} initialStatus={estado ?? ""} />
+        <CandidateTable waveId={waveId} candidates={candidates} isAdmin={isAdmin} initialChip={chipFromParams(filtro, estado)} />
       )}
     </div>
   );

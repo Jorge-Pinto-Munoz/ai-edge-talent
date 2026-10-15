@@ -111,7 +111,9 @@ export function JourneyApp({ v }: { v: JourneyView }) {
               <button type="button" className="btn small" onClick={() => setPulseOpen(true)} aria-haspopup="dialog">Responder</button>
             </div>
           )}
-          {v.closing ? (
+          {v.mindsetGate && !v.mindsetGate.open ? (
+            <MindsetGate v={v} onGuide={() => setOpen({ type: "guide", stage: stageOf("AI_MINDSET") })} />
+          ) : v.closing ? (
             <ClosingCard v={v} onOpen={() => setClosingOpen(true)} />
           ) : (
             <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => setOpen({ type: "node", node: n, stage: stageOf(next!.stage) })} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
@@ -183,6 +185,23 @@ function JourneyHero({ v }: { v: JourneyView }) {
   );
 }
 
+/* ───────── Antes de la apertura de AI First Mindset ───────── */
+function MindsetGate({ v, onGuide }: { v: JourneyView; onGuide: () => void }) {
+  const at = v.mindsetGate?.opensAt;
+  const when = at ? new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(at)) : null;
+  return (
+    <section className="jr-next" style={stageVars("AI_MINDSET")} aria-labelledby="jr-gate-t">
+      <div className="jr-next-ico"><Icon name="clock" size={26} /></div>
+      <div className="jr-next-txt">
+        <span className="jr-next-eyebrow">Tu próxima etapa</span>
+        <h2 id="jr-gate-t">AI First Mindset</h2>
+        <p>{when ? `Ya eres parte de AI Edge Talent. Tu primer reto estará disponible el ${when} (hora de Chile).` : "Ya eres parte de AI Edge Talent. Te avisaremos por correo apenas tu primer reto esté disponible."}</p>
+      </div>
+      <button type="button" className="jr-cta" onClick={onGuide}>Ver de qué se trata <Icon name="arrowRight" size={18} /></button>
+    </section>
+  );
+}
+
 /* ───────── La única cosa: tu siguiente paso ───────── */
 function NextStep({ v, reviewing, onOpen, onGuide }: { v: JourneyView; reviewing: number; onOpen: (n: PathNode) => void; onGuide: () => void }) {
   const n = v.path.next;
@@ -221,7 +240,7 @@ function NextStep({ v, reviewing, onOpen, onGuide }: { v: JourneyView; reviewing
         <p>{n.hint}</p>
       </div>
       {isCapsule ? (
-        <Link className="jr-cta" href={`/mi-journey/capsula/${n.capsuleId}`}>{n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></Link>
+        <Link className="jr-cta" href={`/mi-journey/capsula/${n.capsuleId}`}>{n.capsuleId === v.mindsetGate?.firstCapsuleId ? "Comenzar primer reto" : n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></Link>
       ) : (
         <button type="button" className="jr-cta" onClick={() => onOpen(n)}>{n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></button>
       )}

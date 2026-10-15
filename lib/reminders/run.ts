@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email/send";
 import { audit, sendIdentityEmail } from "@/lib/identity/service";
 import { syncMany } from "@/lib/journey/closure-sync";
 import { layerName, type Layer } from "@/lib/journey/rules";
+import { notifyDueOpenings } from "@/lib/journey/opening";
 import { DEFAULT_REMINDERS, MAX_EMAIL_ATTEMPTS, RETRYABLE, deliveryAlertDue, reminderDue, type ReminderSettings } from "./rules";
 
 /**
@@ -66,18 +67,39 @@ export async function runReminders(now = new Date()) {
   // 3) Reintentos de correos fallidos sin código (últimas 48 h).
   const { data: failed } = await svc
     .from("email_messages")
-    .select("id, to_email, template, subject, body_text, attempts")
+    .select("id, to_email, template, subject, body_text, attempts, created_at")
     .eq("status", "failed")
     .lt("attempts", MAX_EMAIL_ATTEMPTS)
     .gte("created_at", new Date(now.getTime() - 2 * 86_400_000).toISOString())
     .limit(50);
   for (const m of failed ?? []) {
     if (!RETRYABLE.has(m.template)) continue;
+    // Una invitación al rescate vieja ya no sirve (su plazo es de 24 h): Administración puede extender y reenviar.
+    if (m.template === "RESCUE_INVITE" && now.getTime() - new Date(m.created_at).getTime() > 12 * 3_600_000) continue;
     const { data: got } = await svc.from("email_messages").update({ attempts: m.attempts + 1, status: "queued" }).eq("id", m.id).eq("attempts", m.attempts).eq("status", "failed").select("id");
     if (!got?.length) continue;
     const res = await sendEmail(m.to_email, m.subject, m.body_text);
     await svc.from("email_messages").update(res.error ? { status: "failed", error: res.error.slice(0, 300) } : { status: "sent", provider_id: res.id, sent_at: new Date().toISOString(), error: null }).eq("id", m.id);
     if (!res.error) out.retried++;
   }
-  return out;
+  // 4) Aperturas programadas de AI First Mindset ya vencidas: aviso único "primer reto disponible".
+  const openings = await notifyDueOpenings(svc);
+  // 5) Rescates vencidos sin video: queda registrado (la decisión sigue siendo humana; la base ya bloquea envíos).
+  const { data: expired } = await svc
+    .from("rescue_invitations")
+    .select("candidate_id, wave_id, expires_at, candidates!inner(status)")
+    .is("expired_logged_at", null)
+    .not("expires_at", "is", null)
+    .lt("expires_at", now.toISOString());
+  let rescuesExpired = 0;
+  for (const r of expired ?? []) {
+    if ((r.candidates as unknown as { status: string }).status !== "RESCUE_REQUIRED") continue;
+    const { data: video } = await svc.from("rescue_videos").select("candidate_id").eq("candidate_id", r.candidate_id).maybeSingle();
+    if (video) continue;
+    const { data: got } = await svc.from("rescue_invitations").update({ expired_logged_at: now.toISOString() }).eq("candidate_id", r.candidate_id).is("expired_logged_at", null).select("candidate_id");
+    if (!got?.length) continue;
+    await audit("admission.rescue.expired", { candidateId: r.candidate_id, waveId: r.wave_id, details: { expires_at: r.expires_at }, eventKey: `rescue-expired:${r.candidate_id}:${r.expires_at}` }, svc);
+    rescuesExpired++;
+  }
+  return { ...out, openingsNotified: openings.reduce((n, o) => n + o.sent, 0), rescuesExpired };
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 
 export interface CandidateListItem {
   id: string;
@@ -17,6 +17,10 @@ export interface CandidateListItem {
   eval: { total: number; level: string; recommendation: string; pl: string | null; created_at: string } | null;
   decision: { outcome: string; agrees_with_ai: boolean | null } | null;
   lastEmail: { template: string; status: string; created_at: string } | null;
+  /** Rescate (solo si Administración lo ofreció): plazo y fechas del video, sin el video. */
+  rescue: { expires_at: string | null; started_at: string | null; submitted_at: string | null; reviewed_at: string | null } | null;
+  /** El correo de bienvenida a seleccionados falló y no se ha reenviado con éxito. */
+  welcomeFailed: boolean;
 }
 
 /** Lista de la Wave. Las columnas de evaluación solo llegan si el usuario es admin (RLS). */
@@ -38,7 +42,18 @@ export async function listCandidates(waveId: string): Promise<CandidateListItem[
     ids.length ? db.from("decisions").select("candidate_id, outcome, agrees_with_ai, decided_at").in("candidate_id", ids).order("decided_at", { ascending: false }) : Promise.resolve({ data: [] }),
     ids.length ? db.from("email_messages").select("candidate_id, template, status, created_at").in("candidate_id", ids).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
   ]);
+  // Fechas del rescate: la lista de personas ya viene filtrada por permisos; aquí solo se agregan fechas (no el video).
+  const svc = supabaseService();
+  const [{ data: invs }, { data: vids }] = ids.length
+    ? await Promise.all([
+        svc.from("rescue_invitations").select("candidate_id, expires_at, started_at").in("candidate_id", ids),
+        svc.from("rescue_videos").select("candidate_id, submitted_at, reviewed_at").in("candidate_id", ids),
+      ])
+    : [{ data: [] }, { data: [] }];
   return (cands ?? []).map((c) => {
+    const inv = (invs ?? []).find((i) => i.candidate_id === c.id);
+    const vid = (vids ?? []).find((v) => v.candidate_id === c.id);
+    const welcome = (emails ?? []).find((e) => e.candidate_id === c.id && e.template === "SELECTED_WELCOME");
     const appId = appIdOf(c.applications);
     const ev = (evals ?? []).find((e) => e.application_id === appId);
     const dec = (decisions ?? []).find((d) => d.candidate_id === c.id);
@@ -58,6 +73,8 @@ export async function listCandidates(waveId: string): Promise<CandidateListItem[
       eval: ev ? { total: Number(ev.weighted_total), level: ev.level, recommendation: ev.recommendation, pl: ev.pl_recommendation ?? null, created_at: ev.created_at } : null,
       decision: dec ? { outcome: dec.outcome, agrees_with_ai: dec.agrees_with_ai } : null,
       lastEmail: em ? { template: em.template, status: em.status, created_at: em.created_at } : null,
+      rescue: inv ? { expires_at: inv.expires_at, started_at: inv.started_at, submitted_at: vid?.submitted_at ?? null, reviewed_at: vid?.reviewed_at ?? null } : null,
+      welcomeFailed: welcome?.status === "failed",
     };
   });
 }

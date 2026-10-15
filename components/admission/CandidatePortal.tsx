@@ -9,6 +9,7 @@ import { ASSESSMENT_DIMENSIONS } from "@/lib/data/journey";
 import { CommitmentSummaryCard, LifecycleRail } from "@/components/journey";
 import { BrandHero, Callout, DocumentView, fmtDay, fmtDeadline } from "@/components/ui";
 import { RescueForm } from "./RescueForm";
+import type { RescueState } from "@/lib/admission/rescue";
 import { ASSESSMENT_STATE_LABEL, answeredCount, firstPending, missingRequired } from "@/lib/admission/assessment";
 
 export interface PortalData {
@@ -27,7 +28,8 @@ export interface PortalData {
   /** Último guardado del borrador en el servidor y fecha de envío definitivo. */
   savedAt: string | null;
   submittedAt: string | null;
-  rescue: { at: string; reviewed: boolean } | null;
+  /** Solo existe si Administración ofreció el rescate. `serverNow` corrige el reloj del dispositivo. */
+  rescue: { state: RescueState; open: boolean; expiresAt: string | null; serverNow: string; video: { at: string; reviewed: boolean } | null } | null;
 }
 
 /** `inPortal`: la persona ya ingresó con su cuenta (no se le recuerda revisar el correo de credenciales). */
@@ -42,8 +44,8 @@ export function CandidatePortal({ data, inPortal = false, preview = false }: { d
         {!inPortal && <p>¡Gracias por postular! Te enviamos un correo de confirmación. Para seguir el estado, ingresa a tu portal con tu correo: te enviaremos un código de un solo uso.</p>}
         <p>El equipo AI Edge Talent revisará la evidencia y te comunicará el resultado y el próximo paso por correo y en tu portal.</p>
         <Callout tone="warn" title="Postular no significa estar seleccionado/a." />
-        <Callout title="Si quedas bajo el corte, tienes una segunda oportunidad">
-          Te pediremos un video breve (máximo 3 minutos) respondiendo cuatro preguntas sobre tu compromiso, tu uso de IA y tu interés. Una persona del equipo lo revisa y decide.
+        <Callout title="Una persona del equipo toma la decisión">
+          Si tu Assessment queda bajo el corte, el equipo puede ofrecerte complementar tu postulación con un video breve. Si eso ocurre, te avisaremos por correo con el plazo.
         </Callout>
         {!inPortal && (
           <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
@@ -53,12 +55,18 @@ export function CandidatePortal({ data, inPortal = false, preview = false }: { d
         )}
       </Message>
     );
-  if (s === "RESCUE_REQUIRED")
+  if (s === "RESCUE_REQUIRED" && data.rescue)
     return (
       <Message eyebrow="Complementa tu postulación" title="Queremos complementar tu postulación">
         <p>El formulario escrito puede no reflejar todo lo que traes. Queremos conocerte mejor con un video breve que responda estas preguntas.</p>
         <p className="muted">No es un castigo y no garantiza selección: complementa tu Assessment, y una persona del equipo lo revisa.</p>
-        <RescueForm token={data.token} sent={data.rescue} />
+        <RescueForm token={data.token} rescue={data.rescue} preview={preview} />
+      </Message>
+    );
+  if (s === "RESCUE_REQUIRED")
+    return (
+      <Message eyebrow="Tu postulación" title="Tu postulación está en revisión">
+        <p>El equipo AI Edge Talent te escribirá por correo con el próximo paso.</p>
       </Message>
     );
   if (s === "NOT_SELECTED")
