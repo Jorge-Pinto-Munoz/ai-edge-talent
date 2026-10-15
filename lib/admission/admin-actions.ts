@@ -298,3 +298,21 @@ export async function resendCandidateAccess(waveId: string, candidateId: string)
     return fail(e);
   }
 }
+
+/** Referencia de profesionales de la Wave (indicador de planificación, no un límite de postulación ni de selección). */
+export async function setWaveReference(waveId: string, value: number): Promise<ActionResult> {
+  try {
+    const viewer = await requireRole(["admin"]);
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n) || n < 1 || n > 500) throw new Error("La referencia debe ser un número entre 1 y 500.");
+    const svc = supabaseService();
+    const { error } = await svc.from("waves").update({ reference_capacity: n }).eq("id", waveId);
+    if (error) throw error;
+    await svc.from("audit_log").insert({ action: "wave.reference.updated", actor: viewer.id, actor_email: viewer.email, wave_id: waveId, details: { reference_capacity: n } });
+    revalidatePath(`/admin/admision/${waveId}`);
+    revalidatePath("/admin");
+    return { ok: true, message: `Referencia actualizada: ${n} profesionales.` };
+  } catch (e) {
+    return fail(e);
+  }
+}

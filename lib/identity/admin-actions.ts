@@ -82,6 +82,36 @@ export async function createUser(input: { kind: CreatableRole; fullName: string;
   }
 }
 
+/**
+ * Personas autorizadas por Administración (role_grants con rol interno, p. ej. los Delivery) que aún no tienen
+ * cuenta: se crea la cuenta (pendiente, sin permisos hasta su primer ingreso con código) y se envía la invitación.
+ * No depende de candidatos ni de selecciones; no abre ningún acceso público.
+ */
+export async function inviteAuthorized(emails: string[]): Promise<AdminResult> {
+  try {
+    const actor = await admin();
+    const svc = supabaseService();
+    const list = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => EMAIL_RE.test(e)))];
+    if (!list.length) throw new Error("No hay personas para invitar.");
+    const { data: grants } = await svc.from("role_grants").select("email, role, full_name").in("email", list);
+    let sent = 0;
+    const failed: string[] = [];
+    for (const g of grants ?? []) {
+      if (g.role === "kiber" || g.role === "client") continue;
+      const { userId } = await ensureAccount(g.email, g.full_name ?? null, svc);
+      const { data: p } = await svc.from("profiles").select("id, role, status").eq("id", userId).single();
+      if (p && p.role !== g.role && p.role === "kiber") await svc.from("profiles").update({ role: g.role, updated_at: new Date().toISOString() }).eq("id", userId);
+      if (p && (p.status === "PAUSED" || p.status === "REVOKED" || p.status === "DELETED")) { failed.push(`${g.email} (cuenta ${p.status === "PAUSED" ? "pausada" : "revocada"})`); continue; }
+      const r = await sendAccessCode({ id: userId, email: g.email, full_name: g.full_name ?? null, role: g.role }, actor, "invite");
+      if (r.sent) sent++;
+      else failed.push(`${g.email} (${r.error ?? "el correo no salió"})`);
+    }
+    return done(`${sent} invitación(es) enviada(s).${failed.length ? ` Sin enviar: ${failed.join(", ")}.` : ""}`);
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 // ───────────── Editar y rol ─────────────
 export async function updateUser(userId: string, input: { fullName: string; phone: string }): Promise<AdminResult> {
   try {

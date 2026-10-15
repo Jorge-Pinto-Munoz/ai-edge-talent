@@ -5,6 +5,7 @@ import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseService } from "@/lib/supabase/server";
 import { pinStatus } from "@/lib/identity/pin";
 import { UsersConsole, type UserRow } from "@/components/identity/UsersConsole";
+import { AuthorizedInvites, type AuthorizedRow } from "@/components/identity/AuthorizedInvites";
 import { AccessRequests, type RequestRow } from "@/components/identity/AccessRequests";
 import { ReminderSettings } from "@/components/identity/ReminderSettings";
 import { Kpi } from "@/components/ds/Status";
@@ -33,6 +34,8 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
     svc.from("app_settings").select("value").eq("key", "reminders").maybeSingle(),
     svc.auth.admin.listUsers({ perPage: 1000 }),
   ]);
+  // Roles internos autorizados (role_grants) que aún no tienen cuenta: se pueden invitar en cualquier momento.
+  const { data: grants } = await svc.from("role_grants").select("email, role, full_name").not("role", "in", "(kiber,client)");
   const { data: sent } = tab === "config"
     ? await svc.from("email_messages").select("id, to_email, template, status, error, attempts, created_at, sent_at").order("created_at", { ascending: false }).limit(50)
     : { data: [] };
@@ -65,6 +68,12 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
     };
   });
 
+  const known = new Set((profiles ?? []).map((p) => p.email));
+  const authorized: AuthorizedRow[] = (grants ?? []).filter((g) => !known.has(g.email)).map((g) => ({
+    email: g.email, name: g.full_name ?? null, role: g.role,
+    waves: (staff ?? []).filter((s) => s.email === g.email).map((s) => waveName(s.wave_id)),
+  }));
+
   const k = {
     active: rows.filter((r) => r.status === "ACTIVE").length,
     pending: rows.filter((r) => r.status === "PENDING" || (r.status === "ACTIVE" && r.pin === "PENDING" && !r.lastAccess)).length,
@@ -83,7 +92,7 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
       </div>
       <div className="kpi-grid">
         <Kpi label="Activos" value={k.active} />
-        <Kpi label="Pendientes de activación" value={k.pending} />
+        <Kpi label="Pendientes de activación" value={k.pending} hint={authorized.length ? `Más ${authorized.length} autorizado(s) sin cuenta` : undefined} />
         <Kpi label="Pausados" value={k.paused} />
         <Kpi label="Bloqueados o revocados" value={k.blocked} />
         <Kpi label="Invitaciones vigentes" value={k.invites} hint="Códigos temporales sin usar" />
@@ -92,6 +101,7 @@ export default async function Usuarios({ searchParams }: { searchParams: Promise
       <nav className="row" aria-label="Secciones">
         {TABS.map(([key, label]) => <Link key={key} href={`?tab=${key}`} className={`btn small ${tab === key ? "" : "ghost"}`}>{label}{key === "solicitudes" && k.requests ? ` · ${k.requests}` : ""}</Link>)}
       </nav>
+      {tab === "usuarios" && <AuthorizedInvites rows={authorized} />}
       {tab === "usuarios" && <UsersConsole rows={rows} waves={(waves ?? []).map((w) => ({ id: w.id, name: w.name.replace("AI Edge Talent · ", ""), status: w.status }))} myId={viewer.id} />}
       {tab === "solicitudes" && (
         <AccessRequests

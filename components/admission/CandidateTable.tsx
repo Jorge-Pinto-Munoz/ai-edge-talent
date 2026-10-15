@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CandidateListItem } from "@/lib/admission/queries";
 import { decideCandidates, deleteCandidates, evaluateCandidates, resendCandidateAccess, sendCandidateEmails, type ActionResult } from "@/lib/admission/admin-actions";
-import { TEMPLATE_NAME, type IdentityTemplate } from "@/lib/email/identity";
 import { TEMPLATE_FOR_STATUS, TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
-import { Badge, Callout, admissionTone } from "@/components/ui";
+import { Callout } from "@/components/ui";
+import { PhaseBadge } from "./PhaseBadge";
+import { PHASES, PHASE_STATE, needsAction, phasesOf, type PhaseKey, type PhaseState } from "@/lib/admission/phases";
 import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
 import { shownEmail } from "@/lib/talent/rules";
 
@@ -21,7 +22,11 @@ const OUTCOMES = [
 
 export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus = "" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialStatus?: string }) {
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState(initialStatus);
+  // Filtro por estado de fase. Acepta un estado de fase o, por compatibilidad, un estado del sistema (?estado=…).
+  const [state, setState] = useState<PhaseState | "">(() => toPhaseState(initialStatus));
+  const [phase, setPhase] = useState<PhaseKey | "">("");
+  const [delivery, setDelivery] = useState("");
+  const [onlyAction, setOnlyAction] = useState(false);
   const [rec, setRec] = useState("");
   const [sel, setSel] = useState<string[]>([]);
   const [result, setResult] = useState<ActionResult | null>(null);
@@ -29,49 +34,80 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
   const [outcome, setOutcome] = useState<(typeof OUTCOMES)[number][0]>("SELECTED");
   const [note, setNote] = useState("");
   const [template, setTemplate] = useState<EmailTemplate>("INVITATION");
-  const [stage, setStage] = useState<Stage>("all");
   const [toDelete, setToDelete] = useState<string[] | null>(null);
   // Eliminados en esta sesión: desaparecen de la lista y de los indicadores al instante (el servidor confirma).
   const [removed, setRemoved] = useState<string[]>([]);
   const candidates = useMemo(() => all.filter((c) => !removed.includes(c.id)), [all, removed]);
+  const withPhases = useMemo(() => candidates.map((c) => ({ c, p: phasesOf(c.status) })), [candidates]);
 
   const rows = useMemo(
     () =>
-      candidates
-        .filter((c) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.specialty ?? ""}`.toLowerCase().includes(q.toLowerCase()))
-        .filter((c) => !status || c.status === status)
-        .filter((c) => STAGES[stage].test(c.status))
-        .filter((c) => !rec || c.eval?.recommendation === rec)
-        .sort((a, b) => (b.eval?.total ?? -1) - (a.eval?.total ?? -1)),
-    [candidates, q, status, rec, stage],
+      withPhases
+        .filter(({ c }) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.specialty ?? ""} ${c.delivery_owner ?? ""}`.toLowerCase().includes(q.toLowerCase()))
+        .filter(({ p }) => !state || p[phaseOfState(state)] === state)
+        .filter(({ p }) => !phase || p.current === phase)
+        .filter(({ c }) => !delivery || (delivery === NO_DELIVERY ? !c.delivery_owner : c.delivery_owner === delivery))
+        .filter(({ c }) => !onlyAction || needsAction(c.status))
+        .filter(({ c }) => !rec || c.eval?.recommendation === rec)
+        .sort((a, b) => Number(needsAction(b.c.status)) - Number(needsAction(a.c.status)) || b.c.last_activity.localeCompare(a.c.last_activity))
+        .map(({ c, p }) => ({ ...c, phases: p })),
+    [withPhases, q, state, phase, delivery, onlyAction, rec],
   );
-  const statuses = [...new Set(candidates.map((c) => c.status))];
+  // Listas grandes: se muestran de a PAGE filas; cambiar filtros vuelve al inicio.
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => { setLimit(PAGE); }, [q, state, phase, delivery, onlyAction, rec]);
+  const visible = rows.slice(0, limit);
+  const deliveries = [...new Set(candidates.map((c) => c.delivery_owner).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "es"));
   const allSel = rows.length > 0 && rows.every((r) => sel.includes(r.id));
   const run = (fn: () => Promise<ActionResult>) => start(async () => { setResult(await fn()); setSel([]); });
-
   // Selección rápida: el admin elige; la IA solo sugiere.
   const pick = (pred: (c: CandidateListItem) => boolean) => setSel(rows.filter(pred).map((r) => r.id));
-
-  const count = (k: Stage) => candidates.filter((c) => STAGES[k].test(c.status)).length;
-  const selRows = candidates.filter((c) => sel.includes(c.id));
+  const countState = (s: PhaseState) => withPhases.filter(({ p }) => p[phaseOfState(s)] === s).length;
+  const actionCount = candidates.filter((c) => needsAction(c.status)).length;
+  const filtered = Boolean(state || phase || delivery || onlyAction || rec || q);
+  const clear = () => { setState(""); setPhase(""); setDelivery(""); setOnlyAction(false); setRec(""); setQ(""); };
 
   return (
     <div className="stack adm-board">
-      <div className="adm-funnel" role="group" aria-label="Filtrar por etapa del Assessment">
-        {(Object.keys(STAGES) as Stage[]).map((k) => (
-          <button key={k} type="button" className={`adm-chip${stage === k ? " on" : ""}`} aria-pressed={stage === k} onClick={() => { setStage(stage === k && k !== "all" ? "all" : k); setStatus(""); setRec(""); }}>
-            <strong>{count(k)}</strong>
-            <span>{STAGES[k].label}</span>
-          </button>
+      <nav className="adm-flow" aria-label="Flujo de admisión: filtra por fase y estado">
+        {PHASES.map((ph, i) => (
+          <section key={ph.key} className={`adm-flow-phase${phase === ph.key ? " on" : ""}`} aria-labelledby={`fl-${ph.key}`}>
+            <button type="button" className="adm-flow-head" id={`fl-${ph.key}`} aria-pressed={phase === ph.key} onClick={() => { setPhase(phase === ph.key ? "" : ph.key); setState(""); }}>
+              <span className="n">{i + 1}</span>
+              <strong>{ph.label}</strong>
+              <span className="muted">{withPhases.filter(({ p }) => p.current === ph.key).length} hoy aquí</span>
+            </button>
+            <ul>
+              {ph.states.filter((s) => s !== "sin_iniciar" || countState(s) > 0).map((s) => (
+                <li key={s}>
+                  <button type="button" className={`adm-flow-state${state === s ? " on" : ""}`} aria-pressed={state === s} title={PHASE_STATE[s].hint} onClick={() => { setState(state === s ? "" : s); setPhase(""); }}>
+                    <PhaseBadge state={s} />
+                    <strong>{countState(s)}</strong>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </div>
+      </nav>
 
       <div className="card adm-toolbar">
-        <div className="adm-filters">
-          <input type="search" placeholder="Buscar por nombre, correo, cliente o especialidad" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar candidatos" />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filtrar por estado">
+        <div className="adm-filters wide">
+          <input type="search" placeholder="Buscar por nombre, correo, cliente o Delivery" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar candidatos" />
+          <select value={phase} onChange={(e) => { setPhase(e.target.value as PhaseKey | ""); setState(""); }} aria-label="Filtrar por fase">
+            <option value="">Todas las fases</option>
+            {PHASES.map((ph) => <option key={ph.key} value={ph.key}>{ph.label}</option>)}
+          </select>
+          <select value={state} onChange={(e) => { setState(e.target.value as PhaseState | ""); setPhase(""); }} aria-label="Filtrar por estado">
             <option value="">Todos los estados</option>
-            {statuses.map((s) => <option key={s} value={s}>{ADMISSION_LABEL[s as AdmissionStatus]}</option>)}
+            {PHASES.map((ph) => (
+              <optgroup key={ph.key} label={ph.label}>{ph.states.map((s) => <option key={s} value={s}>{PHASE_STATE[s].label}</option>)}</optgroup>
+            ))}
+          </select>
+          <select value={delivery} onChange={(e) => setDelivery(e.target.value)} aria-label="Filtrar por Delivery">
+            <option value="">Todo Delivery</option>
+            {deliveries.map((d) => <option key={d} value={d}>{d}</option>)}
+            <option value={NO_DELIVERY}>Sin Delivery</option>
           </select>
           {isAdmin && (
             <select value={rec} onChange={(e) => setRec(e.target.value)} aria-label="Filtrar por propuesta IA">
@@ -79,6 +115,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
               {Object.entries(REC_LABEL).map(([k, v]) => <option key={k} value={k}>IA: {v}</option>)}
             </select>
           )}
+          <button type="button" className={`adm-pill attention${onlyAction ? " on" : ""}`} aria-pressed={onlyAction} onClick={() => setOnlyAction(!onlyAction)}>
+            Requieren intervención <strong>{actionCount}</strong>
+          </button>
         </div>
         {isAdmin && (
           <div className="adm-quick">
@@ -93,14 +132,16 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
       </div>
 
       <div className="adm-showing" role="status" aria-live="polite">
-        <span>Mostrando <strong>{rows.length}</strong> de {candidates.length} candidato{candidates.length === 1 ? "" : "s"}</span>
-        {(stage !== "all" || status || rec || q) && (
+        <span>Mostrando <strong>{rows.length}</strong> de {candidates.length} candidato{candidates.length === 1 ? "" : "s"}{isAdmin && rows.length > limit ? " · «Seleccionar todo» incluye también las filas aún no visibles" : ""}</span>
+        {filtered && (
           <>
-            {stage !== "all" && <span className="adm-tag">{STAGES[stage].label}</span>}
-            {status && <span className="adm-tag">Estado: {ADMISSION_LABEL[status as AdmissionStatus]}</span>}
+            {phase && <span className="adm-tag">Fase: {PHASES.find((p) => p.key === phase)!.label}</span>}
+            {state && <span className="adm-tag">{PHASE_STATE[state].label}</span>}
+            {delivery && <span className="adm-tag">Delivery: {delivery === NO_DELIVERY ? "sin asignar" : delivery}</span>}
+            {onlyAction && <span className="adm-tag">Requieren intervención</span>}
             {rec && <span className="adm-tag">IA: {REC_LABEL[rec]}</span>}
             {q && <span className="adm-tag">“{q}”</span>}
-            <button type="button" className="link-btn" onClick={() => { setStage("all"); setStatus(""); setRec(""); setQ(""); }}>Limpiar filtros</button>
+            <button type="button" className="link-btn" onClick={clear}>Limpiar filtros</button>
           </>
         )}
       </div>
@@ -174,50 +215,41 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
       )}
 
       <div className="table-wrap" tabIndex={0}>
-        <table className="rtable">
+        <table className="rtable adm-table">
           <thead>
             <tr>
               {isAdmin && <th><input type="checkbox" aria-label="Seleccionar todo" checked={allSel} onChange={(e) => setSel(e.target.checked ? rows.map((r) => r.id) : [])} /></th>}
               <th>Candidato/a</th>
-              <th>Cliente · Rol</th>
-              <th>Estado</th>
-              {isAdmin && <th>Propuesta IA</th>}
-              {isAdmin && <th>Decisión</th>}
-              <th>Último correo</th>
+              <th>Delivery</th>
+              <th>Postulación</th>
+              <th>Assessment</th>
+              <th>Decisión</th>
+              <th>Incorporación</th>
+              <th>Última actividad</th>
               {isAdmin && <th><span className="sr-only">Acciones</span></th>}
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => (
-              <tr key={c.id}>
+            {visible.map((c) => (
+              <tr key={c.id} className={needsAction(c.status) ? "needs" : undefined}>
                 {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
                 <td className="rt-title">
                   <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
                   <br /><small className="muted">{shownEmail(c.corporate_email)}</small>
+                  {(c.client_name || c.role_title) && <><br /><small className="muted">{[c.client_name, c.role_title].filter(Boolean).join(" · ")}</small></>}
                 </td>
-                <td data-label="Cliente · Rol">{c.client_name ?? "—"}<br /><small className="muted">{c.role_title ?? ""}{c.specialty ? ` · ${c.specialty}` : ""}</small></td>
-                <td data-label="Estado"><Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge></td>
-                {isAdmin && (
-                  <td data-label="Propuesta IA">
-                    {c.eval ? (
-                      <>
-                        <strong>{c.eval.total.toFixed(0)}</strong> <span className="badge">{c.eval.level}</span>
-                        <br /><small className="muted">{c.eval.pl ? PL_LABEL[c.eval.pl as PlRecommendation] : REC_LABEL[c.eval.recommendation]}</small>
-                      </>
-                    ) : <span className="muted">—</span>}
-                  </td>
-                )}
-                {isAdmin && (
-                  <td data-label="Decisión">
-                    {c.decision ? (
-                      <>
-                        {REC_LABEL[c.decision.outcome]}
-                        {c.decision.agrees_with_ai === false && <><br /><small className="pending-def">Difiere de la IA</small></>}
-                      </>
-                    ) : <span className="muted">Pendiente</span>}
-                  </td>
-                )}
-                <td data-label="Último correo">{c.lastEmail ? <small>{TEMPLATE_LABEL[c.lastEmail.template as EmailTemplate] ?? TEMPLATE_NAME[c.lastEmail.template as IdentityTemplate] ?? c.lastEmail.template}<br /><span className={c.lastEmail.status === "failed" ? "error" : "muted"}>{c.lastEmail.status === "sent" ? "Enviado" : c.lastEmail.status === "failed" ? "Falló" : "En cola"}</span></small> : <span className="muted">—</span>}</td>
+                <td data-label="Delivery">{c.delivery_owner ?? <span className="muted">Sin asignar</span>}</td>
+                <td data-label="Postulación"><PhaseBadge state={c.phases.postulacion} /></td>
+                <td data-label="Assessment">
+                  {c.phases.assessment ? <PhaseBadge state={c.phases.assessment} /> : <span className="muted">—</span>}
+                  {isAdmin && c.eval && <><br /><small className="muted">IA {c.eval.total.toFixed(0)} · nivel {c.eval.level}{c.eval.pl ? ` · ${PL_LABEL[c.eval.pl as PlRecommendation]}` : ""}</small></>}
+                </td>
+                <td data-label="Decisión">
+                  {c.phases.decision ? <PhaseBadge state={c.phases.decision} /> : <span className="muted">—</span>}
+                  {isAdmin && c.decision?.agrees_with_ai === false && <><br /><small className="pending-def">Difiere de la IA</small></>}
+                </td>
+                <td data-label="Incorporación">{c.phases.incorporacion ? <PhaseBadge state={c.phases.incorporacion} /> : <span className="muted">—</span>}</td>
+                <td data-label="Última actividad"><small>{fmtActivity(c.last_activity)}</small>{c.lastEmail?.status === "failed" && <><br /><small className="error">Último correo falló</small></>}</td>
                 {isAdmin && (
                   <td className="rt-actions">
                     <RowMenu
@@ -230,22 +262,33 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialStatus
                 )}
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={8} className="muted">{candidates.length ? "No hay postulaciones con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={9} className="muted">{candidates.length ? "No hay candidatos con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
           </tbody>
         </table>
       </div>
+      {rows.length > limit && (
+        <div className="adm-more">
+          <span className="muted">Viendo {limit} de {rows.length}</span>
+          <button type="button" className="btn ghost" onClick={() => setLimit((n) => n + PAGE)}>Mostrar {Math.min(PAGE, rows.length - limit)} más</button>
+          <button type="button" className="link-btn" onClick={() => setLimit(rows.length)}>Ver todos</button>
+        </div>
+      )}
     </div>
   );
 }
 
-type Stage = "all" | "not_started" | "in_progress" | "completed" | "enrolled";
-const STAGES: Record<Stage, { label: string; test: (s: string) => boolean }> = {
-  all: { label: "Candidatos", test: () => true },
-  not_started: { label: "No iniciado", test: (s) => ["NOMINATED", "INVITED", "IDENTIFIED"].includes(s) },
-  in_progress: { label: "En progreso", test: (s) => s === "APPLICATION_STARTED" },
-  completed: { label: "Assessment completado", test: (s) => !["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED"].includes(s) },
-  enrolled: { label: "Inscritos", test: (s) => ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(s) },
-};
+const PAGE = 50;
+const NO_DELIVERY = "__sin__";
+const phaseOfState = (s: PhaseState): PhaseKey => PHASES.find((ph) => ph.states.includes(s))!.key;
+const fmtActivity = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+
+function toPhaseState(v: string): PhaseState | "" {
+  if (!v) return "";
+  if (v in PHASE_STATE) return v as PhaseState;
+  const p = phasesOf(v);
+  return (p[p.current] as PhaseState | null) ?? "";
+}
+
 
 /** Menú de acciones de una fila (···): ver detalle, reenviar acceso y eliminar (acción destructiva, al final). */
 function RowMenu({ name, detailHref, onResend, onDelete }: { name: string; detailHref: string; onResend: () => void; onDelete: () => void }) {
@@ -303,7 +346,7 @@ function DeleteDialog({ people, pending, onCancel, onConfirm, error }: { people:
   const [text, setText] = useState("");
   const cancel = useRef<HTMLButtonElement>(null);
   const many = people.length > 1;
-  const enrolled = people.filter((p) => STAGES.enrolled.test(p.status));
+  const enrolled = people.filter((p) => phasesOf(p.status).incorporacion === "inscrito");
   useEffect(() => { cancel.current?.focus(); }, []);
   const ready = !many || text.trim().toUpperCase() === "ELIMINAR";
   return (

@@ -1,4 +1,5 @@
-import { WAVE_CAPACITY } from "@/lib/waves/order";
+import { waveReference } from "@/lib/waves/reference";
+import { CapacityMeter } from "@/components/admission/CapacityMeter";
 import Link from "next/link";
 import { Fragment } from "react";
 import { redirect } from "next/navigation";
@@ -35,7 +36,8 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
 
   const open = d.pending.filter((p) => p.count > 0);
   // Base del embudo: el cupo de la Wave (o más, si llegan más candidatos que cupos).
-  const top = Math.max(WAVE_CAPACITY, d.funnel[0].count);
+  const reference = await waveReference(waveId);
+  const top = Math.max(reference, d.funnel[0].count);
   const deadlineFuture = d.wave.application_deadline && new Date(d.wave.application_deadline).getTime() > Date.now();
   const firstName = (viewer.fullName ?? viewer.email).split(/[ .@]/)[0];
 
@@ -72,6 +74,8 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
         ))}
       </section>
 
+      <CapacityMeter waveId={waveId} selected={d.funnel[3].count} received={d.funnel[1].count} reference={reference} canEdit={isAdmin} />
+
       <div className="adm-grid">
         <section className="adm-card">
           <div className="adm-card-head">
@@ -98,7 +102,7 @@ export default async function AdminResumen({ searchParams }: { searchParams: Pro
         <section className="adm-card">
           <div className="adm-card-head">
             <h2>Embudo de la Wave</h2>
-            <span className="muted">Personas en cada etapa, sobre el cupo de {WAVE_CAPACITY}</span>
+            <span className="muted">Personas en cada etapa{d.funnel[0].count > reference ? "" : `, sobre la referencia de ${reference}`}</span>
           </div>
           {d.total === 0 ? (
             <div className="empty">

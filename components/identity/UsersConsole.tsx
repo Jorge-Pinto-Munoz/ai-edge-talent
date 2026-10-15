@@ -18,7 +18,7 @@ export interface UserRow {
 }
 type Wave = { id: string; name: string; status: string };
 
-const STATUS_LABEL: Record<string, string> = { ACTIVE: "Activo", PENDING: "Pendiente", PAUSED: "Pausado", REVOKED: "Revocado", DELETED: "Dado de baja" };
+const STATUS_LABEL: Record<string, string> = { ACTIVE: "Activa", PENDING: "Pendiente de activación", PAUSED: "Pausada", REVOKED: "Revocada", DELETED: "Dada de baja" };
 const STATUS_KIND: Record<string, string> = { ACTIVE: "done", PENDING: "pending", PAUSED: "attention", REVOKED: "blocked", DELETED: "blocked" };
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 

@@ -12,6 +12,8 @@ export interface CandidateListItem {
   source: string;
   status: string;
   updated_at: string;
+  /** Último movimiento: cambio de estado o respuesta guardada en la postulación. */
+  last_activity: string;
   eval: { total: number; level: string; recommendation: string; pl: string | null; created_at: string } | null;
   decision: { outcome: string; agrees_with_ai: boolean | null } | null;
   lastEmail: { template: string; status: string; created_at: string } | null;
@@ -22,12 +24,13 @@ export async function listCandidates(waveId: string): Promise<CandidateListItem[
   const db = await supabaseUser();
   const { data: cands, error } = await db
     .from("candidates")
-    .select("id, full_name, corporate_email, client_name, role_title, specialty, delivery_owner, source, status, updated_at, applications(id)")
+    .select("id, full_name, corporate_email, client_name, role_title, specialty, delivery_owner, source, status, updated_at, applications(id, updated_at)")
     .eq("wave_id", waveId)
     .order("full_name");
   if (error) throw error;
   // applications es 1:1 (candidate_id único): PostgREST lo devuelve como objeto o null, no como lista.
-  const appIdOf = (a: unknown): string | undefined => (Array.isArray(a) ? a[0]?.id : (a as { id?: string } | null)?.id);
+  const appOf = (a: unknown) => (Array.isArray(a) ? a[0] : a) as { id?: string; updated_at?: string } | null | undefined;
+  const appIdOf = (a: unknown): string | undefined => appOf(a)?.id;
   const appIds = (cands ?? []).map((c) => appIdOf(c.applications)).filter((x): x is string => Boolean(x));
   const ids = (cands ?? []).map((c) => c.id);
   const [{ data: evals }, { data: decisions }, { data: emails }] = await Promise.all([
@@ -51,6 +54,7 @@ export async function listCandidates(waveId: string): Promise<CandidateListItem[
       source: c.source,
       status: c.status,
       updated_at: c.updated_at,
+      last_activity: [c.updated_at, appOf(c.applications)?.updated_at].filter(Boolean).sort().at(-1) ?? c.updated_at,
       eval: ev ? { total: Number(ev.weighted_total), level: ev.level, recommendation: ev.recommendation, pl: ev.pl_recommendation ?? null, created_at: ev.created_at } : null,
       decision: dec ? { outcome: dec.outcome, agrees_with_ai: dec.agrees_with_ai } : null,
       lastEmail: em ? { template: em.template, status: em.status, created_at: em.created_at } : null,

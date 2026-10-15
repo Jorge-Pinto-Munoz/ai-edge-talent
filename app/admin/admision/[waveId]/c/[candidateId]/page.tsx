@@ -5,7 +5,8 @@ import { supabaseUser } from "@/lib/supabase/server";
 import { DIMENSIONS, LEVEL_LABEL, LEVEL_MEANING, PL_LABEL, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { ASSESSMENT_STATE_LABEL, answeredCount, assessmentState } from "@/lib/admission/assessment";
-import { Badge, admissionTone, fmtDate } from "@/components/ui";
+import { fmtDate } from "@/components/ui";
+import { PhaseStrip } from "@/components/admission/PhaseBadge";
 import { TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
 import { shownEmail } from "@/lib/talent/rules";
@@ -53,9 +54,9 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
           {isAdmin && <a className="btn ghost small" href={`/admin/vista/candidato?id=${c.id}`}>Ver su postulación</a>}
           {isAdmin && ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(c.status) && <a className="btn ghost small" href={`/admin/vista/profesional?id=${c.id}`}>Ver su journey</a>}
           {isAdmin && <a className="btn ghost small" href={`/admin/admision/${waveId}/c/${c.id}/exportar`} download>Descargar Excel</a>}
-          <Badge tone={admissionTone(c.status)}>{ADMISSION_LABEL[c.status as AdmissionStatus]}</Badge>
         </div>
       </div>
+      <section className="card" aria-label="Estado por fase"><PhaseStrip status={c.status} /></section>
 
       {isAdmin && ev && (
         <div className="card">
