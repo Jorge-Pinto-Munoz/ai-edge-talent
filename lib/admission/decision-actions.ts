@@ -10,6 +10,7 @@ import { DIMENSIONS, LEVEL_LABEL, PL_LABEL, type Level, type PlRecommendation } 
 import { audit, ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { renderIdentity } from "@/lib/email/identity";
 import type { AdmissionStatus } from "@/lib/domain/types";
+import { deliveryDirectory } from "@/lib/identity/directory";
 
 /**
  * Decisiones de admisión con confirmación. El administrador decide; la plataforma ejecuta en orden (estado,
@@ -77,6 +78,22 @@ function rescueExplanation(scores: Record<string, { score?: number }> | null): s
 }
 
 const REC_LABEL: Record<string, string> = { SELECTED: "Seleccionar", RESCUE_REQUIRED: "Activar rescate", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No seleccionar" };
+
+type DeliveryDecision = "selected" | "rescue" | "not_selected" | "rescue_selected" | "rescue_not_selected";
+
+/** Aviso al Delivery asignado: una vez por decisión. Nunca bloquea la decisión si el correo falla. */
+async function notifyDeliveryDecision(svc: Svc, c: { id: string; wave_id: string; full_name: string; waveName: string }, decision: DeliveryDecision, when?: string) {
+  try {
+    const { data: a } = await svc.from("delivery_assignments").select("delivery_email").eq("candidate_id", c.id).maybeSingle();
+    if (!a?.delivery_email) return;
+    const first = await audit("admission.delivery.notified", { candidateId: c.id, waveId: c.wave_id, targetEmail: a.delivery_email, details: { decision }, eventKey: `delivery-decision:${c.id}:${decision}` }, svc);
+    if (!first) return;
+    const name = (await deliveryDirectory()).find((d) => d.email === a.delivery_email)?.name;
+    await sendIdentityEmail("DELIVERY_DECISION", a.delivery_email, { name, extra: c.full_name, wave: c.waveName, when, decision, link: portalLink("ingresar", a.delivery_email, `/equipo?wave=${c.wave_id}`) }, { candidateId: c.id, waveId: c.wave_id }, svc);
+  } catch (e) {
+    console.error("[decisión] aviso a Delivery", e instanceof Error ? e.message : e);
+  }
+}
 
 /* ───────── Lectura para el panel de evaluación ───────── */
 export async function getReviewData(candidateId: string) {
@@ -160,6 +177,7 @@ export async function confirmSelection(candidateId: string, note = ""): Promise<
       email = r.ok ? "sent" : "failed";
       detail = r.ok ? undefined : r.error ?? "error del proveedor";
     }
+    await notifyDeliveryDecision(svc, c, c.status === "RESCUE_REQUIRED" ? "rescue_selected" : "selected");
     revalidatePath(`/admin/admision/${c.wave_id}`);
     revalidatePath("/admin");
     const tail = email === "sent" ? "Correo de bienvenida enviado." : email === "failed" ? `El correo no salió (${detail}); queda en reintento automático.` : "El correo de bienvenida ya se había enviado antes.";
@@ -181,6 +199,7 @@ export async function closeNotSelected(candidateId: string, note = ""): Promise<
     if (!moved) return { ok: true, message: "La decisión ya se había registrado (no se duplicó).", email: "skipped" };
     const ev = await latestEvaluation(svc, c.id);
     await recordDecision(c.id, "NOT_SELECTED", note, ev?.id ?? null, ev?.recommendation ?? null, viewer.id);
+    await notifyDeliveryDecision(svc, c, c.status === "RESCUE_REQUIRED" ? "rescue_not_selected" : "not_selected");
     revalidatePath(`/admin/admision/${c.wave_id}`);
     return { ok: true, message: `${c.full_name}: proceso cerrado como no seleccionado.`, email: "skipped" };
   } catch (e) {
@@ -209,6 +228,7 @@ export async function offerRescue(candidateId: string, explanation: string, note
     if (error) throw error;
     await audit("admission.rescue.offered", { actor: viewer.id, actorEmail: viewer.email, candidateId: c.id, waveId: c.wave_id, targetEmail: c.corporate_email, details: { expires_at: expires }, eventKey: `rescue-offer:${c.id}` }, svc);
     const r = await sendIdentityEmail("RESCUE_INVITE", c.corporate_email, { name: c.full_name, extra: text || undefined, link: `${env.appUrl}/postular/${c.invite_token}`, when: fmtWhen(expires), questions: RESCUE_QUESTIONS.map((q) => q.question) }, { candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
+    await notifyDeliveryDecision(svc, c, "rescue", fmtWhen(expires));
     revalidatePath(`/admin/admision/${c.wave_id}`);
     return {
       ok: true,

@@ -5,7 +5,7 @@
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
   | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
-  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN";
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -27,6 +27,7 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   RESCUE_INVITE: "Invitación al rescate",
   RESCUE_SUBMITTED_ADMIN: "Aviso: video de rescate recibido",
   STAGE_OPEN: "Primer reto disponible",
+  DELIVERY_DECISION: "Aviso a Delivery: decisión de admisión",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -57,7 +58,7 @@ ${opts.foot ? `<p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#4
 /** Texto plano: los subtítulos ("# …") pierden la marca. */
 const plain = (p: string[]) => p.map((x) => (x.startsWith("# ") ? x.slice(2).toUpperCase() : x));
 
-export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string; wave?: string; questions?: string[] }): Rendered {
+export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string; wave?: string; questions?: string[]; decision?: "selected" | "rescue" | "not_selected" | "rescue_selected" | "rescue_not_selected" }): Rendered {
   const hi = c.name ? `Hola ${c.name.split(" ")[0]}:` : "Hola:";
   switch (t) {
     case "SELECTED_WELCOME": {
@@ -99,6 +100,21 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
     case "RESCUE_SUBMITTED_ADMIN": {
       const p = [hi, `${c.extra ?? "Un candidato"} envió su video de rescate${c.wave ? ` (${c.wave})` : ""}. Está pendiente de tu revisión en Admisión.`];
       return { subject: `AI Edge Talent | Video de rescate recibido: ${c.extra ?? ""}`.trim(), text: [...p, "", `Revisar: ${c.link}`].join("\n"), html: layout("Video de rescate recibido", p, { cta: { label: "REVISAR RESCATE", href: c.link ?? "" } }) };
+    }
+    case "DELIVERY_DECISION": {
+      // extra = nombre del profesional; when = plazo del rescate (solo "rescue").
+      const who = c.extra ?? "Tu profesional";
+      const d = c.decision ?? "selected";
+      const head: Record<string, [string, string[]]> = {
+        selected: [`${who} fue seleccionado/a`, [`${who} quedó seleccionado/a para ${c.wave ?? "AI Edge Talent"}.`, "Le enviamos un correo de bienvenida. Su próximo paso es ingresar al portal y confirmar su compromiso de participación; luego comienza AI First Mindset.", "Te pedimos acompañarlo/a en este inicio y cuidar que pueda participar sin afectar las horas comprometidas con su cliente."]],
+        rescue: [`${who} tiene una oportunidad de rescate`, [`El Assessment de ${who} quedó bajo el corte y el equipo le ofreció una oportunidad de rescate.`, `Debe enviar un video de máximo 3 minutos antes del ${c.when ?? "plazo indicado"}. Son 24 horas desde ahora.`, "Si puedes, recuérdale el plazo: sin el video dentro de esas 24 horas no podrá continuar en esta Wave."]],
+        not_selected: [`${who} no continúa en esta Wave`, [`Después de revisar su Assessment, ${who} no continuará en ${c.wave ?? "esta Wave"}.`, "Queda en la banca de talento para próximas convocatorias. Te sugerimos conversar con él/ella para darle contexto y motivarlo/a a seguir desarrollándose."]],
+        rescue_selected: [`${who} fue seleccionado/a tras el rescate`, [`El equipo revisó el video de rescate de ${who} y quedó seleccionado/a para ${c.wave ?? "AI Edge Talent"}.`, "Le enviamos un correo de bienvenida. Su próximo paso es ingresar al portal y confirmar su compromiso de participación."]],
+        rescue_not_selected: [`${who} no continúa tras el rescate`, [`El equipo revisó el rescate de ${who} y no continuará en ${c.wave ?? "esta Wave"}.`, "Queda en la banca de talento para próximas convocatorias."]],
+      };
+      const [title, body] = head[d];
+      const p = [hi, ...body, "Puedes ver el detalle en tu vista de equipo."];
+      return { subject: `AI Edge Talent | ${title}`, text: [...p, "", `Ver mi equipo: ${c.link}`].join("\n"), html: layout(title, p, { cta: { label: "VER MI EQUIPO", href: c.link ?? "" }, foot: "Equipo AI Edge Talent · Kibernum" }) };
     }
     case "STAGE_OPEN": {
       const p = [hi, `Tu primer reto de ${c.stage ?? "AI First Mindset"} ya está disponible.`, "Ingresa a tu portal y toca «Comenzar primer reto». Ingresas con tu correo y un código de 6 dígitos de un solo uso."];
