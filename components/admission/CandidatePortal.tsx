@@ -6,9 +6,10 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { acknowledgeAndStart, acceptCommitmentByToken, saveAnswers } from "@/lib/admission/candidate-actions";
 import { getDocument } from "@/lib/content";
 import { ASSESSMENT_DIMENSIONS } from "@/lib/data/journey";
-import { CommitmentSummaryCard, LifecycleRail } from "@/components/journey";
-import { BrandHero, Callout, DocumentView, fmtDay, fmtDeadline } from "@/components/ui";
+import { LifecycleRail } from "@/components/journey";
+import { Callout, DocumentView, fmtDay, fmtDeadline } from "@/components/ui";
 import { RescueForm } from "./RescueForm";
+import { GeneralCommitments, StageSlider } from "./PreApplication";
 import type { RescueState } from "@/lib/admission/rescue";
 import { ASSESSMENT_STATE_LABEL, answeredCount, firstPending, missingRequired } from "@/lib/admission/assessment";
 
@@ -101,30 +102,34 @@ function BeforeApplying({ data, first }: { data: PortalData; first: string }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   if (!doc) return <Callout tone="warn" title="Confirmación no configurada para esta Wave" />;
-  const all = doc.confirmations.every((c) => checked.includes(c.id));
+  const ids = doc.confirmations.map((c) => c.id);
+  const all = ids.every((id) => checked.includes(id));
   return (
-    <div className="stack">
-      <BrandHero
-        image="trabajo-laptop"
-        photoLeft
-        eyebrow={data.wave.name}
-        title={`${first}, antes de postular queremos que sepas a qué te estás comprometiendo`}
-        lead="AI Edge Talent no es solo un curso ni una certificación. Si eres seleccionado/a, participarás en un journey completo: Assessment → AI First Mindset → AI CERTs → AI Lab → Showcase → Cierre."
-      >
-        <Callout tone="warn" title="Postular no significa estar seleccionado/a.">
-          {data.wave.application_deadline ? `Plazo: ${fmtDeadline(data.wave.application_deadline)}.` : null}
-        </Callout>
-      </BrandHero>
-      <CommitmentSummaryCard />
-      <div className="card narrow">
-        <h2 style={{ marginTop: 0 }}>{doc.title}</h2>
-        <p className="muted">{doc.descriptor}</p>
-        {doc.confirmations.map((c) => (
-          <label key={c.id} className="check">
-            <input type="checkbox" checked={checked.includes(c.id)} onChange={(e) => setChecked((x) => (e.target.checked ? [...x, c.id] : x.filter((y) => y !== c.id)))} />
-            <span>{c.text}</span>
-          </label>
-        ))}
+    <div className="pa">
+      <header className="pa-head">
+        <div className="eyebrow">{data.wave.name}</div>
+        <h1>{first}, antes de postular</h1>
+        <p className="lead">AI Edge Talent no es solo un curso ni una certificación: es un journey de 5 etapas. Esto es lo que se espera de ti si quedas seleccionado/a.</p>
+        <div className="pa-tags">
+          <span className="pa-tag warn">Postular no significa estar seleccionado/a</span>
+          {data.wave.application_deadline && <span className="pa-tag">Plazo: {fmtDeadline(data.wave.application_deadline)}</span>}
+        </div>
+      </header>
+
+      <StageSlider />
+      <GeneralCommitments />
+
+      <section className="pa-accept" aria-labelledby="pa-acc">
+        <h2 id="pa-acc">Confirma y comienza</h2>
+        <label className="pa-check">
+          <input type="checkbox" checked={all} onChange={(e) => setChecked(e.target.checked ? ids : [])} />
+          <span>Leí y acepto todas las condiciones: lo que se espera en cada etapa y los compromisos del ciclo completo.</span>
+        </label>
+        <details className="pa-detail">
+          <summary>Ver el detalle de lo que aceptas ({doc.confirmations.length})</summary>
+          <ul>{doc.confirmations.map((c) => <li key={c.id}>{c.text}</li>)}</ul>
+          <p className="muted"><small>{doc.title} · versión {doc.version}</small></p>
+        </details>
         {error && <p className="error" role="alert">{error}</p>}
         <button
           className="btn"
@@ -139,8 +144,7 @@ function BeforeApplying({ data, first }: { data: PortalData; first: string }) {
         >
           {pending ? "Un momento…" : doc.cta}
         </button>
-        <p className="muted"><small>Versión {doc.version}</small></p>
-      </div>
+      </section>
     </div>
   );
 }
@@ -324,15 +328,15 @@ function ApplicationForm({ data, preview = false }: { data: PortalData; preview?
   };
 
   return (
-    <div className="grid assess-grid">
-      <div className="stack" style={{ minWidth: 0 }}>
-        <div>
+    <div className="grid assess-grid assess">
+      <div className="assess-main">
+        <header className="assess-intro">
           <div className="eyebrow">{data.wave.name}</div>
           <h1>Tu Assessment</h1>
           <p className="lead">Queremos conocerte a través de experiencias reales.</p>
           <p>No buscamos respuestas perfectas ni conocimientos memorizados. Queremos conocer cómo estás utilizando IA, cómo abordas problemas, cómo aprendes y cómo imaginas la evolución de tu trabajo.</p>
           <Callout title="Puedes hacerlo en varias veces.">Tus respuestas se guardan solas. Si cierras la página, vuelve con tu enlace o ingresando a tu portal con tu correo y continúa donde quedaste.</Callout>
-        </div>
+        </header>
         <div className="assess-bar" role="region" aria-label="Avance del Assessment">
           <span className="ds-status s-progress">{ASSESSMENT_STATE_LABEL.IN_PROGRESS}</span>
           <strong>{answered} de {total} respondidas</strong>
@@ -341,11 +345,10 @@ function ApplicationForm({ data, preview = false }: { data: PortalData; preview?
         </div>
         {recovered && <Callout tone="ok" title="Recuperamos respuestas que no alcanzaron a guardarse">Estaban en este dispositivo; ya las estamos guardando.</Callout>}
         {data.questions.map((q, i) => (
-          <div key={q.id} id={`q-${q.id}`} className={`card${missing.includes(q.id) ? " q-missing" : ""}`}>
-            <label htmlFor={q.id}>
-              {i + 1}. {q.prompt} {q.required && <span className="muted">*</span>}
-            </label>
-            {q.help && <div className="hint" style={{ marginBottom: 8 }}>{q.help}</div>}
+          <div key={q.id} id={`q-${q.id}`} className={`card assess-q${missing.includes(q.id) ? " q-missing" : ""}`}>
+            <span className="assess-qn">Pregunta {i + 1} de {total}{q.required ? "" : " · opcional"}</span>
+            <label htmlFor={q.id}>{q.prompt}</label>
+            {q.help && <div className="hint">{q.help}</div>}
             {q.kind === "single_choice" && q.options ? (
               <div className="row" role="radiogroup" aria-labelledby={`q-${q.id}`}>
                 {q.options.map((o) => (
@@ -362,7 +365,7 @@ function ApplicationForm({ data, preview = false }: { data: PortalData; preview?
           </div>
         ))}
         {error && <p className="error" role="alert">{error}</p>}
-        <div className="row">
+        <div className="row assess-actions">
           <button className="btn ghost" type="button" disabled={submitting || save.state === "saving"} onClick={() => { version.current = Math.max(version.current, savedVersion.current + 1); void flush(); }}>
             Guardar ahora
           </button>
@@ -372,7 +375,7 @@ function ApplicationForm({ data, preview = false }: { data: PortalData; preview?
           <span className="muted"><small>{answered}/{total} respondidas</small></span>
         </div>
       </div>
-      <aside className="card">
+      <aside className="card assess-aside">
         <h3>Qué evaluaremos</h3>
         <ul>
           {ASSESSMENT_DIMENSIONS.map((d) => (
@@ -384,7 +387,7 @@ function ApplicationForm({ data, preview = false }: { data: PortalData; preview?
         <p className="muted">Evaluamos la calidad de la evidencia, no la habilidad para escribir “lo que creemos que queremos escuchar”.</p>
         {data.wave.application_deadline && (
           <p>
-            <strong>Deadline:</strong> {fmtDeadline(data.wave.application_deadline)}
+            <strong>Plazo:</strong> {fmtDeadline(data.wave.application_deadline)}
           </p>
         )}
       </aside>
