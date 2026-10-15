@@ -82,10 +82,25 @@ export function weekStart(date: Date): string {
 /** Convierte un enlace de YouTube/Vimeo a su URL embebible; otros enlaces se devuelven tal cual. */
 export function embedUrl(url: string): { kind: "iframe" | "video"; src: string } {
   try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtube.com") && u.searchParams.get("v")) return { kind: "iframe", src: `https://www.youtube-nocookie.com/embed/${u.searchParams.get("v")}` };
-    if (u.hostname === "youtu.be") return { kind: "iframe", src: `https://www.youtube-nocookie.com/embed${u.pathname}` };
-    if (u.hostname.includes("vimeo.com") && /^\/\d+/.test(u.pathname)) return { kind: "iframe", src: `https://player.vimeo.com/video${u.pathname}` };
+    const u = new URL(url.trim());
+    const h = u.hostname.replace(/^www\./, "");
+    if (h.endsWith("youtube.com")) {
+      const id = u.searchParams.get("v") ?? u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]+)/)?.[1];
+      if (id) return { kind: "iframe", src: `https://www.youtube-nocookie.com/embed/${id}` };
+    }
+    if (h === "youtu.be") return { kind: "iframe", src: `https://www.youtube-nocookie.com/embed${u.pathname}` };
+    if (h.endsWith("vimeo.com")) {
+      const m = u.pathname.match(/^\/(?:video\/)?(\d+)(?:\/([\w]+))?/);
+      if (m) return { kind: "iframe", src: `https://player.vimeo.com/video/${m[1]}${m[2] ? `?h=${m[2]}` : u.searchParams.get("h") ? `?h=${u.searchParams.get("h")}` : ""}` };
+    }
+    if (h.endsWith("loom.com")) {
+      const id = u.pathname.match(/^\/(?:share|embed)\/([\w]+)/)?.[1];
+      if (id) return { kind: "iframe", src: `https://www.loom.com/embed/${id}` };
+    }
+    if (h === "drive.google.com") {
+      const id = u.pathname.match(/\/file\/d\/([\w-]+)/)?.[1] ?? u.searchParams.get("id");
+      if (id) return { kind: "iframe", src: `https://drive.google.com/file/d/${id}/preview` };
+    }
     if (/\.(mp4|webm|mov)$/i.test(u.pathname)) return { kind: "video", src: url };
     return { kind: "iframe", src: url };
   } catch {

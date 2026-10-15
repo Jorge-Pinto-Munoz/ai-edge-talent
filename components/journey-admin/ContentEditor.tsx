@@ -124,7 +124,7 @@ function CapsuleForm({ waveId, layer, capsule, nextPosition, onDone }: { waveId:
       </div>
       <div className="field"><label htmlFor="cd">Descripción</label><textarea id="cd" rows={2} value={c.description} onChange={txt("description")} /></div>
       <div className="grid grid-2">
-        <div className="field"><label htmlFor="cv">Enlace del video</label><input id="cv" type="text" value={c.videoUrl} onChange={txt("videoUrl")} placeholder="https://vimeo.com/…" /></div>
+        <div className="field"><label htmlFor="cv">Enlace del video</label><input id="cv" type="text" value={c.videoUrl} onChange={txt("videoUrl")} placeholder="YouTube (no listado), Vimeo, Loom o Google Drive" /></div>
         <div className="field">
           <label>…o archivo de video</label>
           <FileUpload bucket="content" waveId={waveId} accept="video/*" label={c.videoPath ? "Reemplazar video" : "Subir video"} onUploaded={(u) => setC((x) => ({ ...x, videoPath: u.path, videoUrl: "" }))} />
