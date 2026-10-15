@@ -33,17 +33,25 @@ export interface Rendered { subject: string; text: string; html: string }
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 function layout(title: string, paras: string[], opts: { code?: string; cta?: { label: string; href: string }; foot?: string }): string {
-  return `<!doctype html><html lang="es"><body style="margin:0;background:#f3f6f8;font-family:Arial,Helvetica,sans-serif;color:#141b23">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:20px;overflow:hidden">
-<tr><td style="background:#080b10;padding:20px 28px;color:#3dc9d4;font-weight:bold;letter-spacing:2px;font-size:12px">KIBERNUM · AI EDGE TALENT</td></tr>
-<tr><td style="padding:28px">
-<h1 style="margin:0 0 16px;font-size:22px;line-height:1.25">${esc(title)}</h1>
-${paras.map((p) => (p.startsWith("# ") ? `<h2 style="margin:22px 0 8px;font-size:16px">${esc(p.slice(2))}</h2>` : `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${esc(p)}</p>`)).join("")}
-${opts.code ? `<p style="margin:20px 0;text-align:center"><span style="display:inline-block;padding:14px 22px;border-radius:14px;background:#e3f5f7;font-size:30px;font-weight:bold;letter-spacing:10px">${esc(opts.code)}</span></p>` : ""}
-${opts.cta ? `<p style="margin:22px 0;text-align:center"><a href="${esc(opts.cta.href)}" style="display:inline-block;padding:14px 26px;border-radius:999px;background:#3dc9d4;color:#080b10;font-weight:bold;text-decoration:none">${esc(opts.cta.label)}</a></p>` : ""}
-${opts.foot ? `<p style="margin:18px 0 0;font-size:12px;color:#4b5763">${esc(opts.foot)}</p>` : ""}
-</td></tr></table></td></tr></table></body></html>`;
+  // Banner de marca en HTML (sin imágenes: se ve aunque el cliente de correo las bloquee). Ancho 640 y responsive.
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light">
+<style>@media (max-width:620px){.wrap{padding:0!important}.card{border-radius:0!important}.pad{padding:24px 20px!important}.hero{padding:32px 20px 28px!important}.hero h1{font-size:24px!important}.btn{display:block!important}}</style></head>
+<body style="margin:0;background:#eef2f5;font-family:Arial,Helvetica,sans-serif;color:#141b23;-webkit-text-size-adjust:100%">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td class="wrap" align="center" style="padding:32px 16px">
+<table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border-radius:24px;overflow:hidden">
+<tr><td class="hero" style="background:#080b10;background-image:linear-gradient(135deg,#080b10 0%,#10303a 60%,#1e6e78 100%);padding:40px 40px 34px">
+<p style="margin:0 0 18px;color:#3dc9d4;font-weight:bold;letter-spacing:3px;font-size:12px">KIBERNUM · AI EDGE TALENT</p>
+<h1 style="margin:0;color:#ffffff;font-size:28px;line-height:1.2">${esc(title)}</h1>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:22px"><tr><td style="width:56px;height:4px;background:#3dc9d4;border-radius:4px;font-size:0;line-height:0">&nbsp;</td><td style="width:8px"></td><td style="width:20px;height:4px;background:#c765c0;border-radius:4px;font-size:0;line-height:0">&nbsp;</td></tr></table>
+</td></tr>
+<tr><td class="pad" style="padding:36px 40px 40px">
+${paras.map((p) => (p.startsWith("# ") ? `<h2 style="margin:28px 0 10px;font-size:18px;color:#080b10">${esc(p.slice(2))}</h2>` : `<p style="margin:0 0 16px;font-size:16px;line-height:1.6">${esc(p)}</p>`)).join("")}
+${opts.code ? `<p style="margin:24px 0;text-align:center"><span style="display:inline-block;padding:16px 24px;border-radius:14px;background:#e3f5f7;font-size:32px;font-weight:bold;letter-spacing:10px">${esc(opts.code)}</span></p>` : ""}
+${opts.cta ? `<p style="margin:28px 0 8px;text-align:center"><a class="btn" href="${esc(opts.cta.href)}" style="display:inline-block;padding:16px 32px;border-radius:999px;background:#3dc9d4;color:#080b10;font-weight:bold;font-size:15px;text-decoration:none">${esc(opts.cta.label)}</a></p>` : ""}
+${opts.foot ? `<p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#4b5763">${esc(opts.foot)}</p>` : ""}
+</td></tr>
+<tr><td style="padding:20px 40px;background:#f6f8fa;border-top:1px solid #e3e8ec;font-size:12px;color:#4b5763">Kibernum · AI Edge Talent. Recibes este correo por tu participación en el programa.</td></tr>
+</table></td></tr></table></body></html>`;
 }
 
 /** Texto plano: los subtítulos ("# …") pierden la marca. */

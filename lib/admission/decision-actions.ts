@@ -65,10 +65,13 @@ async function mindsetOpening(svc: Svc, waveId: string): Promise<string | null> 
 /** Texto individual para el correo de rescate, armado solo con resultados existentes de la rúbrica. */
 function rescueExplanation(scores: Record<string, { score?: number }> | null): string {
   if (!scores) return "";
-  const ranked = DIMENSIONS.map((d) => ({ label: d.label.toLowerCase(), score: Number(scores[d.key]?.score ?? NaN) })).filter((d) => Number.isFinite(d.score));
+  // Etiqueta en minúscula inicial, sin tocar siglas (IA) ni el texto tras "/".
+  const lower = (l: string) => l.split(" / ")[0].replace(/^\p{Lu}(?!\p{Lu})/u, (c) => c.toLowerCase());
+  const ranked = DIMENSIONS.map((d) => ({ label: lower(d.label), score: Number(scores[d.key]?.score ?? NaN) })).filter((d) => Number.isFinite(d.score));
   if (!ranked.length) return "";
-  const low = ranked.filter((d) => d.score <= 2);
-  const pick = (low.length ? low : [...ranked].sort((a, b) => a.score - b.score).slice(0, 2)).map((d) => d.label);
+  const byLow = [...ranked].sort((a, b) => a.score - b.score);
+  const low = byLow.filter((d) => d.score <= 2);
+  const pick = (low.length ? low.slice(0, 3) : byLow.slice(0, 2)).map((d) => d.label);
   const list = pick.length > 1 ? `${pick.slice(0, -1).join(", ")} y ${pick.at(-1)}` : pick[0];
   return `En tu Assessment identificamos oportunidades de desarrollo en ${list}. Nos gustaría conocer con mayor profundidad cómo abordarías estos desafíos en una situación real.`;
 }

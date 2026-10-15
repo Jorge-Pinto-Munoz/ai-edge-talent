@@ -14,6 +14,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Correos: banner de marca en HTML, 640 px y responsive. Portal del candidato más ancho (1160 px). Explicación del rescate: máx. 3 dimensiones y siglas intactas.
 - AI First Mindset: cápsula con plantilla + tarea = reto en 3 pasos (descargar, completar, subir la misma plantilla); archivo obligatorio.
 - Antes de postular: 5 etapas en slider con lo esperado en cada una, compromisos del ciclo y aceptación en un clic. Assessment con más aire.
 - Admisión en 4 columnas, panel «Evaluar», decisiones con confirmación y correo único.
