@@ -27,6 +27,8 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
   const subs = j.submissions.filter((s) => s.capsule_id === id);
   const gate = submissionGate(subs.map((s) => s.status as SubmissionStatus), c.max_attempts);
   const usedAttempts = subs.filter((s) => s.status === "NOT_APPROVED").length;
+  // Reto con plantilla: material para descargar + tarea → se entrega la misma plantilla completada.
+  const challenge = Boolean(c.task_prompt) && c.resources.length > 0;
 
   return (
     <div className="jr cap-page">
@@ -44,7 +46,7 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
       {(c.video_url || c.video_path) && <VideoPlayer url={c.video_url} path={c.video_path} title={c.title} />}
       <CompleteToggle capsuleId={c.id} done={j.completed.has(c.id)} />
 
-      {c.resources.length > 0 && (
+      {c.resources.length > 0 && !challenge && (
         <section className="jr-group">
           <h2 className="h-card">Material descargable</h2>
           <ul className="jr-files">
@@ -55,7 +57,50 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
         </section>
       )}
 
-      {c.task_prompt && (
+      {challenge && (
+        <section className="jr-group reto" aria-labelledby="reto-h">
+          <div className="spread">
+            <h2 id="reto-h" className="h-card" style={{ margin: 0 }}>Tu reto {c.task_required && <small className="muted">· obligatorio</small>}</h2>
+            {c.max_attempts && <small className="muted">Intentos usados: {usedAttempts} de {c.max_attempts}</small>}
+          </div>
+          <ol className="reto-steps">
+            <li>
+              <strong>Descarga la plantilla</strong>
+              <ul className="jr-files">
+                {c.resources.map((r) => (
+                  <li key={r.path}><Icon name="download" size={20} /><SignedLink bucket="content" path={r.path}>{r.name}</SignedLink><small>{r.size > 1048576 ? `${(r.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(r.size / 1024))} KB`}</small></li>
+                ))}
+              </ul>
+            </li>
+            <li>
+              <strong>Complétala</strong>
+              <p style={{ whiteSpace: "pre-wrap" }}>{c.task_prompt}</p>
+              {c.due_date && <p className="muted"><small>Plazo: {fmtYmd(c.due_date)}. Si te atrasas, avisa a tu Delivery.</small></p>}
+            </li>
+            <li>
+              <strong>Sube la misma plantilla completada</strong>
+              <p className="muted"><small>La revisa tu AI Coach y recibes feedback aquí.</small></p>
+              <TaskForm capsuleId={c.id} template blockedReason={gate.allowed ? null : gate.reason ?? null} />
+            </li>
+          </ol>
+          {subs.length > 0 && (
+            <>
+              <h3>Tus entregas</h3>
+              <ul>
+                {subs.map((s) => (
+                  <li key={s.id} style={{ marginBottom: 8 }}>
+                    Intento {s.attempt} · {fmtDate(s.submitted_at)} · <Badge tone={STATUS[s.status][1]}>{STATUS[s.status][0]}</Badge>
+                    {s.score !== null && <> · {Number(s.score)}/100</>}
+                    {s.feedback && <div className="callout" style={{ marginTop: 6 }}><strong>Feedback</strong>{s.feedback}</div>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      {c.task_prompt && !challenge && (
         <section className="jr-group">
           <div className="spread">
             <h2 className="h-card" style={{ margin: 0 }}>Tarea {c.task_required && <small className="muted">· obligatoria</small>}</h2>

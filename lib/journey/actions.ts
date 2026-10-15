@@ -105,8 +105,10 @@ export async function submitTask(capsuleId: string, textAnswer: string, files: {
   try {
     const { candidate } = await requireParticipant();
     const db = await supabaseUser();
-    const { data: cap } = await db.from("capsules").select("id, wave_id, task_prompt, max_attempts").eq("id", capsuleId).single();
+    const { data: cap } = await db.from("capsules").select("id, wave_id, task_prompt, max_attempts, resources").eq("id", capsuleId).single();
     if (!cap || cap.wave_id !== candidate.wave_id || !cap.task_prompt) throw new Error("Esta cápsula no tiene una tarea disponible.");
+    // Reto con plantilla: se evalúa la plantilla completada, así que el archivo es obligatorio.
+    if (Array.isArray(cap.resources) && cap.resources.length > 0 && files.length === 0) throw new Error("Sube la plantilla completada para enviar tu reto.");
     if (!textAnswer.trim() && files.length === 0) throw new Error("Agrega una respuesta o un archivo.");
     if (files.some((f) => !f.path.startsWith(`${candidate.id}/`))) throw new Error("Archivo no válido.");
     const { data: prev } = await db.from("submissions").select("status").eq("candidate_id", candidate.id).eq("capsule_id", capsuleId).order("attempt");
