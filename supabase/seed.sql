@@ -2,7 +2,7 @@
 -- Las preguntas parten del formulario AET documentado en el blueprint de producto y deben ser
 -- validadas por Product Lead antes de abrir la postulación (se pueden editar sin tocar código).
 insert into public.waves (id, name, status, application_deadline, rules_version, conditions_version, commitment_version, acknowledgement_version)
-values ('wave-3', 'AI Edge Talent · Wave 3', 'ASSESSMENT', '2026-10-16T12:00:00-03:00',
+values ('wave-3', 'AI Edge Talent · Wave 3', 'ASSESSMENT', '2026-10-16T15:00:00-03:00',
         'AET-RULES-W3', 'COND-W3-0.1-BORRADOR', 'CC-W3-0.1-BORRADOR', 'ACK-W3-1.0')
 on conflict (id) do nothing;
 
