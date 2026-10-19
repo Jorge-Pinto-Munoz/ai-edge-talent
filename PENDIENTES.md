@@ -4,7 +4,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 
 ## Abiertos
 - Seguridad: la política RLS `candidates_staff` deja a Delivery leer/escribir todos los candidatos vía API; la app ya limita a los asignados. Conviene restringir la RLS a asignados (revisar /equipo antes).
-- Rediseño Admisión (tabla 7 columnas + ficha de candidato a página completa con pestañas): en curso; cambios de estados en `lib/admission/queue.ts` guardados en `git stash`.
+- Rediseño Admisión (tabla 7 columnas + ficha de candidato a página completa con pestañas): pendiente; estados/colores nuevos ya en `lib/admission/queue.ts`.
 - Cargar en Contenido las cápsulas de video y la cápsula del reto (plantilla + instrucciones) de AI First Mindset.
 - **Grabadora de rescate en celulares reales**: probada solo con cámara simulada; falta probar en iPhone (Safari) y Android (Chrome).
 - **Error React #418 (hidratación)** en páginas dinámicas de producción. Ya existía antes; no bloquea.
@@ -16,6 +16,8 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Equipo (Delivery): tabla de sus profesionales con estado real, puntaje, recomendación y «Detalles» (ficha completa en lectura).
+- Rescate: recuadro «Lo que queremos conocer de ti» (foco por dimensión baja de la rúbrica) visible al profesional, Delivery y admin; también en el correo.
 - Delivery: en Admisión ve solo sus candidatos asignados, con puntaje, recomendación y «Detalles» (evaluación IA, respuestas, video de rescate, historial) en solo lectura. Admisión: filtro por cliente y orden por mayor puntaje por defecto.
 - Menos correos: el Delivery recibe la copia del correo al profesional; aviso aparte solo si no hubo correo al profesional (no selección) o si ese correo falló. (E2E sDec no re-ejecutado tras este ajuste.)
 - Baja de inscritos (escribir ELIMINAR) con aviso opcional al profesional + CC Delivery. Todo correo informativo al profesional va con CC a su Delivery (nunca los de código). Confirmación de video de rescate recibido. Sección Admin → Comunicaciones: registro, detalle, CC y reenvío.

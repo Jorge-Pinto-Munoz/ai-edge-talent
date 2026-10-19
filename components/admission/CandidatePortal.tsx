@@ -30,7 +30,7 @@ export interface PortalData {
   savedAt: string | null;
   submittedAt: string | null;
   /** Solo existe si Administración ofreció el rescate. `serverNow` corrige el reloj del dispositivo. */
-  rescue: { state: RescueState; open: boolean; expiresAt: string | null; serverNow: string; video: { at: string; reviewed: boolean } | null } | null;
+  rescue: { state: RescueState; open: boolean; expiresAt: string | null; explanation: string | null; serverNow: string; video: { at: string; reviewed: boolean } | null } | null;
 }
 
 /** `inPortal`: la persona ya ingresó con su cuenta (no se le recuerda revisar el correo de credenciales). */

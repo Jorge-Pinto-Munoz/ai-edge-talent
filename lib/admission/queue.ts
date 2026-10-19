@@ -18,6 +18,7 @@ export const QUEUE_CHIPS: { key: QueueChip; label: string }[] = [
 ];
 
 export type Tone = "slate" | "cyan" | "amber" | "violet" | "teal" | "green" | "gray" | "blue" | "red";
+export type BadgeIcon = "alert" | "play" | "check" | null;
 export type PrimaryAction = "evaluate_ai" | "review" | "review_rescue" | "decide_expired" | null;
 
 export interface QueueInput {
@@ -28,7 +29,7 @@ export interface QueueInput {
 }
 
 export interface QueueView {
-  badge: { label: string; tone: Tone };
+  badge: { label: string; tone: Tone; icon: BadgeIcon };
   /** 1 = primero (rescate enviado por revisar) … 6 = cerrados. */
   priority: 1 | 2 | 3 | 4 | 5 | 6;
   primary: PrimaryAction;
@@ -59,24 +60,24 @@ export function queueView(c: QueueInput, now = new Date()): QueueView {
 
   if (s === "RESCUE_REQUIRED") {
     if (rescue === "submitted" || rescue === "in_review")
-      return { badge: { label: rescue === "submitted" ? "Rescate · video recibido" : "Rescate · revisado", tone: "violet" }, priority: 1, primary: "review_rescue", chips: ["decision", "rescate"], rescue, next: "Revisar el video y decidir" };
+      return { badge: { label: "Rescate enviado", tone: "violet", icon: "play" }, priority: 1, primary: "review_rescue", chips: ["decision", "rescate"], rescue, next: "Revisar el video y decidir" };
     if (rescue === "expired")
-      return { badge: { label: "Rescate · plazo vencido", tone: "red" }, priority: 3, primary: "decide_expired", chips: ["decision", "rescate"], rescue, next: "Cerrar o extender el plazo" };
-    return { badge: { label: rescue === "preparing" ? "Rescate · preparando video" : "Rescate · esperando video", tone: "violet" }, priority: 4, primary: null, chips: ["rescate"], rescue, next: "Esperando el video (plazo de 24 h)" };
+      return { badge: { label: "Rescate vencido", tone: "violet", icon: "alert" }, priority: 3, primary: "decide_expired", chips: ["decision", "rescate"], rescue, next: "Cerrar o extender el plazo" };
+    return { badge: { label: "Rescate activo", tone: "violet", icon: null }, priority: 4, primary: null, chips: ["rescate"], rescue, next: "Esperando el video (plazo de 24 h)" };
   }
   if (s === "ASSESSMENT_EVALUATED" || s === "HUMAN_REVIEW")
-    return { badge: { label: s === "HUMAN_REVIEW" ? "Revisión humana" : "Evaluado · por decidir", tone: "amber" }, priority: 2, primary: c.hasEval ? "review" : "evaluate_ai", chips: withRescue(["decision", "assessment"]), rescue, next: "Decisión del equipo" };
+    return { badge: { label: s === "HUMAN_REVIEW" ? "Revisión humana" : "Assessment evaluado", tone: "blue", icon: null }, priority: 2, primary: c.hasEval ? "review" : "evaluate_ai", chips: withRescue(["decision", "assessment"]), rescue, next: "Decisión del equipo" };
   if (s === "APPLICATION_SUBMITTED")
-    return { badge: { label: "Por evaluar", tone: "cyan" }, priority: 3, primary: "evaluate_ai", chips: ["assessment"], rescue, next: "Evaluar el Assessment" };
+    return { badge: { label: "Postulación enviada", tone: "slate", icon: null }, priority: 3, primary: "evaluate_ai", chips: ["assessment"], rescue, next: "Evaluar el Assessment" };
   if (APPLYING.includes(s))
-    return { badge: { label: s === "NOMINATED" || s === "INVITED" ? "Invitado" : "Postulando", tone: "slate" }, priority: 4, primary: null, chips: ["postulacion"], rescue, next: "Completar y enviar su postulación" };
+    return { badge: s === "NOMINATED" || s === "INVITED" ? { label: "Invitado", tone: "gray", icon: null } : { label: "Postulando", tone: "amber", icon: "alert" }, priority: 4, primary: null, chips: ["postulacion"], rescue, next: "Completar y enviar su postulación" };
   if (SELECTED.includes(s))
-    return { badge: { label: "Seleccionado · confirma compromiso", tone: "blue" }, priority: c.emailFailed ? 3 : 5, primary: null, chips: withRescue(["seleccionados"]), rescue, next: c.emailFailed ? "Reintentar el correo de bienvenida" : "Aceptar su compromiso" };
+    return { badge: { label: "Seleccionado", tone: "green", icon: null }, priority: c.emailFailed ? 3 : 5, primary: null, chips: withRescue(["seleccionados"]), rescue, next: c.emailFailed ? "Reintentar el correo de bienvenida" : "Aceptar su compromiso" };
   if (ENROLLED.includes(s))
-    return { badge: { label: "Inscrito", tone: "green" }, priority: 5, primary: null, chips: withRescue(["seleccionados"]), rescue, next: "En el programa" };
+    return { badge: { label: "Inscrito", tone: "green", icon: "check" }, priority: 5, primary: null, chips: withRescue(["seleccionados"]), rescue, next: "En el programa" };
   if (s === "NOT_SELECTED")
-    return { badge: { label: "No seleccionado", tone: "gray" }, priority: 6, primary: null, chips: withRescue(["no_seleccionados"]), rescue, next: "Proceso cerrado" };
-  return { badge: { label: s, tone: "slate" }, priority: 4, primary: null, chips: [], rescue, next: "—" };
+    return { badge: { label: "No seleccionado", tone: "red", icon: null }, priority: 6, primary: null, chips: withRescue(["no_seleccionados"]), rescue, next: "Proceso cerrado" };
+  return { badge: { label: s, tone: "slate", icon: null }, priority: 4, primary: null, chips: [], rescue, next: "—" };
 }
 
 /** Filtro inicial desde la URL: ?filtro=rescate|decision|… o, por compatibilidad, ?estado=<estado del sistema>. */
@@ -91,3 +92,27 @@ export function chipFromParams(filtro?: string, estado?: string): QueueChip {
   return "postulacion";
 }
 
+
+/** Color del puntaje según el nivel oficial de la rúbrica (A/B aptos, C con seguimiento, D bajo el corte). */
+export function scoreTone(level: string | null | undefined): "good" | "mid" | "low" | null {
+  if (!level) return null;
+  return level === "A" || level === "B" ? "good" : level === "C" ? "mid" : "low";
+}
+
+const REC_TEXT: Record<string, string> = {
+  SELECCIONAR: "Seleccionar",
+  SELECCIONAR_CON_SEGUIMIENTO: "Seleccionar con seguimiento",
+  EVALUAR_CUPO_Y_SEGUIMIENTO: "Evaluar cupo y seguimiento",
+  ACTIVAR_RESCATE: "Ofrecer rescate",
+  SELECTED: "Seleccionar",
+  RESCUE_REQUIRED: "Ofrecer rescate",
+  HUMAN_REVIEW: "Revisión humana",
+  NOT_SELECTED: "No seleccionar",
+};
+
+/** Recomendación breve de la rúbrica (orienta; la decisión es humana). Con video de rescate recibido: revisarlo. */
+export function recommendationText(e: { recommendation: string; pl: string | null } | null, rescue: QueueView["rescue"]): string {
+  if (rescue === "submitted" || rescue === "in_review") return "Revisar rescate";
+  if (!e) return "Sin evaluación";
+  return REC_TEXT[e.pl ?? ""] ?? REC_TEXT[e.recommendation] ?? "Sin evaluación";
+}

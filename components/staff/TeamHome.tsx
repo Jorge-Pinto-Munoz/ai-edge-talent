@@ -14,6 +14,7 @@ import { experience, operational } from "@/lib/pulse/experience";
 import { ExperienceByStage, ExperienceDetail } from "@/components/pulse/WaveExperience";
 import { admissionStep, STALLED_DAYS } from "@/lib/admission/delivery-progress";
 import type { AdmissionStatus } from "@/lib/domain/types";
+import { queueView, recommendationText, scoreTone } from "@/lib/admission/queue";
 
 
 const ADMISSION = ["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED", "APPLICATION_SUBMITTED", "ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED", "SELECTED", "CONDITIONS_PENDING"];
@@ -78,18 +79,37 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
   const mineOps = mine ? operational(mine) : null;
 
   // Postulación de tus profesionales: quién se registró, quién responde sin enviar, quién envió y quién falta que firme.
-  type Applicant = { id: string; name: string; client: string | null; status: AdmissionStatus; registered: string; submitted: string | null; last: string };
+  type Applicant = {
+    id: string; name: string; client: string | null; status: AdmissionStatus; registered: string; submitted: string | null; last: string;
+    eval: { total: number; level: string; recommendation: string; pl: string | null } | null;
+    rescue: { expires_at: string | null; started_at: string | null; submitted_at: string | null; reviewed_at: string | null } | null;
+  };
   let applicants: Applicant[] | null = null;
   if (wave && viewer.role === "delivery") {
     const svc = supabaseService();
     const { data: assigned } = await svc.from("delivery_assignments").select("candidate_id").eq("wave_id", wave.id).eq("delivery_email", viewer.email);
     const ids = (assigned ?? []).map((a) => a.candidate_id);
     if (ids.length) {
-      const { data: rows } = await svc.from("candidates").select("id, full_name, client_name, status, created_at, updated_at, applications(submitted_at, updated_at)").in("id", ids);
+      // Sus profesionales asignados: estado real, evaluación y rescate (solo lectura; el detalle está en «Detalles»).
+      const { data: rows } = await svc.from("candidates").select("id, full_name, client_name, status, created_at, updated_at, applications(id, submitted_at, updated_at)").in("id", ids);
+      const appOf = (r: { applications: unknown }) => (Array.isArray(r.applications) ? r.applications[0] : r.applications) as { id: string; submitted_at: string | null; updated_at: string } | null;
+      const appIds = (rows ?? []).map((r) => appOf(r)?.id).filter(Boolean) as string[];
+      const [{ data: evals }, { data: invs }, { data: vids }] = await Promise.all([
+        appIds.length ? svc.from("ai_evaluations").select("application_id, weighted_total, level, recommendation, pl_recommendation, created_at").in("application_id", appIds).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+        svc.from("rescue_invitations").select("candidate_id, expires_at, started_at").in("candidate_id", ids),
+        svc.from("rescue_videos").select("candidate_id, submitted_at, reviewed_at").in("candidate_id", ids),
+      ]);
       applicants = (rows ?? []).map((r) => {
-        const app = (Array.isArray(r.applications) ? r.applications[0] : r.applications) as { submitted_at: string | null; updated_at: string } | null;
+        const app = appOf(r);
         const last = [r.updated_at, app?.updated_at].filter(Boolean).sort().at(-1)!;
-        return { id: r.id, name: r.full_name, client: r.client_name, status: r.status as AdmissionStatus, registered: r.created_at, submitted: app?.submitted_at ?? null, last };
+        const ev = (evals ?? []).find((e) => e.application_id === app?.id);
+        const inv = (invs ?? []).find((i) => i.candidate_id === r.id);
+        const vid = (vids ?? []).find((v) => v.candidate_id === r.id);
+        return {
+          id: r.id, name: r.full_name, client: r.client_name, status: r.status as AdmissionStatus, registered: r.created_at, submitted: app?.submitted_at ?? null, last,
+          eval: ev ? { total: Number(ev.weighted_total), level: ev.level, recommendation: ev.recommendation, pl: ev.pl_recommendation ?? null } : null,
+          rescue: inv ? { expires_at: inv.expires_at, started_at: inv.started_at, submitted_at: vid?.submitted_at ?? null, reviewed_at: vid?.reviewed_at ?? null } : null,
+        };
       });
     } else applicants = [];
   }
@@ -137,16 +157,22 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
               </div>
               <div className="table-wrap" tabIndex={0}>
                 <table className="rtable">
-                  <thead><tr><th>Profesional</th><th>Estado</th><th>Envió el Assessment</th><th>Último movimiento</th></tr></thead>
+                  <thead><tr><th>Profesional</th><th>Estado</th><th>Evaluación</th><th>Recomendación</th><th>Último movimiento</th><th><span className="sr-only">Detalles</span></th></tr></thead>
                   <tbody>
-                    {steps.map(({ a, s }) => (
-                      <tr key={a.id}>
-                        <td className="rt-title">{a.name}<br /><small className="muted">{[a.client, `registro ${fmtDate(a.registered)}`].filter(Boolean).join(" · ")}</small></td>
-                        <td data-label="Estado"><span className={`ds-status s-${s.tone}`}>{s.label}</span><br /><small className="muted">{s.detail}</small>{s.stalled && <><br /><small className="error">Sin avance hace más de {STALLED_DAYS} días</small></>}</td>
-                        <td data-label="Envió el Assessment">{a.submitted ? fmtDate(a.submitted) : <span className="muted">—</span>}</td>
-                        <td data-label="Último movimiento">{fmtDate(a.last)}</td>
-                      </tr>
-                    ))}
+                    {steps.map(({ a, s }) => {
+                      const v = queueView({ status: a.status, hasEval: Boolean(a.eval), rescue: a.rescue }, now);
+                      const tone = scoreTone(a.eval?.level);
+                      return (
+                        <tr key={a.id}>
+                          <td className="rt-title">{a.name}<br /><small className="muted">{[a.client, a.submitted ? `envió ${fmtDate(a.submitted)}` : `registro ${fmtDate(a.registered)}`].filter(Boolean).join(" · ")}</small></td>
+                          <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span>{s.stalled && <><br /><small className="error">Sin avance hace más de {STALLED_DAYS} días</small></>}</td>
+                          <td data-label="Evaluación">{a.eval ? <strong className={`score-${tone}`}>{Math.round(a.eval.total)}<small className="muted">/100</small></strong> : <span className="muted">—</span>}</td>
+                          <td data-label="Recomendación"><small>{recommendationText(a.eval, v.rescue)}</small></td>
+                          <td data-label="Último movimiento"><small>{fmtDate(a.last)}</small></td>
+                          <td className="rt-actions"><Link className="btn small ghost" href={`/admin/admision/${wave!.id}/c/${a.id}`}>Detalles</Link></td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

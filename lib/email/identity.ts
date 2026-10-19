@@ -87,7 +87,7 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
         `Hola, ${c.name?.split(" ")[0] ?? ""}:`.replace(" :", ":"),
         "Gracias por participar en el proceso de selección de AI Edge Talent.",
         "Revisamos tu Assessment y, en esta primera evaluación, tu resultado todavía no alcanza los criterios requeridos para avanzar directamente a la siguiente etapa.",
-        ...(c.extra ? [c.extra] : []),
+        ...(c.extra ? c.extra.split("\n").map((l) => l.trim()).filter(Boolean) : []),
         "Sabemos que una evaluación puede mostrar solo una parte de las capacidades de una persona. Por eso queremos darte una oportunidad adicional para compartir tu motivación, tu manera de pensar y cómo enfrentarías los desafíos del programa.",
         "# Tu oportunidad de rescate",
         "Te invitamos a grabar un video de máximo 3 minutos respondiendo estas preguntas:",

@@ -13,7 +13,7 @@ const FILE_MAX_SECONDS = MAX_SECONDS + 30;
 const MAX_MB = 50;
 const ACCEPTED = /^video\/(webm|mp4|quicktime|x-m4v|3gpp)$/;
 
-type Rescue = { state: RescueState; open: boolean; expiresAt: string | null; serverNow: string; video: { at: string; reviewed: boolean } | null };
+type Rescue = { state: RescueState; open: boolean; expiresAt: string | null; explanation: string | null; serverNow: string; video: { at: string; reviewed: boolean } | null };
 type Msg = { ok: boolean; message: string } | null;
 
 /** Formatos en orden de preferencia: MP4 se reproduce en todos lados; WebM es lo que graban Chrome y Firefox. */
@@ -48,6 +48,12 @@ export function RescueForm({ token, rescue, preview = false }: { token: string; 
     <div className="stack">
       <Deadline rescue={rescue} expired={expired} now={now} />
 
+      {rescue.explanation && (
+        <section className="rescue-focus" aria-labelledby="rf-h">
+          <h3 id="rf-h">Lo que queremos conocer de ti</h3>
+          {rescue.explanation.split("\n").filter(Boolean).map((l, i) => (l.startsWith("•") ? <p key={i} className="rf-item">{l.slice(1).trim()}</p> : <p key={i}>{l}</p>))}
+        </section>
+      )}
       <ol className="rescue-qs">
         {RESCUE_QUESTIONS.map((q) => (
           <li key={q.key}><strong>{q.question}</strong></li>

@@ -64,17 +64,34 @@ async function mindsetOpening(svc: Svc, waveId: string): Promise<string | null> 
 }
 
 /** Texto individual para el correo de rescate, armado solo con resultados existentes de la rúbrica. */
+/** En qué enfocar el video según la dimensión de la rúbrica que quedó baja. */
+const RESCUE_FOCUS: Record<string, string> = {
+  real_use: "Un ejemplo concreto de cómo usas IA hoy en tu trabajo: qué tarea, con qué herramienta y qué resultado obtuviste.",
+  depth: "Un caso real contado con profundidad: el problema, cómo lo abordaste paso a paso con IA y qué cambió.",
+  reframe: "Cómo imaginas que la IA transforma tu rol: qué harías distinto y qué dejarías de hacer.",
+  autonomy: "Cómo aprendes por tu cuenta: qué fuentes, comunidades o pruebas usas para mejorar con IA.",
+  disposition: "Tu motivación para el programa y cómo mantienes criterio propio al trabajar con IA.",
+};
+
+/**
+ * Texto individual del rescate, armado solo con la rúbrica real: qué dimensiones quedaron bajas y en qué enfocar el
+ * video. Administración lo revisa y edita antes de enviar; el profesional y su Delivery lo ven en la plataforma.
+ */
 function rescueExplanation(scores: Record<string, { score?: number }> | null): string {
   if (!scores) return "";
   // Etiqueta en minúscula inicial, sin tocar siglas (IA) ni el texto tras "/".
   const lower = (l: string) => l.split(" / ")[0].replace(/^\p{Lu}(?!\p{Lu})/u, (c) => c.toLowerCase());
-  const ranked = DIMENSIONS.map((d) => ({ label: lower(d.label), score: Number(scores[d.key]?.score ?? NaN) })).filter((d) => Number.isFinite(d.score));
+  const ranked = DIMENSIONS.map((d) => ({ key: d.key as string, label: lower(d.label), score: Number(scores[d.key]?.score ?? NaN) })).filter((d) => Number.isFinite(d.score));
   if (!ranked.length) return "";
   const byLow = [...ranked].sort((a, b) => a.score - b.score);
   const low = byLow.filter((d) => d.score <= 2);
-  const pick = (low.length ? low.slice(0, 3) : byLow.slice(0, 2)).map((d) => d.label);
-  const list = pick.length > 1 ? `${pick.slice(0, -1).join(", ")} y ${pick.at(-1)}` : pick[0];
-  return `En tu Assessment identificamos oportunidades de desarrollo en ${list}. Nos gustaría conocer con mayor profundidad cómo abordarías estos desafíos en una situación real.`;
+  const pick = low.length ? low.slice(0, 3) : byLow.slice(0, 2);
+  const names = pick.map((d) => d.label);
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} y ${names.at(-1)}` : names[0];
+  return [
+    `En tu Assessment identificamos oportunidades de desarrollo en ${list}. Puede que el formulario no haya reflejado todo lo que traes: en tu video, muéstranos especialmente:`,
+    ...pick.map((d) => `• ${RESCUE_FOCUS[d.key] ?? d.label}`),
+  ].join("\n");
 }
 
 const REC_LABEL: Record<string, string> = { SELECTED: "Seleccionar", RESCUE_REQUIRED: "Activar rescate", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No seleccionar" };

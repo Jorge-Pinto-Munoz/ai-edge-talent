@@ -13,7 +13,7 @@ export async function loadPortalData(match: { token: string } | { candidateId: s
   if (!c) return null;
   const { data: app } = await svc.from("applications").select("answers, questions_snapshot, submitted_at, updated_at").eq("candidate_id", c.id).maybeSingle();
   // El rescate solo existe si Administración lo ofreció formalmente (invitación con plazo).
-  const { data: inv } = await svc.from("rescue_invitations").select("expires_at, started_at").eq("candidate_id", c.id).maybeSingle();
+  const { data: inv } = await svc.from("rescue_invitations").select("expires_at, started_at, explanation").eq("candidate_id", c.id).maybeSingle();
   const { data: rv } = inv ? await svc.from("rescue_videos").select("submitted_at, reviewed_at").eq("candidate_id", c.id).maybeSingle() : { data: null };
   const now = new Date();
   const rescueInput = { status: c.status, invitation: inv ?? null, video: rv ?? null };
@@ -31,6 +31,7 @@ export async function loadPortalData(match: { token: string } | { candidateId: s
           state: rescueState(rescueInput, now),
           open: rescueOpen(rescueInput, now),
           expiresAt: inv.expires_at,
+          explanation: inv.explanation ?? null,
           serverNow: now.toISOString(),
           video: rv ? { at: rv.submitted_at, reviewed: Boolean(rv.reviewed_at) } : null,
         }

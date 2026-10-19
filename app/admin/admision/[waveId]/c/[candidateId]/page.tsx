@@ -41,6 +41,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
   const ev = evals?.[0];
   const showRescue = c.status === "RESCUE_REQUIRED" || ev?.level === "D";
   const { data: rescue } = showRescue ? await db.from("rescue_videos").select("*").eq("candidate_id", c.id).maybeSingle() : { data: null };
+  const { data: invitation } = await supabaseService().from("rescue_invitations").select("explanation, expires_at").eq("candidate_id", c.id).maybeSingle();
   const rescueVideoUrl = rescue?.video_path ? (await supabaseService().storage.from("submissions").createSignedUrl(rescue.video_path, 900)).data?.signedUrl ?? null : null;
   const questions = (app?.questions_snapshot ?? []) as { id: string; prompt: string }[];
   const answers = (app?.answers ?? {}) as Record<string, string>;
@@ -105,6 +106,12 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
         </div>
       )}
 
+      {invitation?.explanation && (
+        <section className="rescue-focus" aria-label="Foco del rescate">
+          <h3>Foco del rescate: lo que le pedimos mostrar</h3>
+          {(invitation.explanation as string).split("\n").filter(Boolean).map((l: string, i: number) => (l.startsWith("•") ? <p key={i} className="rf-item">{l.slice(1).trim()}</p> : <p key={i}>{l}</p>))}
+        </section>
+      )}
       {showRescue && (isAdmin ? <RescueReview waveId={waveId} candidateId={c.id} row={rescue as RescueRow | null} status={c.status} /> : <RescueReadOnly row={rescue as RescueRow | null} videoUrl={rescueVideoUrl} />)}
 
       <div className="card">
