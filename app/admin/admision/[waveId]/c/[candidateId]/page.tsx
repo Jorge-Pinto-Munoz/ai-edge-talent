@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
+import { canViewCandidate } from "@/lib/admission/access";
 import { DIMENSIONS, LEVEL_LABEL, LEVEL_MEANING, PL_LABEL, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { ASSESSMENT_STATE_LABEL, answeredCount, assessmentState } from "@/lib/admission/assessment";
 import { fmtDate } from "@/components/ui";
 import { PhaseStrip } from "@/components/admission/PhaseBadge";
 import { TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
+import { TEMPLATE_NAME, type IdentityTemplate } from "@/lib/email/identity";
 import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
 import { shownEmail } from "@/lib/talent/rules";
 
@@ -18,7 +20,10 @@ type DimScore = { score: number; justification: string; evidence: string };
 export default async function CandidateDetail({ params }: { params: Promise<{ waveId: string; candidateId: string }> }) {
   const { waveId, candidateId } = await params;
   const viewer = await requireStaffPage(`/admin/admision/${waveId}/c/${candidateId}`);
-  const db = await supabaseUser();
+  const isAdmin = viewer.role === "admin";
+  // Delivery: solo sus candidatos asignados, en modo lectura (se verifica la asignación antes de leer con la llave del servidor).
+  if (!isAdmin && !(await canViewCandidate(viewer, candidateId))) notFound();
+  const db = isAdmin ? await supabaseUser() : supabaseService();
   const { data: c } = await db.from("candidates").select("id, wave_id, full_name, corporate_email, client_name, role_title, specialty, status").eq("id", candidateId).eq("wave_id", waveId).single();
   if (!c) notFound();
   const [{ data: app }, { data: events }, { data: emails }, { data: commitments }] = await Promise.all([
@@ -27,16 +32,16 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
     db.from("email_messages").select("template, status, subject, created_at, error").eq("candidate_id", c.id).order("created_at", { ascending: false }),
     db.from("commitment_acceptances").select("document_version, status, accepted_at, accepted_by").eq("candidate_id", c.id).order("presented_at"),
   ]);
-  const isAdmin = viewer.role === "admin";
-  const [{ data: evals }, { data: decisions }] = isAdmin && app
+  const [{ data: evals }, { data: decisions }] = app
     ? await Promise.all([
         db.from("ai_evaluations").select("*").eq("application_id", app.id).order("created_at", { ascending: false }),
         db.from("decisions").select("outcome, note, decided_at, agrees_with_ai").eq("candidate_id", c.id).order("decided_at", { ascending: false }),
       ])
     : [{ data: null }, { data: null }];
   const ev = evals?.[0];
-  const showRescue = isAdmin && (c.status === "RESCUE_REQUIRED" || ev?.level === "D");
+  const showRescue = c.status === "RESCUE_REQUIRED" || ev?.level === "D";
   const { data: rescue } = showRescue ? await db.from("rescue_videos").select("*").eq("candidate_id", c.id).maybeSingle() : { data: null };
+  const rescueVideoUrl = rescue?.video_path ? (await supabaseService().storage.from("submissions").createSignedUrl(rescue.video_path, 900)).data?.signedUrl ?? null : null;
   const questions = (app?.questions_snapshot ?? []) as { id: string; prompt: string }[];
   const answers = (app?.answers ?? {}) as Record<string, string>;
   const aState = assessmentState(c.status, app?.submitted_at);
@@ -58,7 +63,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       </div>
       <section className="card" aria-label="Estado por fase"><PhaseStrip status={c.status} /></section>
 
-      {isAdmin && ev && (
+      {ev && (
         <div className="card">
           <div className="spread">
             <h2 className="h-card" style={{ margin: 0 }}>Propuesta de la IA <small className="muted">· no es una decisión</small></h2>
@@ -96,11 +101,11 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
             {ev.risks?.length > 0 && <div><h3 className="h-sub">Riesgos o brechas</h3><ul>{ev.risks.map((r: string) => <li key={r}>{r}</li>)}</ul></div>}
           </div>
           {ev.insufficient_fields?.length > 0 && <p className="muted"><strong>Campos insuficientes:</strong> {ev.insufficient_fields.join(" · ")}. Solo se bajaron las dimensiones que no se pueden sostener.</p>}
-          <p className="muted"><small>{ev.model} · rúbrica {ev.rubric_version} · {fmtDate(ev.created_at)}. Evidencia interna: no compartir puntajes ni rankings con el profesional, el cliente ni Delivery. <Link href="/admin/evaluacion">Cómo evaluamos</Link></small></p>
+          <p className="muted"><small>{ev.model} · rúbrica {ev.rubric_version} · {fmtDate(ev.created_at)}. Evidencia interna: no compartir puntajes ni rankings con el profesional ni el cliente. <Link href="/admin/evaluacion">Cómo evaluamos</Link></small></p>
         </div>
       )}
 
-      {showRescue && <RescueReview waveId={waveId} candidateId={c.id} row={rescue as RescueRow | null} status={c.status} />}
+      {showRescue && (isAdmin ? <RescueReview waveId={waveId} candidateId={c.id} row={rescue as RescueRow | null} status={c.status} /> : <RescueReadOnly row={rescue as RescueRow | null} videoUrl={rescueVideoUrl} />)}
 
       <div className="card">
         <h2 className="h-card">Postulación <span className={`ds-status s-${aState === "COMPLETED" ? "done" : aState === "IN_PROGRESS" ? "progress" : "pending"}`}>Assessment {ASSESSMENT_STATE_LABEL[aState].toLowerCase()}</span></h2>
@@ -125,7 +130,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
           <ul>
             {(events ?? []).map((e, i) => <li key={i}><small>{fmtDate(e.at)} · {e.from_status ? `${ADMISSION_LABEL[e.from_status as AdmissionStatus]} → ` : ""}{ADMISSION_LABEL[e.to_status as AdmissionStatus]}</small></li>)}
           </ul>
-          {isAdmin && (decisions ?? []).length > 0 && (
+          {(decisions ?? []).length > 0 && (
             <>
               <h3 className="h-sub">Decisiones</h3>
               <ul>{decisions!.map((d, i) => <li key={i}><small>{fmtDate(d.decided_at)} · {ADMISSION_LABEL[d.outcome as AdmissionStatus]}{d.agrees_with_ai === false ? " (difiere de la IA)" : ""}{d.note ? ` · ${d.note}` : ""}</small></li>)}</ul>
@@ -141,9 +146,32 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
         <div className="card">
           <h2 className="h-card">Correos</h2>
           {(emails ?? []).length === 0 && <p className="muted">Sin correos.</p>}
-          <ul>{(emails ?? []).map((m, i) => <li key={i}><small>{fmtDate(m.created_at)} · {TEMPLATE_LABEL[m.template as EmailTemplate]} · {m.status}{m.error ? ` (${m.error})` : ""}</small></li>)}</ul>
+          <ul>{(emails ?? []).map((m, i) => <li key={i}><small>{fmtDate(m.created_at)} · {TEMPLATE_NAME[m.template as IdentityTemplate] ?? TEMPLATE_LABEL[m.template as EmailTemplate] ?? m.template} · {m.status === "sent" ? "enviado" : m.status === "failed" ? "falló" : "en cola"}{m.error ? ` (${m.error})` : ""}</small></li>)}</ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Video de rescate en modo lectura (Delivery): ver el video, la nota del profesional y la revisión del equipo. */
+function RescueReadOnly({ row, videoUrl }: { row: RescueRow | null; videoUrl: string | null }) {
+  return (
+    <div className="card">
+      <div className="spread">
+        <h2 className="h-card" style={{ margin: 0 }}>Video de rescate</h2>
+        {row ? <span className="badge brand">Enviado {fmtDate(row.submitted_at)}</span> : <span className="badge warn">Pendiente</span>}
+      </div>
+      {!row && <p className="muted">Aún no envía su video.</p>}
+      {row && (
+        <div className="stack" style={{ marginTop: 10 }}>
+          {videoUrl && <video src={videoUrl} controls playsInline preload="metadata" style={{ width: "100%", maxHeight: 420, borderRadius: 12, background: "#080b10" }} />}
+          {row.video_url && <a className="link-context" href={row.video_url} target="_blank" rel="noopener noreferrer">Abrir enlace del video ↗</a>}
+          {row.candidate_note && <p className="muted">“{row.candidate_note}”</p>}
+          {row.reviewed_at ? (
+            <p style={{ margin: 0 }}><small>Revisado {fmtDate(row.reviewed_at)} · Compromiso {row.commitment ?? "—"}/5 · Interés {row.interest ?? "—"}/5 · Afinidad con IA {row.ai_affinity ?? "—"}/5{row.review_note ? ` · ${row.review_note}` : ""}</small></p>
+          ) : <p className="muted" style={{ margin: 0 }}><small>Pendiente de revisión por el equipo.</small></p>}
+        </div>
+      )}
     </div>
   );
 }

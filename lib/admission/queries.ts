@@ -24,13 +24,17 @@ export interface CandidateListItem {
 }
 
 /** Lista de la Wave. Las columnas de evaluación solo llegan si el usuario es admin (RLS). */
-export async function listCandidates(waveId: string): Promise<CandidateListItem[]> {
-  const db = await supabaseUser();
-  const { data: cands, error } = await db
+export async function listCandidates(waveId: string, opts: { onlyIds?: string[] } = {}): Promise<CandidateListItem[]> {
+  // Vista de Delivery: solo sus candidatos asignados, leídos con la llave del servidor tras verificar la asignación.
+  const scoped = Array.isArray(opts.onlyIds);
+  if (scoped && !opts.onlyIds!.length) return [];
+  const db = scoped ? supabaseService() : await supabaseUser();
+  let base = db
     .from("candidates")
     .select("id, full_name, corporate_email, client_name, role_title, specialty, delivery_owner, source, status, updated_at, applications(id, updated_at)")
-    .eq("wave_id", waveId)
-    .order("full_name");
+    .eq("wave_id", waveId);
+  if (scoped) base = base.in("id", opts.onlyIds!);
+  const { data: cands, error } = await base.order("full_name");
   if (error) throw error;
   // applications es 1:1 (candidate_id único): PostgREST lo devuelve como objeto o null, no como lista.
   const appOf = (a: unknown) => (Array.isArray(a) ? a[0] : a) as { id?: string; updated_at?: string } | null | undefined;

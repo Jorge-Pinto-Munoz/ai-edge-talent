@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
 import { listCandidates } from "@/lib/admission/queries";
+import { assignedCandidateIds } from "@/lib/admission/access";
 import { admissionCounts } from "@/lib/admission/phases";
 import { waveReference } from "@/lib/waves/reference";
 import { CandidateTable } from "@/components/admission/CandidateTable";
@@ -29,7 +30,9 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
   const db = await supabaseUser();
   const { data: wave } = await db.from("waves").select("id, name, application_deadline, application_opens_at, application_deadline_hidden").eq("id", waveId).single();
   if (!wave) notFound();
-  const [candidates, reference] = await Promise.all([listCandidates(waveId), waveReference(waveId)]);
+  // Delivery: solo sus candidatos asignados (con su evaluación, en modo lectura).
+  const onlyIds = isAdmin ? undefined : await assignedCandidateIds(viewer.email);
+  const [candidates, reference] = await Promise.all([listCandidates(waveId, { onlyIds }), waveReference(waveId)]);
   const k = admissionCounts(candidates.map((c) => c.status));
   const open = applicationWindow(wave) === "open";
 
@@ -73,7 +76,7 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
         ))}
       </section>
 
-      <CapacityMeter waveId={waveId} selected={k.selected} received={k.submitted} reference={reference} canEdit={isAdmin} />
+      {isAdmin && <CapacityMeter waveId={waveId} selected={k.selected} received={k.submitted} reference={reference} canEdit={isAdmin} />}
 
       {board ? (
         <CandidateBoard waveId={waveId} candidates={candidates} isAdmin={isAdmin} />

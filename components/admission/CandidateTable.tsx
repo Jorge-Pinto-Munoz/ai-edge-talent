@@ -22,6 +22,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const [q, setQ] = useState("");
   const [chip, setChip] = useState<QueueChip>(initialChip);
   const [delivery, setDelivery] = useState("");
+  const [client, setClient] = useState("");
+  // Orden por defecto: mayor puntaje arriba (sin evaluación al final). Alternativa: por prioridad de acción.
+  const [sort, setSort] = useState<"score" | "priority">("score");
   const [sel, setSel] = useState<string[]>([]);
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
@@ -43,12 +46,18 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         .filter(({ c }) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.delivery_owner ?? ""}`.toLowerCase().includes(q.toLowerCase()))
         .filter(({ v }) => chip === "todos" || v.chips.includes(chip))
         .filter(({ c }) => !delivery || (delivery === NO_DELIVERY ? !c.delivery_owner : c.delivery_owner === delivery))
-        .sort((a, b) => a.v.priority - b.v.priority || b.c.last_activity.localeCompare(a.c.last_activity)),
-    [withView, q, chip, delivery],
+        .filter(({ c }) => !client || (client === NO_CLIENT ? !c.client_name : c.client_name === client))
+        .sort((a, b) =>
+          sort === "score"
+            ? (b.c.eval?.total ?? -1) - (a.c.eval?.total ?? -1) || a.v.priority - b.v.priority || a.c.full_name.localeCompare(b.c.full_name, "es")
+            : a.v.priority - b.v.priority || b.c.last_activity.localeCompare(a.c.last_activity),
+        ),
+    [withView, q, chip, delivery, client, sort],
   );
   const [limit, setLimit] = useState(PAGE);
-  useEffect(() => { setLimit(PAGE); }, [q, chip, delivery]);
+  useEffect(() => { setLimit(PAGE); }, [q, chip, delivery, client, sort]);
   const visible = rows.slice(0, limit);
+  const clients = [...new Set(candidates.map((c) => c.client_name?.trim()).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "es"));
   const deliveries = [...new Set(candidates.map((c) => c.delivery_owner).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "es"));
   const allSel = rows.length > 0 && rows.every(({ c }) => sel.includes(c.id));
   const run = (fn: () => Promise<ActionResult>) => start(async () => { setResult(await fn()); setSel([]); });
@@ -70,11 +79,20 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
           {deliveries.map((d) => <option key={d} value={d}>{d}</option>)}
           <option value={NO_DELIVERY}>Sin Delivery</option>
         </select>
+        <select value={client} onChange={(e) => setClient(e.target.value)} aria-label="Filtrar por cliente">
+          <option value="">Todo cliente</option>
+          {clients.map((d) => <option key={d} value={d}>{d}</option>)}
+          <option value={NO_CLIENT}>Sin cliente</option>
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value as "score" | "priority")} aria-label="Ordenar">
+          <option value="score">Mayor puntaje primero</option>
+          <option value="priority">Prioridad de acción</option>
+        </select>
       </div>
 
       <div className="adm-showing" role="status" aria-live="polite">
         <span>Mostrando <strong>{rows.length}</strong> de {candidates.length}</span>
-        {(q || delivery || chip !== "todos") && <button type="button" className="link-btn" onClick={() => { setQ(""); setDelivery(""); setChip("todos"); }}>Limpiar filtros</button>}
+        {(q || delivery || client || chip !== "todos") && <button type="button" className="link-btn" onClick={() => { setQ(""); setDelivery(""); setClient(""); setChip("todos"); }}>Limpiar filtros</button>}
       </div>
 
       {isAdmin && sel.length > 0 && (
@@ -116,7 +134,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
               <th>Candidato</th>
               <th>Delivery</th>
               <th>Estado</th>
-              <th>{isAdmin ? "Evaluación y acción" : "Próximo paso"}</th>
+              <th>Evaluación y acción</th>
             </tr>
           </thead>
           <tbody>
@@ -131,13 +149,15 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                   </td>
                   <td data-label="Delivery">{c.delivery_owner ?? <span className="muted">Sin asignar</span>}</td>
                   <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span></td>
-                  <td data-label={isAdmin ? "Evaluación" : "Próximo paso"}>
-                    {isAdmin ? (
-                      <div className="adm-evcell">
+                  <td data-label="Evaluación">
+                    <div className="adm-evcell">
                         <span className="adm-ev">
                           {c.eval ? <><strong>{Math.round(c.eval.total)}</strong><small>/100</small>{rec && <small className="muted"> · {rec}</small>}</> : <small className="muted">Sin evaluación</small>}
                           {c.welcomeFailed && <><br /><small className="error">Correo de bienvenida falló</small></>}
                         </span>
+                        {!isAdmin ? (
+                          <span className="adm-evact"><Link className="btn small ghost" href={`/admin/admision/${waveId}/c/${c.id}`}>Detalles</Link></span>
+                        ) : (
                         <span className="adm-evact">
                           {v.primary && (
                             <button
@@ -157,10 +177,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                             onDelete={() => setToDelete([c.id])}
                           />
                         </span>
+                        )}
                       </div>
-                    ) : (
-                      <small>{v.next}</small>
-                    )}
                   </td>
                 </tr>
               );
@@ -183,6 +201,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
 
 const PAGE = 50;
 const NO_DELIVERY = "__sin__";
+const NO_CLIENT = "__sin_cliente__";
 
 /** Menú de acciones de una fila (···): ver detalle, reenviar acceso y eliminar (acción destructiva, al final). */
 function RowMenu({ name, detailHref, onEvaluate, onResend, onDelete }: { name: string; detailHref: string; onEvaluate?: () => void; onResend: () => void; onDelete: () => void }) {
