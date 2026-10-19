@@ -16,6 +16,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Cliente y rol bajo el nombre en Admisión, Equipo (Delivery) y ficha; clientes homologados (`lib/text/org.ts`) también en el filtro.
 - Admisión: botón verde «Seleccionar» por fila (abre la confirmación) y en lote «Seleccionar (N)» con resumen de qué pasará y resultado por persona. «Evaluar con IA» solo como «Reintentar evaluación» si falta la evaluación automática.
 - Equipo (Delivery): tabla de sus profesionales con estado real, puntaje, recomendación y «Detalles» (ficha completa en lectura).
 - Rescate: recuadro «Lo que queremos conocer de ti» (foco por dimensión baja de la rúbrica) visible al profesional, Delivery y admin; también en el correo.

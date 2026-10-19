@@ -15,6 +15,7 @@ import { ExperienceByStage, ExperienceDetail } from "@/components/pulse/WaveExpe
 import { admissionStep, STALLED_DAYS } from "@/lib/admission/delivery-progress";
 import type { AdmissionStatus } from "@/lib/domain/types";
 import { queueView, recommendationText, scoreTone } from "@/lib/admission/queue";
+import { homologate } from "@/lib/text/org";
 
 
 const ADMISSION = ["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED", "APPLICATION_SUBMITTED", "ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED", "SELECTED", "CONDITIONS_PENDING"];
@@ -80,7 +81,7 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
 
   // Postulación de tus profesionales: quién se registró, quién responde sin enviar, quién envió y quién falta que firme.
   type Applicant = {
-    id: string; name: string; client: string | null; status: AdmissionStatus; registered: string; submitted: string | null; last: string;
+    id: string; name: string; client: string | null; role: string | null; status: AdmissionStatus; registered: string; submitted: string | null; last: string;
     eval: { total: number; level: string; recommendation: string; pl: string | null } | null;
     rescue: { expires_at: string | null; started_at: string | null; submitted_at: string | null; reviewed_at: string | null } | null;
   };
@@ -91,7 +92,7 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
     const ids = (assigned ?? []).map((a) => a.candidate_id);
     if (ids.length) {
       // Sus profesionales asignados: estado real, evaluación y rescate (solo lectura; el detalle está en «Detalles»).
-      const { data: rows } = await svc.from("candidates").select("id, full_name, client_name, status, created_at, updated_at, applications(id, submitted_at, updated_at)").in("id", ids);
+      const { data: rows } = await svc.from("candidates").select("id, full_name, client_name, role_title, status, created_at, updated_at, applications(id, submitted_at, updated_at)").in("id", ids);
       const appOf = (r: { applications: unknown }) => (Array.isArray(r.applications) ? r.applications[0] : r.applications) as { id: string; submitted_at: string | null; updated_at: string } | null;
       const appIds = (rows ?? []).map((r) => appOf(r)?.id).filter(Boolean) as string[];
       const [{ data: evals }, { data: invs }, { data: vids }] = await Promise.all([
@@ -106,7 +107,7 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
         const inv = (invs ?? []).find((i) => i.candidate_id === r.id);
         const vid = (vids ?? []).find((v) => v.candidate_id === r.id);
         return {
-          id: r.id, name: r.full_name, client: r.client_name, status: r.status as AdmissionStatus, registered: r.created_at, submitted: app?.submitted_at ?? null, last,
+          id: r.id, name: r.full_name, client: r.client_name, role: r.role_title, status: r.status as AdmissionStatus, registered: r.created_at, submitted: app?.submitted_at ?? null, last,
           eval: ev ? { total: Number(ev.weighted_total), level: ev.level, recommendation: ev.recommendation, pl: ev.pl_recommendation ?? null } : null,
           rescue: inv ? { expires_at: inv.expires_at, started_at: inv.started_at, submitted_at: vid?.submitted_at ?? null, reviewed_at: vid?.reviewed_at ?? null } : null,
         };
@@ -115,6 +116,8 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
   }
   const now = new Date();
   const fmtDate = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+  const showClient = homologate((applicants ?? []).map((a) => a.client));
+  const showRole = homologate((applicants ?? []).map((a) => a.role));
   const steps = (applicants ?? []).map((a) => ({ a, s: admissionStep(a.status, new Date(a.last), now) })).sort((x, y) => x.s.order - y.s.order || x.a.name.localeCompare(y.a.name, "es"));
 
   return (
@@ -164,7 +167,7 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
                       const tone = scoreTone(a.eval?.level);
                       return (
                         <tr key={a.id}>
-                          <td className="rt-title">{a.name}<br /><small className="muted">{[a.client, a.submitted ? `envió ${fmtDate(a.submitted)}` : `registro ${fmtDate(a.registered)}`].filter(Boolean).join(" · ")}</small></td>
+                          <td className="rt-title">{a.name}{(a.client || a.role) && <span className="adm-org">{[showClient(a.client), showRole(a.role)].filter(Boolean).join(" · ")}</span>}<small className="muted">{a.submitted ? `envió ${fmtDate(a.submitted)}` : `registro ${fmtDate(a.registered)}`}</small></td>
                           <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span>{s.stalled && <><br /><small className="error">Sin avance hace más de {STALLED_DAYS} días</small></>}</td>
                           <td data-label="Evaluación">{a.eval ? <strong className={`score-${tone}`}>{Math.round(a.eval.total)}<small className="muted">/100</small></strong> : <span className="muted">—</span>}</td>
                           <td data-label="Recomendación"><small>{recommendationText(a.eval, v.rescue)}</small></td>

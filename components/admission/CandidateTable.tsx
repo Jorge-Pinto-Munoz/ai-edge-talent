@@ -10,6 +10,7 @@ import { phasesOf } from "@/lib/admission/phases";
 import { PRIMARY_LABEL, QUEUE_CHIPS, queueView, type QueueChip } from "@/lib/admission/queue";
 import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
 import { shownEmail } from "@/lib/talent/rules";
+import { homologate, orgKey } from "@/lib/text/org";
 import { EvaluationDrawer } from "./EvaluationDrawer";
 import { BulkSelectDialog } from "./BulkSelectDialog";
 import { useRouter } from "next/navigation";
@@ -38,6 +39,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   // Eliminados en esta sesión: desaparecen de la lista al instante (el servidor confirma).
   const [removed, setRemoved] = useState<string[]>([]);
   const candidates = useMemo(() => all.filter((c) => !removed.includes(c.id)), [all, removed]);
+  const showClient = useMemo(() => homologate(all.map((c) => c.client_name)), [all]);
+  const showRole = useMemo(() => homologate(all.map((c) => c.role_title)), [all]);
   const withView = useMemo(
     () => candidates.map((c) => ({ c, v: queueView({ status: c.status, hasEval: Boolean(c.eval), rescue: c.rescue, emailFailed: c.welcomeFailed }) })),
     [candidates],
@@ -50,7 +53,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         .filter(({ c }) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.delivery_owner ?? ""}`.toLowerCase().includes(q.toLowerCase()))
         .filter(({ v }) => chip === "todos" || v.chips.includes(chip))
         .filter(({ c }) => !delivery || (delivery === NO_DELIVERY ? !c.delivery_owner : c.delivery_owner === delivery))
-        .filter(({ c }) => !client || (client === NO_CLIENT ? !c.client_name : c.client_name === client))
+        .filter(({ c }) => !client || (client === NO_CLIENT ? !orgKey(c.client_name) : orgKey(c.client_name) === client))
         .sort((a, b) =>
           sort === "score"
             ? (b.c.eval?.total ?? -1) - (a.c.eval?.total ?? -1) || a.v.priority - b.v.priority || a.c.full_name.localeCompare(b.c.full_name, "es")
@@ -61,7 +64,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => { setLimit(PAGE); }, [q, chip, delivery, client, sort]);
   const visible = rows.slice(0, limit);
-  const clients = [...new Set(candidates.map((c) => c.client_name?.trim()).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "es"));
+  // Clientes y roles homologados: el mismo cliente escrito de distintas formas se ve y se filtra como uno solo.
+  const clients = [...new Map(candidates.filter((c) => orgKey(c.client_name)).map((c) => [orgKey(c.client_name), showClient(c.client_name)!])).entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
   const deliveries = [...new Set(candidates.map((c) => c.delivery_owner).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "es"));
   const allSel = rows.length > 0 && rows.every(({ c }) => sel.includes(c.id));
   const run = (fn: () => Promise<ActionResult>) => start(async () => { setResult(await fn()); setSel([]); });
@@ -85,7 +89,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         </select>
         <select value={client} onChange={(e) => setClient(e.target.value)} aria-label="Filtrar por cliente">
           <option value="">Todo cliente</option>
-          {clients.map((d) => <option key={d} value={d}>{d}</option>)}
+          {clients.map(([k, name]) => <option key={k} value={k}>{name}</option>)}
           <option value={NO_CLIENT}>Sin cliente</option>
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value as "score" | "priority")} aria-label="Ordenar">
@@ -154,7 +158,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                   {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
                   <td className="rt-title">
                     <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
-                    <br /><small className="muted">{shownEmail(c.corporate_email)}</small>
+                    {(c.client_name || c.role_title) && <span className="adm-org">{[showClient(c.client_name), showRole(c.role_title)].filter(Boolean).join(" · ")}</span>}
+                    <small className="muted">{shownEmail(c.corporate_email)}</small>
                   </td>
                   <td data-label="Delivery">{c.delivery_owner ?? <span className="muted">Sin asignar</span>}</td>
                   <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span></td>

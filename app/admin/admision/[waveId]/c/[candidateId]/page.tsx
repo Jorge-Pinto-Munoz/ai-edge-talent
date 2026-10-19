@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { canViewCandidate } from "@/lib/admission/access";
+import { prettyName } from "@/lib/text/org";
 import { DIMENSIONS, LEVEL_LABEL, LEVEL_MEANING, PL_LABEL, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { ASSESSMENT_STATE_LABEL, answeredCount, assessmentState } from "@/lib/admission/assessment";
@@ -54,7 +55,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
       <div className="spread">
         <div>
           <h1 style={{ margin: 0 }}>{c.full_name}</h1>
-          <p className="muted" style={{ margin: "4px 0 0" }}>{shownEmail(c.corporate_email)} · {c.client_name ?? "—"} · {c.role_title ?? "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
+          <p className="muted" style={{ margin: "4px 0 0" }}>{shownEmail(c.corporate_email)} · {c.client_name ? prettyName(c.client_name) : "—"} · {c.role_title ? prettyName(c.role_title) : "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
         </div>
         <div className="row">
           {isAdmin && <a className="btn ghost small" href={`/admin/vista/candidato?id=${c.id}`}>Ver su postulación</a>}

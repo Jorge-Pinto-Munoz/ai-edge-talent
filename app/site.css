@@ -647,3 +647,6 @@ html, body { overflow-x: clip; }
 :root[data-theme="dark"] .ph-badge.t-blue { background: #172540; color: #a9c3f5; }
 .ph-badge.t-red { background: var(--bad-soft); color: var(--bad-text); }
 .score-good { color: var(--ok-text); } .score-mid { color: var(--warn-text); } .score-low { color: var(--bad-text); }
+/* Cliente y rol bajo el nombre del candidato */
+.adm-org { display: block; margin: 2px 0 1px; font-size: 0.86rem; font-weight: 600; color: var(--brand); }
+.rt-title small { display: block; }
