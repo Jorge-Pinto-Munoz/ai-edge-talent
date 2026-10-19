@@ -10,9 +10,10 @@ import { chipFromParams } from "@/lib/admission/queue";
 import { CandidateBoard } from "@/components/admission/CandidateBoard";
 import { CapacityMeter } from "@/components/admission/CapacityMeter";
 import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
-import { fmtDeadline } from "@/components/ui";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { ApplyLink } from "@/components/admin/ApplyLink";
+import { ApplicationWindow } from "@/components/admission/ApplicationWindow";
+import { applicationWindow } from "@/lib/admission/window";
 import { env } from "@/lib/supabase/env";
 
 export const metadata = { title: "Admisión · Portal AET" };
@@ -26,11 +27,11 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
   const viewer = await requireStaffPage(`/admin/admision/${waveId}`);
   const isAdmin = viewer.role === "admin";
   const db = await supabaseUser();
-  const { data: wave } = await db.from("waves").select("id, name, application_deadline").eq("id", waveId).single();
+  const { data: wave } = await db.from("waves").select("id, name, application_deadline, application_opens_at, application_deadline_hidden").eq("id", waveId).single();
   if (!wave) notFound();
   const [candidates, reference] = await Promise.all([listCandidates(waveId), waveReference(waveId)]);
   const k = admissionCounts(candidates.map((c) => c.status));
-  const open = wave.application_deadline && new Date(wave.application_deadline).getTime() > Date.now();
+  const open = applicationWindow(wave) === "open";
 
   const kpis: { label: string; value: number; hint: string; icon: IconName }[] = [
     { label: "Postulaciones recibidas", value: k.submitted, hint: k.started ? `${k.started} más la están completando` : "Sin postulaciones a medio camino", icon: "send" },
@@ -46,7 +47,7 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
         <div>
           <h1>Admisión</h1>
           <p className="muted">
-            {k.total === 1 ? "1 candidato" : `${k.total} candidatos`} en la Wave{wave.application_deadline ? ` · ${open ? "cierra" : "cerró"} ${fmtDeadline(wave.application_deadline)}` : ""}. No hay límite de postulaciones.
+            {k.total === 1 ? "1 candidato" : `${k.total} candidatos`} en la Wave{""}. No hay límite de postulaciones.
           </p>
         </div>
         <div className="row">
@@ -58,7 +59,8 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
         </div>
       </header>
 
-      {(!wave.application_deadline || open) && <ApplyLink url={`${env.appUrl}/postular/registro?wave=${waveId}`} />}
+      {isAdmin && <ApplicationWindow waveId={waveId} opensAt={wave.application_opens_at} deadline={wave.application_deadline} hidden={wave.application_deadline_hidden} />}
+      {open && <ApplyLink url={`${env.appUrl}/postular/registro?wave=${waveId}`} />}
 
       <section className="adm-kpis" aria-label="Indicadores de admisión">
         {kpis.map((x) => (

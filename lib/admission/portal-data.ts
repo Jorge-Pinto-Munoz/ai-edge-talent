@@ -8,7 +8,7 @@ export async function loadPortalData(match: { token: string } | { candidateId: s
   const svc = supabaseService();
   const q = svc
     .from("candidates")
-    .select("id, invite_token, full_name, client_name, role_title, status, delivery_owner, waves(id, name, application_deadline, commitment_version, conditions_version, acknowledgement_version)");
+    .select("id, invite_token, full_name, client_name, role_title, status, delivery_owner, waves(id, name, application_deadline, application_deadline_hidden, commitment_version, conditions_version, acknowledgement_version)");
   const { data: c } = "token" in match ? await q.eq("invite_token", match.token).maybeSingle() : await q.eq("id", match.candidateId).maybeSingle();
   if (!c) return null;
   const { data: app } = await svc.from("applications").select("answers, questions_snapshot, submitted_at, updated_at").eq("candidate_id", c.id).maybeSingle();
@@ -20,7 +20,8 @@ export async function loadPortalData(match: { token: string } | { candidateId: s
   return {
     token: c.invite_token,
     candidate: { fullName: c.full_name, clientName: c.client_name, roleTitle: c.role_title, status: c.status, deliveryOwner: c.delivery_owner },
-    wave: c.waves as unknown as PortalData["wave"],
+    // Si Administración ocultó la fecha de cierre, no se muestra (la ventana se sigue aplicando en el servidor).
+    wave: (() => { const w = c.waves as unknown as PortalData["wave"] & { application_deadline_hidden?: boolean }; return { ...w, application_deadline: w.application_deadline_hidden ? null : w.application_deadline }; })(),
     questions: (app?.questions_snapshot ?? []) as PortalData["questions"],
     answers: (app?.answers ?? {}) as Record<string, string>,
     savedAt: app?.updated_at ?? null,

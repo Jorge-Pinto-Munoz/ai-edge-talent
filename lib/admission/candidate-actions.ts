@@ -13,6 +13,7 @@ import { evaluateOne } from "./evaluate-one";
 import { getDocument } from "@/lib/content";
 import type { AdmissionStatus } from "@/lib/domain/types";
 import { isAcceptableVideoUrl } from "./rescue";
+import { applicationWindow } from "./window";
 import { deliveryDirectory } from "@/lib/identity/directory";
 import { cleanAnswers, missingRequired, type Question } from "./assessment";
 
@@ -37,8 +38,9 @@ async function byToken(token: string) {
   return { svc, c };
 }
 
-function deadlinePassed(wave: { application_deadline: string | null }) {
-  return wave.application_deadline ? Date.now() > Date.parse(wave.application_deadline) : false;
+/** Fuera de la ventana de postulación (aún no abre o ya cerró), según lo que defina Administración. */
+function deadlinePassed(wave: { application_deadline: string | null; application_opens_at?: string | null }) {
+  return applicationWindow(wave) !== "open";
 }
 
 async function moveTo(svc: ReturnType<typeof supabaseService>, id: string, from: AdmissionStatus, to: AdmissionStatus) {
@@ -70,9 +72,9 @@ export async function selfRegister(_: unknown, form: FormData): Promise<Register
   if (deliveryPick !== "none" && !delivery) return { ok: false, message: "Elige a tu Delivery de la lista." };
   const community = form.get("community") === "1";
   const svc = supabaseService();
-  const { data: wave } = await svc.from("waves").select("id, name, application_deadline, status").eq("id", waveId).single();
+  const { data: wave } = await svc.from("waves").select("id, name, application_deadline, application_opens_at, status").eq("id", waveId).single();
   if (!wave || !["OPEN_FOR_NOMINATION", "ASSESSMENT"].includes(wave.status)) return { ok: false, message: "Esta Wave no está recibiendo postulaciones." };
-  if (deadlinePassed(wave)) return { ok: false, message: "El plazo de postulación cerró." };
+  if (deadlinePassed(wave)) return { ok: false, message: "Las postulaciones no están abiertas en este momento." };
 
   const { data: existing } = await svc.from("candidates").select("id, invite_token, full_name").eq("wave_id", waveId).ilike("corporate_email", data.corporate_email).maybeSingle();
   const row =

@@ -550,3 +550,13 @@
   .drawer-foot .row, .drawer-actions { width: 100%; }
   .drawer-foot .row .btn, .drawer-actions .btn { flex: 1 1 auto; }
 }
+
+/* Ventana de postulación */
+.appwin { display: grid; gap: 14px; }
+.appwin-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.appwin-state { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; vertical-align: middle; }
+.appwin-state.st-open { background: var(--ok-soft); color: var(--ok-text); }
+.appwin-state.st-scheduled { background: var(--info-soft); color: var(--brand); }
+.appwin-state.st-closed { background: var(--bad-soft); color: var(--bad-text); }
+.appwin-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; align-items: end; }
+.appwin-form .field { margin: 0; }

@@ -3,6 +3,7 @@
 Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada tarea.
 
 ## Abiertos
+- Rediseño Admisión (tabla 7 columnas + ficha de candidato a página completa con pestañas): en curso; cambios de estados en `lib/admission/queue.ts` guardados en `git stash`.
 - Cargar en Contenido las cápsulas de video y la cápsula del reto (plantilla + instrucciones) de AI First Mindset.
 - **Grabadora de rescate en celulares reales**: probada solo con cámara simulada; falta probar en iPhone (Safari) y Android (Chrome).
 - **Error React #418 (hidratación)** en páginas dinámicas de producción. Ya existía antes; no bloquea.
@@ -14,6 +15,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Admisión: control de postulaciones (abrir/cerrar ahora, rango inicio–cierre en hora de Chile, ocultar fecha a postulantes).
 - Aviso al Delivery asignado en cada decisión: seleccionado, rescate (con plazo 24 h), no seleccionado y resultado tras rescate. Uno por decisión.
 - Videos embebidos desde YouTube (incl. Shorts), Vimeo (también privado con hash), Loom y Google Drive.
 - Correos: banner de marca en HTML, 640 px y responsive. Portal del candidato más ancho (1160 px). Explicación del rescate: máx. 3 dimensiones y siglas intactas.

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { env } from "@/lib/supabase/env";
 import { requireRole } from "./auth";
-import { ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
+import { audit, ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { statusPath } from "./status";
 import { parseCandidatesCsv } from "@/lib/import/candidates";
 import { evaluateOne } from "./evaluate-one";
@@ -315,6 +315,30 @@ export async function setWaveReference(waveId: string, value: number): Promise<A
     revalidatePath(`/admin/admision/${waveId}`);
     revalidatePath("/admin");
     return { ok: true, message: `Referencia actualizada: ${n} profesionales.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/* ───────── Ventana de postulación (abrir, cerrar y definir rango) ───────── */
+/**
+ * `opensAt` y `deadline` en ISO (null = sin límite). `hidden`: no mostrar la fecha de cierre a los postulantes
+ * (el servidor la aplica igual). Solo Administración; queda en la auditoría.
+ */
+export async function setApplicationWindow(waveId: string, input: { opensAt: string | null; deadline: string | null; hidden: boolean }): Promise<ActionResult> {
+  try {
+    const viewer = await requireRole(["admin"]);
+    const valid = (v: string | null) => v === null || !Number.isNaN(Date.parse(v));
+    if (!valid(input.opensAt) || !valid(input.deadline)) throw new Error("Fecha no válida.");
+    if (input.opensAt && input.deadline && Date.parse(input.opensAt) >= Date.parse(input.deadline)) throw new Error("La fecha de cierre debe ser posterior a la de inicio.");
+    const svc = supabaseService();
+    const { data, error } = await svc.from("waves").update({ application_opens_at: input.opensAt, application_deadline: input.deadline, application_deadline_hidden: input.hidden }).eq("id", waveId).select("id");
+    if (error) throw error;
+    if (!data?.length) throw new Error("Wave no encontrada.");
+    await audit("admission.window.updated", { actor: viewer.id, actorEmail: viewer.email, waveId, details: input }, svc);
+    revalidatePath(`/admin/admision/${waveId}`);
+    revalidatePath("/admin");
+    return { ok: true, message: "Ventana de postulación actualizada." };
   } catch (e) {
     return fail(e);
   }
