@@ -15,6 +15,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Menos correos: el Delivery recibe la copia del correo al profesional; aviso aparte solo si no hubo correo al profesional (no selección) o si ese correo falló. (E2E sDec no re-ejecutado tras este ajuste.)
 - Baja de inscritos (escribir ELIMINAR) con aviso opcional al profesional + CC Delivery. Todo correo informativo al profesional va con CC a su Delivery (nunca los de código). Confirmación de video de rescate recibido. Sección Admin → Comunicaciones: registro, detalle, CC y reenvío.
 - Admisión: control de postulaciones (abrir/cerrar ahora, rango inicio–cierre en hora de Chile, ocultar fecha a postulantes).
 - Aviso al Delivery asignado en cada decisión: seleccionado, rescate (con plazo 24 h), no seleccionado y resultado tras rescate. Uno por decisión.

@@ -177,7 +177,8 @@ export async function confirmSelection(candidateId: string, note = ""): Promise<
       email = r.ok ? "sent" : "failed";
       detail = r.ok ? undefined : r.error ?? "error del proveedor";
     }
-    await notifyDeliveryDecision(svc, c, c.status === "RESCUE_REQUIRED" ? "rescue_selected" : "selected");
+    // El Delivery ya va en copia del correo de bienvenida: solo se le avisa aparte si ese correo no salió ahora.
+    if (email !== "sent") await notifyDeliveryDecision(svc, c, c.status === "RESCUE_REQUIRED" ? "rescue_selected" : "selected");
     revalidatePath(`/admin/admision/${c.wave_id}`);
     revalidatePath("/admin");
     const tail = email === "sent" ? "Correo de bienvenida enviado." : email === "failed" ? `El correo no salió (${detail}); queda en reintento automático.` : "El correo de bienvenida ya se había enviado antes.";
@@ -228,7 +229,8 @@ export async function offerRescue(candidateId: string, explanation: string, note
     if (error) throw error;
     await audit("admission.rescue.offered", { actor: viewer.id, actorEmail: viewer.email, candidateId: c.id, waveId: c.wave_id, targetEmail: c.corporate_email, details: { expires_at: expires }, eventKey: `rescue-offer:${c.id}` }, svc);
     const r = await sendIdentityEmail("RESCUE_INVITE", c.corporate_email, { name: c.full_name, extra: text || undefined, link: `${env.appUrl}/postular/${c.invite_token}`, when: fmtWhen(expires), questions: RESCUE_QUESTIONS.map((q) => q.question) }, { candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
-    await notifyDeliveryDecision(svc, c, "rescue", fmtWhen(expires));
+    // El Delivery va en copia de la invitación al rescate: aviso aparte solo si esa invitación no salió.
+    if (!r.ok) await notifyDeliveryDecision(svc, c, "rescue", fmtWhen(expires));
     revalidatePath(`/admin/admision/${c.wave_id}`);
     return {
       ok: true,
