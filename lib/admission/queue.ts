@@ -44,8 +44,8 @@ const SELECTED = ["SELECTED", "CONDITIONS_PENDING"];
 const ENROLLED = ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
 
 export const PRIMARY_LABEL: Record<Exclude<PrimaryAction, null>, string> = {
-  evaluate_ai: "Evaluar con IA",
-  review: "Evaluar",
+  evaluate_ai: "Reintentar evaluación",
+  review: "Seleccionar",
   review_rescue: "Revisar video",
   decide_expired: "Decidir",
 };

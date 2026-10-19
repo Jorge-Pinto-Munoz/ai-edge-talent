@@ -19,10 +19,10 @@ const DECIDABLE = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED"];
  * Panel lateral de evaluación: todo lo que existe del candidato (puntaje, rúbrica, fortalezas, brechas,
  * recomendación, rescate e historial) y la decisión humana con confirmación. La recomendación nunca decide.
  */
-export function EvaluationDrawer({ candidateId, waveId, onClose }: { candidateId: string; waveId: string; onClose: () => void }) {
+export function EvaluationDrawer({ candidateId, waveId, onClose, initialStep = "view" }: { candidateId: string; waveId: string; onClose: () => void; initialStep?: "view" | "select" }) {
   const [data, setData] = useState<ReviewData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>("view");
+  const [step, setStep] = useState<Step>(initialStep);
   const [result, setResult] = useState<DecisionResult | null>(null);
   const router = useRouter();
   const panel = useRef<HTMLDivElement>(null);

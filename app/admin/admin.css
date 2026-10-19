@@ -543,3 +543,15 @@
 .comms-frame { width: 100%; height: 560px; border: 1px solid var(--border); border-radius: 12px; background: #eef2f5; }
 .comms-text { margin: 0; white-space: pre-wrap; font: inherit; font-size: 0.9rem; max-height: 480px; overflow: auto; padding: 14px; border-radius: 12px; background: var(--surface-2); }
 @media (max-width: 1100px) { .comms-layout.open { grid-template-columns: 1fr; } .comms-detail { position: static; } }
+
+/* Seleccionar (acción positiva destacada) y selección en lote */
+.btn.adm-go { background: #2f9e5b; border-color: #2f9e5b; color: #fff; }
+.btn.adm-go:hover:not(:disabled) { background: #26854b; border-color: #26854b; }
+.bulk-sel { width: min(640px, 100%); }
+.bulk-what { padding: 14px 16px; border-radius: 14px; background: var(--ok-soft); }
+.bulk-what ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.bulk-mail summary { cursor: pointer; color: var(--brand); font-weight: 600; }
+.bulk-mail pre { margin: 10px 0 0; white-space: pre-wrap; font: inherit; font-size: 0.88rem; max-height: 240px; overflow: auto; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.bulk-res { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bulk-res li { padding: 10px 12px; border-radius: 12px; display: grid; gap: 2px; }
+.bulk-res li.ok { background: var(--ok-soft); } .bulk-res li.warn { background: var(--warn-soft); } .bulk-res li.bad { background: var(--bad-soft); }

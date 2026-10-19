@@ -11,6 +11,8 @@ import { PRIMARY_LABEL, QUEUE_CHIPS, queueView, type QueueChip } from "@/lib/adm
 import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
 import { shownEmail } from "@/lib/talent/rules";
 import { EvaluationDrawer } from "./EvaluationDrawer";
+import { BulkSelectDialog } from "./BulkSelectDialog";
+import { useRouter } from "next/navigation";
 
 const REC_LABEL: Record<string, string> = { SELECTED: "Seleccionar", RESCUE_REQUIRED: "Activar rescate", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No seleccionar" };
 
@@ -29,7 +31,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [drawer, setDrawer] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<{ id: string; step: "view" | "select" } | null>(null);
+  const [bulkSelect, setBulkSelect] = useState(false);
+  const router = useRouter();
   const [toDelete, setToDelete] = useState<string[] | null>(null);
   // Eliminados en esta sesión: desaparecen de la lista al instante (el servidor confirma).
   const [removed, setRemoved] = useState<string[]>([]);
@@ -98,7 +102,12 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
       {isAdmin && sel.length > 0 && (
         <section className="card adm-bulk compact" aria-label="Acciones sobre la selección">
           <strong>{sel.length} seleccionado{sel.length === 1 ? "" : "s"}</strong>
-          <button className="btn small" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, sel))}>Evaluar con IA</button>
+          <button className="btn small adm-go" disabled={pending} onClick={() => setBulkSelect(true)}>Seleccionar ({sel.length})</button>
+          {(() => {
+            // La evaluación con IA es automática al enviar: aquí solo se reintenta para quien no la tiene.
+            const missing = candidates.filter((c) => sel.includes(c.id) && c.status === "APPLICATION_SUBMITTED" && !c.eval).map((c) => c.id);
+            return missing.length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, missing))}>Reintentar evaluación ({missing.length})</button>;
+          })()}
           <button className="btn small adm-danger" disabled={pending} onClick={() => setToDelete(sel)}>Eliminar</button>
           <button type="button" className="link-btn" onClick={() => setSel([])}>Quitar selección</button>
         </section>
@@ -162,9 +171,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                           {v.primary && (
                             <button
                               type="button"
-                              className={`btn small${v.primary === "evaluate_ai" ? " ghost" : ""}`}
+                              className={`btn small${v.primary === "evaluate_ai" ? " ghost" : v.primary === "review" ? " adm-go" : ""}`}
                               disabled={pending && busyId === c.id}
-                              onClick={() => (v.primary === "evaluate_ai" ? evaluateOne(c.id) : setDrawer(c.id))}
+                              onClick={() => (v.primary === "evaluate_ai" ? evaluateOne(c.id) : setDrawer({ id: c.id, step: v.primary === "review" ? "select" : "view" }))}
                             >
                               {pending && busyId === c.id ? "Evaluando…" : PRIMARY_LABEL[v.primary]}
                             </button>
@@ -172,7 +181,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                           <RowMenu
                             name={c.full_name}
                             detailHref={`/admin/admision/${waveId}/c/${c.id}`}
-                            onEvaluate={c.eval && v.primary !== "review" && v.primary !== "review_rescue" ? () => setDrawer(c.id) : undefined}
+                            onEvaluate={c.eval && v.primary !== "review_rescue" ? () => setDrawer({ id: c.id, step: "view" }) : undefined}
                             onResend={() => run(() => resendCandidateAccess(waveId, c.id))}
                             onDelete={() => setToDelete([c.id])}
                           />
@@ -194,7 +203,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
           <button type="button" className="link-btn" onClick={() => setLimit(rows.length)}>Ver todos</button>
         </div>
       )}
-      {drawer && isAdmin && <EvaluationDrawer candidateId={drawer} waveId={waveId} onClose={() => setDrawer(null)} />}
+      {drawer && isAdmin && <EvaluationDrawer candidateId={drawer.id} waveId={waveId} initialStep={drawer.step} onClose={() => setDrawer(null)} />}
+      {bulkSelect && <BulkSelectDialog people={candidates.filter((c) => sel.includes(c.id))} onClose={(done) => { setBulkSelect(false); if (done) { setSel([]); router.refresh(); } }} />}
     </div>
   );
 }

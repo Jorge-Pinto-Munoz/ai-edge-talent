@@ -16,6 +16,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Admisión: botón verde «Seleccionar» por fila (abre la confirmación) y en lote «Seleccionar (N)» con resumen de qué pasará y resultado por persona. «Evaluar con IA» solo como «Reintentar evaluación» si falta la evaluación automática.
 - Equipo (Delivery): tabla de sus profesionales con estado real, puntaje, recomendación y «Detalles» (ficha completa en lectura).
 - Rescate: recuadro «Lo que queremos conocer de ti» (foco por dimensión baja de la rúbrica) visible al profesional, Delivery y admin; también en el correo.
 - Delivery: en Admisión ve solo sus candidatos asignados, con puntaje, recomendación y «Detalles» (evaluación IA, respuestas, video de rescate, historial) en solo lectura. Admisión: filtro por cliente y orden por mayor puntaje por defecto.
