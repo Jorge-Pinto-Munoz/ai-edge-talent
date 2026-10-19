@@ -338,6 +338,8 @@ export async function submitRescue(token: string, input: { path?: string; url?: 
     if (error) throw new Error(/plazo/i.test(error.message) ? "El plazo para enviar tu video venció." : "No pudimos registrar tu video. Intenta de nuevo.");
     if (prev?.video_path && prev.video_path !== path) await svc.storage.from("submissions").remove([prev.video_path]);
     await svc.from("admission_events").insert({ candidate_id: c.id, from_status: "RESCUE_REQUIRED", to_status: "RESCUE_REQUIRED", actor_label: "postulante", note: `Envió video de rescate (${path ? (input.recorded ? "grabado en la plataforma" : "archivo") : "enlace"})` });
+    // Confirmación al profesional (con copia a su Delivery, vía sendIdentityEmail).
+    await sendIdentityEmail("RESCUE_RECEIVED", c.corporate_email, { name: c.full_name, link: `${env.appUrl}/postular/${c.invite_token}` }, { candidateId: c.id, waveId: c.wave_id }, svc);
     await audit("admission.rescue.submitted", { candidateId: c.id, waveId: c.wave_id, targetEmail: c.corporate_email, details: { kind: path ? (input.recorded ? "recorded" : "file") : "link" } }, svc);
     // Aviso a Administración (una vez por candidato; si reemplaza el video no se repite).
     const first = await audit("admission.rescue.admin_notified", { candidateId: c.id, waveId: c.wave_id, eventKey: `rescue-submitted:${c.id}` }, svc);

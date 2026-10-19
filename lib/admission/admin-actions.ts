@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { env } from "@/lib/supabase/env";
 import { requireRole } from "./auth";
-import { audit, ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
+import { audit, deliveryCc, ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { statusPath } from "./status";
 import { parseCandidatesCsv } from "@/lib/import/candidates";
 import { evaluateOne } from "./evaluate-one";
@@ -128,12 +128,13 @@ export async function sendCandidateEmails(waveId: string, candidateIds: string[]
         deadline: wave?.application_deadline ? fmtDeadline(wave.application_deadline) : null,
         senderName: viewer.fullName ?? "Equipo AI Edge Talent",
       });
+      const cc = await deliveryCc(svc, c.id, c.corporate_email);
       const { data: msg } = await svc
         .from("email_messages")
-        .insert({ wave_id: waveId, candidate_id: c.id, to_email: c.corporate_email, template, subject, body_text: text, sent_by: viewer.id })
+        .insert({ wave_id: waveId, candidate_id: c.id, to_email: c.corporate_email, cc_emails: cc, template, subject, body_text: text, sent_by: viewer.id })
         .select("id")
         .single();
-      const r = await sendEmail(c.corporate_email, subject, text);
+      const r = await sendEmail(c.corporate_email, subject, text, undefined, undefined, cc);
       await svc
         .from("email_messages")
         .update(r.error ? { status: "failed", error: r.error } : { status: "sent", provider_id: r.id, sent_at: new Date().toISOString() })
@@ -232,20 +233,25 @@ export async function reviewRescue(waveId: string, candidateId: string, input: {
  * correo. Con `account`, borra además su cuenta del portal (solo si es Profesional y no tiene otras postulaciones),
  * sus códigos, intentos de ingreso y el registro de correos. Nunca borra a personas inscritas ni cuentas internas.
  */
-export async function deleteCandidates(waveId: string, candidateIds: string[], opts: { account: boolean; confirm: string }): Promise<ActionResult> {
+export async function deleteCandidates(waveId: string, candidateIds: string[], opts: { account: boolean; confirm: string; force?: boolean; notify?: boolean; reason?: string }): Promise<ActionResult> {
   try {
     const viewer = await requireRole(["admin"]);
     if (opts.confirm.trim().toUpperCase() !== "ELIMINAR") throw new Error("Confirma la eliminación.");
     if (!candidateIds.length) throw new Error("Selecciona al menos una postulación.");
     const svc = supabaseService();
-    const { data: rows } = await svc.from("candidates").select("id, full_name, corporate_email, status, user_id, wave_id").in("id", candidateIds).eq("wave_id", waveId);
+    const { data: rows } = await svc.from("candidates").select("id, full_name, corporate_email, status, user_id, wave_id, waves(name)").in("id", candidateIds).eq("wave_id", waveId);
     const details: string[] = [];
     let deleted = 0;
     for (const c of rows ?? []) {
       const email = c.corporate_email.toLowerCase();
-      const { data: rv } = await svc.from("rescue_videos").select("video_path").eq("candidate_id", c.id).maybeSingle();
-      const { error } = await svc.rpc("purge_candidate", { p_candidate: c.id });
-      if (error) { details.push(`${c.full_name}: ${/inscrita/.test(error.message) ? "ya está inscrita en el programa; no se borra" : "no se pudo borrar"}`); continue; }
+      const [{ data: rv }, { data: asg }] = await Promise.all([
+        svc.from("rescue_videos").select("video_path").eq("candidate_id", c.id).maybeSingle(),
+        svc.from("delivery_assignments").select("delivery_email").eq("candidate_id", c.id).maybeSingle(),
+      ]);
+      const enrolled = ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(c.status);
+      // Una persona inscrita solo se da de baja con confirmación explícita (force).
+      const { error } = await svc.rpc("purge_candidate", { p_candidate: c.id, p_force: Boolean(opts.force && enrolled) });
+      if (error) { details.push(`${c.full_name}: ${/inscrita/.test(error.message) ? "ya está inscrita en el programa; confirma la baja para eliminarla" : "no se pudo borrar"}`); continue; }
       deleted++;
       // Videos de rescate: el vigente y cualquier subida que no se alcanzó a registrar.
       const { data: files } = await svc.storage.from("submissions").list(c.id, { limit: 100 });
@@ -270,10 +276,16 @@ export async function deleteCandidates(waveId: string, candidateIds: string[], o
         } else if (prof && prof.role !== "kiber") accountNote = " (su cuenta se mantiene: tiene un rol interno)";
         else if (others?.length) accountNote = " (su cuenta se mantiene: tiene otra postulación)";
       }
-      details.push(`${c.full_name}: postulación eliminada${opts.account ? `, correos y códigos limpiados${accountNote}` : ""}.`);
+      let mailNote = "";
+      if (opts.notify) {
+        const waveName = ((c.waves as unknown as { name?: string } | null)?.name ?? "AI Edge Talent").replace("AI Edge Talent · ", "");
+        const r = await sendIdentityEmail("PROGRAM_REMOVED", email, { name: c.full_name, wave: `AI Edge Talent · ${waveName}`, extra: opts.reason?.trim() || undefined }, { waveId: c.wave_id, sentBy: viewer.id, cc: asg?.delivery_email ? [asg.delivery_email.toLowerCase()] : [] }, svc);
+        mailNote = r.ok ? ` Aviso enviado${asg?.delivery_email ? " con copia a su Delivery" : ""}.` : ` El aviso no salió (${r.error}).`;
+      }
+      details.push(`${c.full_name}: ${enrolled ? "dado/a de baja del programa" : "postulación eliminada"}${opts.account ? `, correos y códigos limpiados${accountNote}` : ""}.${mailNote}`);
       await svc.from("audit_log").insert({
         action: "candidate.deleted", actor: viewer.id, actor_email: viewer.email, target_email: email, wave_id: c.wave_id,
-        details: { name: c.full_name, status: c.status, account: opts.account },
+        details: { name: c.full_name, status: c.status, account: opts.account, enrolled, notified: Boolean(opts.notify) },
       });
     }
     revalidatePath(`/admin/admision/${waveId}`);

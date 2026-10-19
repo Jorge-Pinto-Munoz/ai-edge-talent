@@ -37,6 +37,7 @@ const SECTIONS: Section[] = [
   { key: "talento", label: "Talento", icon: "star", href: () => "/admin/talento", match: /^\/admin\/talento/, roles: STAFF, group: "wave" },
   { key: "asignaciones", label: "Equipo de la Wave", icon: "user", href: (w) => `/admin/asignaciones/${w}`, match: /^\/admin\/asignaciones/, roles: ADMIN, perWave: true, group: "admin" },
   { key: "usuarios", label: "Usuarios y accesos", icon: "key", href: () => "/admin/usuarios", match: /^\/admin\/usuarios/, roles: ADMIN, group: "admin" },
+  { key: "comunicaciones", label: "Comunicaciones", icon: "send", href: () => "/admin/comunicaciones", match: /^\/admin\/comunicaciones/, roles: ADMIN, group: "admin" },
   { key: "accesos", label: "Registro de ingresos", icon: "list", href: () => "/admin/accesos", match: /^\/admin\/accesos/, roles: ADMIN, group: "admin" },
   { key: "guia", label: "Guía de accesos", icon: "book", href: () => "/admin/guia", match: /^\/admin\/guia/, roles: ADMIN, group: "admin" },
   { key: "soporte", label: "Soporte", icon: "help", href: () => "/admin/soporte", match: /^\/admin\/soporte/, roles: ADMIN, group: "admin" },

@@ -5,7 +5,7 @@
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
   | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
-  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION";
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -28,6 +28,8 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   RESCUE_SUBMITTED_ADMIN: "Aviso: video de rescate recibido",
   STAGE_OPEN: "Primer reto disponible",
   DELIVERY_DECISION: "Aviso a Delivery: decisión de admisión",
+  RESCUE_RECEIVED: "Video de rescate recibido",
+  PROGRAM_REMOVED: "Baja del programa",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -115,6 +117,14 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
       const [title, body] = head[d];
       const p = [hi, ...body, "Puedes ver el detalle en tu vista de equipo."];
       return { subject: `AI Edge Talent | ${title}`, text: [...p, "", `Ver mi equipo: ${c.link}`].join("\n"), html: layout(title, p, { cta: { label: "VER MI EQUIPO", href: c.link ?? "" }, foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "RESCUE_RECEIVED": {
+      const p = [hi, "Recibimos tu video de rescate. ¡Gracias por tomarte el tiempo de grabarlo!", "El equipo del programa lo revisará junto con los resultados de tu Assessment y te escribiremos con la decisión final.", "Mientras no sea revisado, puedes reemplazarlo desde tu enlace personal si lo necesitas, siempre dentro del plazo."];
+      return { subject: "AI Edge Talent | Recibimos tu video de rescate", text: [...p, "", `Tu postulación: ${c.link}`].join("\n"), html: layout("Recibimos tu video", p, { cta: { label: "VER MI POSTULACIÓN", href: c.link ?? "" }, foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "PROGRAM_REMOVED": {
+      const p = [hi, `Te informamos que tu participación en ${c.wave ?? "AI Edge Talent"} fue dada de baja por el equipo del programa.`, ...(c.extra ? [c.extra] : []), "Tu acceso al portal del programa quedó deshabilitado. Si crees que se trata de un error o tienes dudas, conversa con tu Delivery o responde este correo."];
+      return { subject: "AI Edge Talent | Baja del programa", text: p.join("\n"), html: layout("Baja del programa", p, { foot: "Equipo AI Edge Talent · Kibernum" }) };
     }
     case "STAGE_OPEN": {
       const p = [hi, `Tu primer reto de ${c.stage ?? "AI First Mindset"} ya está disponible.`, "Ingresa a tu portal y toca «Comenzar primer reto». Ingresas con tu correo y un código de 6 dígitos de un solo uso."];

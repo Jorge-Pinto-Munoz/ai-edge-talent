@@ -91,9 +91,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
           people={candidates.filter((c) => toDelete.includes(c.id))}
           pending={pending}
           onCancel={() => setToDelete(null)}
-          onConfirm={(account, confirmText) => start(async () => {
+          onConfirm={(o) => start(async () => {
             const ids = toDelete;
-            const r = await deleteCandidates(waveId, ids, { account, confirm: confirmText });
+            const r = await deleteCandidates(waveId, ids, o);
             setResult(r);
             if (r.ok) { setRemoved((x) => [...x, ...ids]); setSel((x) => x.filter((id) => !ids.includes(id))); setToDelete(null); }
           })}
@@ -236,27 +236,33 @@ function RowMenu({ name, detailHref, onEvaluate, onResend, onDelete }: { name: s
  * Confirmación de la eliminación: nombra a la persona y explica las consecuencias. Una persona: Cancelar o
  * Eliminar candidato. Varias a la vez: además se escribe ELIMINAR, para no borrar por accidente.
  */
-function DeleteDialog({ people, pending, onCancel, onConfirm, error }: { people: CandidateListItem[]; pending: boolean; onCancel: () => void; onConfirm: (account: boolean, confirm: string) => void; error: string | null }) {
-  const [account, setAccount] = useState(true);
-  const [text, setText] = useState("");
-  const cancel = useRef<HTMLButtonElement>(null);
+function DeleteDialog({ people, pending, onCancel, onConfirm, error }: { people: CandidateListItem[]; pending: boolean; onCancel: () => void; onConfirm: (o: { account: boolean; confirm: string; force: boolean; notify: boolean; reason: string }) => void; error: string | null }) {
   const many = people.length > 1;
   const enrolled = people.filter((p) => phasesOf(p.status).incorporacion === "inscrito");
+  const [account, setAccount] = useState(true);
+  const [notify, setNotify] = useState(enrolled.length > 0);
+  const [reason, setReason] = useState("");
+  const [text, setText] = useState("");
+  const cancel = useRef<HTMLButtonElement>(null);
   useEffect(() => { cancel.current?.focus(); }, []);
-  const ready = !many || text.trim().toUpperCase() === "ELIMINAR";
+  // Varias personas o alguien inscrito: hay que escribir ELIMINAR.
+  const strict = many || enrolled.length > 0;
+  const ready = !strict || text.trim().toUpperCase() === "ELIMINAR";
   return (
     <div className="adm-modal" role="alertdialog" aria-modal="true" aria-labelledby="del-t" aria-describedby="del-d" onKeyDown={(e) => e.key === "Escape" && !pending && onCancel()}>
       <div className="adm-modal-card">
-        <h2 id="del-t">{many ? `¿Eliminar ${people.length} candidatos?` : `¿Eliminar a ${people[0]?.full_name}?`}</h2>
+        <h2 id="del-t">{many ? `¿Eliminar ${people.length} candidatos?` : enrolled.length ? `¿Dar de baja a ${people[0]?.full_name}?` : `¿Eliminar a ${people[0]?.full_name}?`}</h2>
         {many ? <ul className="adm-del-list">{people.map((p) => <li key={p.id}><strong>{p.full_name}</strong> <small className="muted">{shownEmail(p.corporate_email)}</small></li>)}</ul> : <p className="muted">{shownEmail(people[0]?.corporate_email ?? "")} · {ADMISSION_LABEL[people[0]?.status as AdmissionStatus]}</p>}
-        <p id="del-d">Se eliminan sus respuestas, evaluaciones, decisiones e historial de admisión. Podrá postular de nuevo con el mismo correo. Queda registrado a tu nombre en la auditoría. <strong>Esta acción no se puede deshacer.</strong></p>
-        {enrolled.length > 0 && <p className="error">{enrolled.length === 1 ? "Esta persona ya está inscrita" : `${enrolled.length} personas ya están inscritas`} en el programa: no se eliminan.</p>}
+        <p id="del-d">Se eliminan sus respuestas, evaluaciones, decisiones e historial de admisión{enrolled.length ? ", y también su avance en el journey (entregas, progreso, pulsos y certificaciones)" : ""}. Podrá postular de nuevo con el mismo correo. Queda registrado a tu nombre en la auditoría. <strong>Esta acción no se puede deshacer.</strong></p>
+        {enrolled.length > 0 && <p className="error">{enrolled.length === 1 ? "Esta persona ya está inscrita" : `${enrolled.length} personas ya están inscritas`} en el programa: se dará de baja.</p>}
         <label className="check"><input type="checkbox" checked={account} onChange={(e) => setAccount(e.target.checked)} /> <span>Partir desde cero: eliminar también su cuenta del portal y el registro de correos enviados. <small className="muted">Las cuentas con rol interno (admin, Delivery…) se mantienen.</small></span></label>
-        {many && <div className="field"><label htmlFor="del-c">Escribe <strong>ELIMINAR</strong> para confirmar</label><input id="del-c" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></div>}
+        <label className="check"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> <span>Avisar por correo a la persona, con copia a su Delivery.</span></label>
+        {notify && <div className="field"><label htmlFor="del-r">Motivo para el correo (opcional)</label><textarea id="del-r" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej.: a solicitud del cliente por cambio de asignación." /></div>}
+        {strict && <div className="field"><label htmlFor="del-c">Escribe <strong>ELIMINAR</strong> para confirmar</label><input id="del-c" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" /></div>}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="adm-modal-actions">
           <button ref={cancel} type="button" className="btn ghost" onClick={onCancel} disabled={pending}>Cancelar</button>
-          <button type="button" className="btn adm-danger" disabled={pending || !ready} onClick={() => onConfirm(account, many ? text : "ELIMINAR")}>{pending ? "Eliminando…" : many ? `Eliminar ${people.length} candidatos` : "Eliminar candidato"}</button>
+          <button type="button" className="btn adm-danger" disabled={pending || !ready} onClick={() => onConfirm({ account, confirm: strict ? text : "ELIMINAR", force: enrolled.length > 0, notify, reason })}>{pending ? "Eliminando…" : many ? `Eliminar ${people.length} candidatos` : enrolled.length ? "Dar de baja" : "Eliminar candidato"}</button>
         </div>
       </div>
     </div>

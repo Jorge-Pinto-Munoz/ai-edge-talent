@@ -67,7 +67,7 @@ export async function runReminders(now = new Date()) {
   // 3) Reintentos de correos fallidos sin código (últimas 48 h).
   const { data: failed } = await svc
     .from("email_messages")
-    .select("id, to_email, template, subject, body_text, attempts, created_at")
+    .select("id, to_email, cc_emails, template, subject, body_text, body_html, attempts, created_at")
     .eq("status", "failed")
     .lt("attempts", MAX_EMAIL_ATTEMPTS)
     .gte("created_at", new Date(now.getTime() - 2 * 86_400_000).toISOString())
@@ -78,7 +78,7 @@ export async function runReminders(now = new Date()) {
     if (m.template === "RESCUE_INVITE" && now.getTime() - new Date(m.created_at).getTime() > 12 * 3_600_000) continue;
     const { data: got } = await svc.from("email_messages").update({ attempts: m.attempts + 1, status: "queued" }).eq("id", m.id).eq("attempts", m.attempts).eq("status", "failed").select("id");
     if (!got?.length) continue;
-    const res = await sendEmail(m.to_email, m.subject, m.body_text);
+    const res = await sendEmail(m.to_email, m.subject, m.body_text, undefined, m.body_html ?? undefined, m.cc_emails ?? []);
     await svc.from("email_messages").update(res.error ? { status: "failed", error: res.error.slice(0, 300) } : { status: "sent", provider_id: res.id, sent_at: new Date().toISOString(), error: null }).eq("id", m.id);
     if (!res.error) out.retried++;
   }

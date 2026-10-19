@@ -103,3 +103,10 @@ do $$ declare c uuid; begin
   begin perform public.purge_candidate(c); raise notice 'MAL: se borró una persona inscrita';
   exception when raise_exception then null; end;
 end $$;
+-- Baja de un inscrito: solo con confirmación explícita (p_force) desde el servidor.
+do $$ declare c uuid; begin
+  select id into c from candidates where status in ('CONDITIONS_ACCEPTED','ENROLLED','MINDSET_READY') limit 1;
+  if c is null then return; end if;
+  perform public.purge_candidate(c, true);
+  if exists (select 1 from candidates where id = c) then raise notice 'MAL: la baja forzada no eliminó al inscrito'; end if;
+end $$;

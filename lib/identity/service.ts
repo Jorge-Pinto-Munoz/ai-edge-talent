@@ -138,19 +138,33 @@ export async function sendIdentityEmail(
   template: IdentityTemplate,
   to: string,
   ctx: Parameters<typeof renderIdentity>[1],
-  meta: { userId?: string | null; candidateId?: string | null; waveId?: string | null; sentBy?: string | null } = {},
+  meta: { userId?: string | null; candidateId?: string | null; waveId?: string | null; sentBy?: string | null; cc?: string[] } = {},
   svc: Svc = supabaseService(),
 ): Promise<{ ok: boolean; error: string | null }> {
   const r = renderIdentity(template, ctx);
+  // Todo correo informativo al profesional va con copia a su Delivery (nunca los que llevan un código).
+  const cc = ctx.code ? [] : meta.cc ?? (await deliveryCc(svc, meta.candidateId ?? null, to));
+  const mask = (x: string) => (ctx.code ? x.split(ctx.code).join("••••") : x);
   const { data: row } = await svc.from("email_messages").insert({
-    to_email: to.toLowerCase(), template, kind: "identity", subject: r.subject,
+    to_email: to.toLowerCase(), template, kind: "identity", subject: r.subject, cc_emails: cc,
     // El cuerpo guardado nunca incluye el código.
-    body_text: ctx.code ? r.text.replace(ctx.code, "••••") : r.text,
+    body_text: mask(r.text), body_html: mask(r.html),
     user_id: meta.userId ?? null, candidate_id: meta.candidateId ?? null, wave_id: meta.waveId ?? null, sent_by: meta.sentBy ?? null,
   }).select("id").single();
-  const res = await sendEmail(to, r.subject, r.text, undefined, r.html);
+  const res = await sendEmail(to, r.subject, r.text, undefined, r.html, cc);
   if (row) await svc.from("email_messages").update(res.error ? { status: "failed", error: res.error.slice(0, 300) } : { status: "sent", provider_id: res.id, sent_at: new Date().toISOString() }).eq("id", row.id);
   return { ok: !res.error, error: res.error };
+}
+
+/** Correo del Delivery asignado, si el destinatario es el propio profesional de esa postulación. */
+export async function deliveryCc(svc: Svc, candidateId: string | null, to: string): Promise<string[]> {
+  if (!candidateId) return [];
+  const [{ data: c }, { data: a }] = await Promise.all([
+    svc.from("candidates").select("corporate_email").eq("id", candidateId).maybeSingle(),
+    svc.from("delivery_assignments").select("delivery_email").eq("candidate_id", candidateId).maybeSingle(),
+  ]);
+  if (!c || !a?.delivery_email || c.corporate_email.toLowerCase() !== to.toLowerCase()) return [];
+  return [a.delivery_email.toLowerCase()];
 }
 
 export const portalLink = (mode: "activar" | "ingresar" | "restablecer", email?: string, next?: string) =>
