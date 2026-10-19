@@ -27,7 +27,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const [delivery, setDelivery] = useState("");
   const [client, setClient] = useState("");
   // Orden por defecto: mayor puntaje arriba (sin evaluación al final). Alternativa: por prioridad de acción.
-  const [sort, setSort] = useState<"score" | "priority">("score");
+  const [sort, setSort] = useState<SortKey>("score");
   const [sel, setSel] = useState<string[]>([]);
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
@@ -55,11 +55,12 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         .filter(({ c }) => !delivery || (delivery === NO_DELIVERY ? !c.delivery_owner : c.delivery_owner === delivery))
         .filter(({ c }) => !client || (client === NO_CLIENT ? !orgKey(c.client_name) : orgKey(c.client_name) === client))
         .sort((a, b) =>
-          sort === "score"
-            ? (b.c.eval?.total ?? -1) - (a.c.eval?.total ?? -1) || a.v.priority - b.v.priority || a.c.full_name.localeCompare(b.c.full_name, "es")
-            : a.v.priority - b.v.priority || b.c.last_activity.localeCompare(a.c.last_activity),
+          sort === "priority"
+            ? a.v.priority - b.v.priority || b.c.last_activity.localeCompare(a.c.last_activity)
+            : (sort === "client" ? byClient(showClient(a.c.client_name), showClient(b.c.client_name)) : 0) ||
+              (b.c.eval?.total ?? -1) - (a.c.eval?.total ?? -1) || a.v.priority - b.v.priority || a.c.full_name.localeCompare(b.c.full_name, "es"),
         ),
-    [withView, q, chip, delivery, client, sort],
+    [withView, q, chip, delivery, client, sort, showClient],
   );
   const [limit, setLimit] = useState(PAGE);
   useEffect(() => { setLimit(PAGE); }, [q, chip, delivery, client, sort]);
@@ -92,9 +93,10 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
           {clients.map(([k, name]) => <option key={k} value={k}>{name}</option>)}
           <option value={NO_CLIENT}>Sin cliente</option>
         </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value as "score" | "priority")} aria-label="Ordenar">
+        <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Ordenar">
           <option value="score">Mayor puntaje primero</option>
           <option value="priority">Prioridad de acción</option>
+          <option value="client">Cliente (A–Z)</option>
         </select>
       </div>
 
@@ -145,6 +147,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
             <tr>
               {isAdmin && <th className="rt-check"><input type="checkbox" aria-label="Seleccionar todo" checked={allSel} onChange={(e) => setSel(e.target.checked ? rows.map(({ c }) => c.id) : [])} /></th>}
               <th>Candidato</th>
+              <th aria-sort={sort === "client" ? "ascending" : "none"}>
+                <button type="button" className="th-sort" onClick={() => setSort(sort === "client" ? "score" : "client")} title="Ordenar por cliente">Cliente {sort === "client" ? "▲" : "↕"}</button>
+              </th>
               <th>Delivery</th>
               <th>Estado</th>
               <th>Evaluación y acción</th>
@@ -158,9 +163,10 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                   {isAdmin && <td className="rt-check"><input type="checkbox" aria-label={`Seleccionar ${c.full_name}`} checked={sel.includes(c.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)))} /></td>}
                   <td className="rt-title">
                     <Link href={`/admin/admision/${waveId}/c/${c.id}`}><strong>{c.full_name}</strong></Link>
-                    {(c.client_name || c.role_title) && <span className="adm-org">{[showClient(c.client_name), showRole(c.role_title)].filter(Boolean).join(" · ")}</span>}
+                    {c.role_title && <span className="adm-org">{showRole(c.role_title)}</span>}
                     <small className="muted">{shownEmail(c.corporate_email)}</small>
                   </td>
+                  <td data-label="Cliente">{showClient(c.client_name) ?? <span className="muted">—</span>}</td>
                   <td data-label="Delivery">{c.delivery_owner ?? <span className="muted">Sin asignar</span>}</td>
                   <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span></td>
                   <td data-label="Evaluación">
@@ -197,7 +203,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                 </tr>
               );
             })}
-            {rows.length === 0 && <tr><td colSpan={isAdmin ? 5 : 4} className="muted">{candidates.length ? "No hay candidatos con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={isAdmin ? 6 : 5} className="muted">{candidates.length ? "No hay candidatos con estos filtros." : "Aún no hay postulaciones. Comparte el link de postulación con los profesionales."}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -217,6 +223,9 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
 const PAGE = 50;
 const NO_DELIVERY = "__sin__";
 const NO_CLIENT = "__sin_cliente__";
+type SortKey = "score" | "priority" | "client";
+/** Por cliente (A–Z, sin cliente al final); a igual cliente sigue el puntaje. */
+const byClient = (a: string | null | undefined, b: string | null | undefined) => (a ? (b ? a.localeCompare(b, "es") : -1) : b ? 1 : 0);
 
 /** Menú de acciones de una fila (···): ver detalle, reenviar acceso y eliminar (acción destructiva, al final). */
 function RowMenu({ name, detailHref, onEvaluate, onResend, onDelete }: { name: string; detailHref: string; onEvaluate?: () => void; onResend: () => void; onDelete: () => void }) {

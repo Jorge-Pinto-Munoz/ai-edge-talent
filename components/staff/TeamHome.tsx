@@ -160,14 +160,14 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
               </div>
               <div className="table-wrap" tabIndex={0}>
                 <table className="rtable">
-                  <thead><tr><th>Profesional</th><th>Estado</th><th>Evaluación</th><th>Recomendación</th><th>Último movimiento</th><th><span className="sr-only">Detalles</span></th></tr></thead>
+                  <thead><tr><th>Profesional</th><th>Cliente</th><th>Estado</th><th>Evaluación</th><th>Recomendación</th><th>Último movimiento</th><th><span className="sr-only">Detalles</span></th></tr></thead>
                   <tbody>
                     {steps.map(({ a, s }) => {
                       const v = queueView({ status: a.status, hasEval: Boolean(a.eval), rescue: a.rescue }, now);
                       const tone = scoreTone(a.eval?.level);
                       return (
                         <tr key={a.id}>
-                          <td className="rt-title">{a.name}{(a.client || a.role) && <span className="adm-org">{[showClient(a.client), showRole(a.role)].filter(Boolean).join(" · ")}</span>}<small className="muted">{a.submitted ? `envió ${fmtDate(a.submitted)}` : `registro ${fmtDate(a.registered)}`}</small></td>
+                          <td className="rt-title">{a.name}{a.role && <span className="adm-org">{showRole(a.role)}</span>}<small className="muted">{a.submitted ? `envió ${fmtDate(a.submitted)}` : `registro ${fmtDate(a.registered)}`}</small></td><td data-label="Cliente">{showClient(a.client) ?? <span className="muted">—</span>}</td>
                           <td data-label="Estado"><span className={`ph-badge t-${v.badge.tone}`}>{v.badge.label}</span>{s.stalled && <><br /><small className="error">Sin avance hace más de {STALLED_DAYS} días</small></>}</td>
                           <td data-label="Evaluación">{a.eval ? <strong className={`score-${tone}`}>{Math.round(a.eval.total)}<small className="muted">/100</small></strong> : <span className="muted">—</span>}</td>
                           <td data-label="Recomendación"><small>{recommendationText(a.eval, v.rescue)}</small></td>
