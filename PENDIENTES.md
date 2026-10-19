@@ -3,7 +3,7 @@
 Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada tarea.
 
 ## Abiertos
-- Seguridad: la política RLS `candidates_staff` deja a Delivery leer/escribir todos los candidatos vía API; la app ya limita a los asignados. Conviene restringir la RLS a asignados (revisar /equipo antes).
+- Delivery en Journey/Talento sigue pudiendo revisar entregas, certificaciones y seguimientos (funciones propias de su rol); si eso también debe ser solo lectura, ajustar `submissions`/`certifications`/`follow_ups`.
 - Rediseño Admisión (tabla 7 columnas + ficha de candidato a página completa con pestañas): pendiente; estados/colores nuevos ya en `lib/admission/queue.ts`.
 - Cargar en Contenido las cápsulas de video y la cápsula del reto (plantilla + instrucciones) de AI First Mindset.
 - **Grabadora de rescate en celulares reales**: probada solo con cámara simulada; falta probar en iPhone (Safari) y Android (Chrome).
@@ -16,6 +16,8 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Admisión: cada fila tiene «Detalles»; el siguiente paso recomendado (Seleccionar / Ofrecer rescate / No seleccionar / Reintentar evaluación) va en la barra de lo marcado, cada botón solo para quienes tienen ese paso, con confirmación; filtro «siguiente paso»; Eliminar y Quitar selección en «···». Rescate en lote con el foco sugerido por la rúbrica (`offerSuggestedRescue`).
+- RLS: Delivery solo lee sus asignados (`is_delivery_of`, migración 20261103) en candidatos, postulación, historial, compromiso, rescate, correos y asignaciones; no puede insertar/modificar/borrar candidatos. Importar candidatos: solo admin. Sus totales en Equipo ahora cuentan solo a sus asignados.
 - Cliente como columna propia (ordenable: clic en «Cliente» o «Cliente (A–Z)»; sin cliente al final, luego puntaje) en Admisión y en Equipo (Delivery); rol bajo el nombre. Clientes homologados (`lib/text/org.ts`) también en el filtro.
 - Admisión: botón verde «Seleccionar» por fila (abre la confirmación) y en lote «Seleccionar (N)» con resumen de qué pasará y resultado por persona. «Evaluar con IA» solo como «Reintentar evaluación» si falta la evaluación automática.
 - Equipo (Delivery): tabla de sus profesionales con estado real, puntaje, recomendación y «Detalles» (ficha completa en lectura).

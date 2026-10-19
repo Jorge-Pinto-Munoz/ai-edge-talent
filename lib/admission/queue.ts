@@ -116,3 +116,27 @@ export function recommendationText(e: { recommendation: string; pl: string | nul
   if (!e) return "Sin evaluación";
   return REC_TEXT[e.pl ?? ""] ?? REC_TEXT[e.recommendation] ?? "Sin evaluación";
 }
+
+/** Siguiente paso de admisión según el estado y la recomendación de la rúbrica (orienta; la decisión es humana). */
+export type NextStep = "select" | "rescue" | "reject" | "review" | "review_rescue" | "decide_expired" | "retry_eval" | null;
+
+export const NEXT_LABEL: Record<Exclude<NextStep, null>, string> = {
+  select: "Seleccionar",
+  rescue: "Ofrecer rescate",
+  reject: "No seleccionar",
+  review: "Revisión humana",
+  review_rescue: "Revisar video de rescate",
+  decide_expired: "Decidir rescate vencido",
+  retry_eval: "Reintentar evaluación",
+};
+
+export function nextStep(c: { status: string; eval: { level: string; recommendation: string; pl: string | null } | null; hadRescue: boolean }, v: Pick<QueueView, "primary">): NextStep {
+  if (v.primary === "review_rescue" || v.primary === "decide_expired") return v.primary;
+  if (v.primary === "evaluate_ai") return "retry_eval";
+  if (v.primary !== "review" || !c.eval) return null;
+  const rec = c.eval.pl ?? c.eval.recommendation;
+  if (rec === "NOT_SELECTED") return "reject";
+  if (rec === "ACTIVAR_RESCATE" || rec === "RESCUE_REQUIRED" || c.eval.level === "D") return c.hadRescue ? "reject" : "rescue";
+  if (rec === "HUMAN_REVIEW") return "review";
+  return "select";
+}

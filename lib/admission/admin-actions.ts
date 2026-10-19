@@ -20,7 +20,7 @@ const fail = (e: unknown): ActionResult => ({ ok: false, message: e instanceof E
 /* ───────── Importar base de candidatos ───────── */
 export async function importCandidates(waveId: string, csvText: string): Promise<ActionResult> {
   try {
-    await requireRole(["admin", "delivery"]);
+    await requireRole(["admin"]); // Delivery solo lee (también lo exige la RLS)
     const parsed = parseCandidatesCsv(csvText);
     if (parsed.rows.length === 0) return { ok: false, message: "No hay filas válidas para importar.", details: parsed.errors.map((e) => `Línea ${e.line}: ${e.message}`) };
     const db = await supabaseUser();

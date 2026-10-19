@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chipFromParams, queueView } from "@/lib/admission/queue";
+import { chipFromParams, nextStep, queueView } from "@/lib/admission/queue";
 import { openingStatus } from "@/lib/journey/opening-labels";
 
 const now = new Date("2026-10-20T12:00:00Z");
@@ -45,5 +45,24 @@ describe("apertura de AI First Mindset", () => {
     expect(openingStatus("2026-10-19T12:00:00Z", 3, 3, now)).toBe("open");
     expect(openingStatus("2026-10-19T12:00:00Z", 0, 3, now)).toBe("finished");
     expect(openingStatus("2026-10-19T12:00:00Z", 0, 0, now)).toBe("open");
+  });
+});
+
+describe("siguiente paso según la recomendación", () => {
+  const ev = (pl: string | null, level = "B", recommendation = "SELECTED") => ({ level, recommendation, pl });
+  const step = (status: string, e: ReturnType<typeof ev> | null, hadRescue = false) =>
+    nextStep({ status, eval: e, hadRescue }, queueView({ status, hasEval: Boolean(e), rescue: null }));
+  it("evaluado: seleccionar, rescate o no seleccionar según la rúbrica", () => {
+    expect(step("ASSESSMENT_EVALUATED", ev("SELECCIONAR"))).toBe("select");
+    expect(step("ASSESSMENT_EVALUATED", ev("SELECCIONAR_CON_SEGUIMIENTO"))).toBe("select");
+    expect(step("ASSESSMENT_EVALUATED", ev("ACTIVAR_RESCATE", "D", "RESCUE_REQUIRED"))).toBe("rescue");
+    expect(step("ASSESSMENT_EVALUATED", ev(null, "D", "RESCUE_REQUIRED"), true)).toBe("reject");
+    expect(step("HUMAN_REVIEW", ev(null, "C", "NOT_SELECTED"))).toBe("reject");
+    expect(step("HUMAN_REVIEW", ev(null, "C", "HUMAN_REVIEW"))).toBe("review");
+  });
+  it("sin evaluación: reintentar; ya decididos: sin paso", () => {
+    expect(step("APPLICATION_SUBMITTED", null)).toBe("retry_eval");
+    expect(step("SELECTED", ev("SELECCIONAR"))).toBeNull();
+    expect(step("NOT_SELECTED", ev("ACTIVAR_RESCATE", "D"))).toBeNull();
   });
 });

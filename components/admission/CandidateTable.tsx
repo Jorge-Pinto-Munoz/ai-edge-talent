@@ -7,19 +7,20 @@ import { deleteCandidates, evaluateCandidates, resendCandidateAccess, type Actio
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { Callout } from "@/components/ui";
 import { phasesOf } from "@/lib/admission/phases";
-import { PRIMARY_LABEL, QUEUE_CHIPS, queueView, type QueueChip } from "@/lib/admission/queue";
+import { NEXT_LABEL, QUEUE_CHIPS, nextStep, queueView, type NextStep, type QueueChip } from "@/lib/admission/queue";
 import { PL_LABEL, type PlRecommendation } from "@/lib/ai/rubric";
 import { shownEmail } from "@/lib/talent/rules";
 import { homologate, orgKey } from "@/lib/text/org";
 import { EvaluationDrawer } from "./EvaluationDrawer";
-import { BulkSelectDialog } from "./BulkSelectDialog";
+import { BulkDecisionDialog, type BulkKind } from "./BulkDecisionDialog";
 import { useRouter } from "next/navigation";
 
 const REC_LABEL: Record<string, string> = { SELECTED: "Seleccionar", RESCUE_REQUIRED: "Activar rescate", HUMAN_REVIEW: "Revisión humana", NOT_SELECTED: "No seleccionar" };
 
 /**
- * Admisión de la Wave en cuatro columnas: Candidato, Delivery, Estado y Evaluación y acción. Primero lo que
- * espera una decisión; una acción principal por fila y el resto en el menú. Delivery solo lee.
+ * Admisión de la Wave: Candidato, Cliente, Delivery, Estado y Evaluación. Cada fila abre «Detalles»; el siguiente
+ * paso recomendado (seleccionar, rescate, no seleccionar) se ejecuta desde la barra de lo marcado o el menú «···»,
+ * siempre con confirmación. Delivery solo lee.
  */
 export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip = "todos" }: { waveId: string; candidates: CandidateListItem[]; isAdmin: boolean; initialChip?: QueueChip }) {
   const [q, setQ] = useState("");
@@ -33,7 +34,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const [pending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<{ id: string; step: "view" | "select" } | null>(null);
-  const [bulkSelect, setBulkSelect] = useState(false);
+  const [bulk, setBulk] = useState<BulkKind | null>(null);
+  const [step, setStep] = useState<Exclude<NextStep, null> | "">("");
   const router = useRouter();
   const [toDelete, setToDelete] = useState<string[] | null>(null);
   // Eliminados en esta sesión: desaparecen de la lista al instante (el servidor confirma).
@@ -42,7 +44,11 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const showClient = useMemo(() => homologate(all.map((c) => c.client_name)), [all]);
   const showRole = useMemo(() => homologate(all.map((c) => c.role_title)), [all]);
   const withView = useMemo(
-    () => candidates.map((c) => ({ c, v: queueView({ status: c.status, hasEval: Boolean(c.eval), rescue: c.rescue, emailFailed: c.welcomeFailed }) })),
+    () =>
+      candidates.map((c) => {
+        const v = queueView({ status: c.status, hasEval: Boolean(c.eval), rescue: c.rescue, emailFailed: c.welcomeFailed });
+        return { c, v, next: nextStep({ status: c.status, eval: c.eval, hadRescue: Boolean(c.rescue) }, v) };
+      }),
     [candidates],
   );
   const count = (k: QueueChip) => (k === "todos" ? withView.length : withView.filter(({ v }) => v.chips.includes(k)).length);
@@ -53,6 +59,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         .filter(({ c }) => !q || `${c.full_name} ${c.corporate_email} ${c.client_name ?? ""} ${c.delivery_owner ?? ""}`.toLowerCase().includes(q.toLowerCase()))
         .filter(({ v }) => chip === "todos" || v.chips.includes(chip))
         .filter(({ c }) => !delivery || (delivery === NO_DELIVERY ? !c.delivery_owner : c.delivery_owner === delivery))
+        .filter(({ next }) => !step || next === step)
         .filter(({ c }) => !client || (client === NO_CLIENT ? !orgKey(c.client_name) : orgKey(c.client_name) === client))
         .sort((a, b) =>
           sort === "priority"
@@ -60,10 +67,10 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
             : (sort === "client" ? byClient(showClient(a.c.client_name), showClient(b.c.client_name)) : 0) ||
               (b.c.eval?.total ?? -1) - (a.c.eval?.total ?? -1) || a.v.priority - b.v.priority || a.c.full_name.localeCompare(b.c.full_name, "es"),
         ),
-    [withView, q, chip, delivery, client, sort, showClient],
+    [withView, q, chip, delivery, client, sort, showClient, step],
   );
   const [limit, setLimit] = useState(PAGE);
-  useEffect(() => { setLimit(PAGE); }, [q, chip, delivery, client, sort]);
+  useEffect(() => { setLimit(PAGE); }, [q, chip, delivery, client, sort, step]);
   const visible = rows.slice(0, limit);
   // Clientes y roles homologados: el mismo cliente escrito de distintas formas se ve y se filtra como uno solo.
   const clients = [...new Map(candidates.filter((c) => orgKey(c.client_name)).map((c) => [orgKey(c.client_name), showClient(c.client_name)!])).entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
@@ -93,6 +100,12 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
           {clients.map(([k, name]) => <option key={k} value={k}>{name}</option>)}
           <option value={NO_CLIENT}>Sin cliente</option>
         </select>
+        <select value={step} onChange={(e) => setStep(e.target.value as Exclude<NextStep, null> | "")} aria-label="Filtrar por siguiente paso">
+          <option value="">Todo siguiente paso</option>
+          {(Object.keys(NEXT_LABEL) as Exclude<NextStep, null>[]).filter((k) => withView.some((x) => x.next === k)).map((k) => (
+            <option key={k} value={k}>{NEXT_LABEL[k]} ({withView.filter((x) => x.next === k).length})</option>
+          ))}
+        </select>
         <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Ordenar">
           <option value="score">Mayor puntaje primero</option>
           <option value="priority">Prioridad de acción</option>
@@ -102,22 +115,37 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
 
       <div className="adm-showing" role="status" aria-live="polite">
         <span>Mostrando <strong>{rows.length}</strong> de {candidates.length}</span>
-        {(q || delivery || client || chip !== "todos") && <button type="button" className="link-btn" onClick={() => { setQ(""); setDelivery(""); setClient(""); setChip("todos"); }}>Limpiar filtros</button>}
+        {(q || delivery || client || step || chip !== "todos") && <button type="button" className="link-btn" onClick={() => { setQ(""); setDelivery(""); setClient(""); setStep(""); setChip("todos"); }}>Limpiar filtros</button>}
       </div>
 
-      {isAdmin && sel.length > 0 && (
-        <section className="card adm-bulk compact" aria-label="Acciones sobre la selección">
-          <strong>{sel.length} seleccionado{sel.length === 1 ? "" : "s"}</strong>
-          <button className="btn small adm-go" disabled={pending} onClick={() => setBulkSelect(true)}>Seleccionar ({sel.length})</button>
-          {(() => {
-            // La evaluación con IA es automática al enviar: aquí solo se reintenta para quien no la tiene.
-            const missing = candidates.filter((c) => sel.includes(c.id) && c.status === "APPLICATION_SUBMITTED" && !c.eval).map((c) => c.id);
-            return missing.length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, missing))}>Reintentar evaluación ({missing.length})</button>;
-          })()}
-          <button className="btn small adm-danger" disabled={pending} onClick={() => setToDelete(sel)}>Eliminar</button>
-          <button type="button" className="link-btn" onClick={() => setSel([])}>Quitar selección</button>
-        </section>
-      )}
+      {isAdmin && sel.length > 0 && (() => {
+        // Acciones según el siguiente paso recomendado de cada persona marcada; cada botón actúa solo sobre las suyas.
+        const marked = withView.filter(({ c }) => sel.includes(c.id));
+        const of = (k: NextStep) => marked.filter((x) => x.next === k).map((x) => x.c);
+        const individual = marked.filter((x) => x.next === "review" || x.next === "review_rescue" || x.next === "decide_expired").length;
+        const retry = of("retry_eval");
+        return (
+          <section className="card adm-bulk compact" aria-label="Acciones sobre la selección">
+            <strong>{sel.length} marcado{sel.length === 1 ? "" : "s"}</strong>
+            <span className="muted">Siguiente paso:</span>
+            {of("select").length > 0 && <button className="btn small adm-go" disabled={pending} onClick={() => setBulk("select")}>Seleccionar ({of("select").length})</button>}
+            {of("rescue").length > 0 && <button className="btn small adm-violet" disabled={pending} onClick={() => setBulk("rescue")}>Ofrecer rescate ({of("rescue").length})</button>}
+            {of("reject").length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => setBulk("reject")}>No seleccionar ({of("reject").length})</button>}
+            {retry.length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, retry.map((c) => c.id)))}>Reintentar evaluación ({retry.length})</button>}
+            {individual > 0 && <small className="muted">{individual} requiere{individual === 1 ? "" : "n"} revisión individual (abre «Detalles»)</small>}
+            {marked.every((x) => !x.next) && <small className="muted">Sin decisiones pendientes en lo marcado.</small>}
+            <PopMenu label="Más acciones sobre lo marcado">
+              {(close) => (
+                <>
+                  <button role="menuitem" type="button" onClick={() => { close(); setSel([]); }}>Quitar selección</button>
+                  <hr />
+                  <button role="menuitem" type="button" className="danger" onClick={() => { close(); setToDelete(sel); }}>Eliminar ({sel.length})</button>
+                </>
+              )}
+            </PopMenu>
+          </section>
+        );
+      })()}
 
       {toDelete && (
         <DeleteDialog
@@ -156,7 +184,7 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
             </tr>
           </thead>
           <tbody>
-            {visible.map(({ c, v }) => {
+            {visible.map(({ c, v, next }) => {
               const rec = c.eval ? (c.eval.pl ? PL_LABEL[c.eval.pl as PlRecommendation] : REC_LABEL[c.eval.recommendation]) : null;
               return (
                 <tr key={c.id} className={v.priority <= 3 ? "needs" : undefined}>
@@ -175,29 +203,23 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
                           {c.eval ? <><strong>{Math.round(c.eval.total)}</strong><small>/100</small>{rec && <small className="muted"> · {rec}</small>}</> : <small className="muted">Sin evaluación</small>}
                           {c.welcomeFailed && <><br /><small className="error">Correo de bienvenida falló</small></>}
                         </span>
-                        {!isAdmin ? (
-                          <span className="adm-evact"><Link className="btn small ghost" href={`/admin/admision/${waveId}/c/${c.id}`}>Detalles</Link></span>
-                        ) : (
                         <span className="adm-evact">
-                          {v.primary && (
-                            <button
-                              type="button"
-                              className={`btn small${v.primary === "evaluate_ai" ? " ghost" : v.primary === "review" ? " adm-go" : ""}`}
-                              disabled={pending && busyId === c.id}
-                              onClick={() => (v.primary === "evaluate_ai" ? evaluateOne(c.id) : setDrawer({ id: c.id, step: v.primary === "review" ? "select" : "view" }))}
-                            >
-                              {pending && busyId === c.id ? "Evaluando…" : PRIMARY_LABEL[v.primary]}
-                            </button>
+                          <Link className="btn small ghost" href={`/admin/admision/${waveId}/c/${c.id}`}>Detalles</Link>
+                          {isAdmin && (
+                            <PopMenu label={`Acciones para ${c.full_name}`}>
+                              {(close) => (
+                                <>
+                                  {next && next !== "retry_eval" && <button role="menuitem" type="button" className="strong" onClick={() => { close(); setDrawer({ id: c.id, step: next === "select" ? "select" : "view" }); }}>{NEXT_LABEL[next]}…</button>}
+                                  {next === "retry_eval" && <button role="menuitem" type="button" className="strong" disabled={pending && busyId === c.id} onClick={() => { close(); evaluateOne(c.id); }}>{pending && busyId === c.id ? "Evaluando…" : NEXT_LABEL.retry_eval}</button>}
+                                  {c.eval && <button role="menuitem" type="button" onClick={() => { close(); setDrawer({ id: c.id, step: "view" }); }}>Ver evaluación</button>}
+                                  <button role="menuitem" type="button" onClick={() => { close(); run(() => resendCandidateAccess(waveId, c.id)); }}>Reenviar acceso</button>
+                                  <hr />
+                                  <button role="menuitem" type="button" className="danger" onClick={() => { close(); setToDelete([c.id]); }}>Eliminar candidato</button>
+                                </>
+                              )}
+                            </PopMenu>
                           )}
-                          <RowMenu
-                            name={c.full_name}
-                            detailHref={`/admin/admision/${waveId}/c/${c.id}`}
-                            onEvaluate={c.eval && v.primary !== "review_rescue" ? () => setDrawer({ id: c.id, step: "view" }) : undefined}
-                            onResend={() => run(() => resendCandidateAccess(waveId, c.id))}
-                            onDelete={() => setToDelete([c.id])}
-                          />
                         </span>
-                        )}
                       </div>
                   </td>
                 </tr>
@@ -215,7 +237,14 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         </div>
       )}
       {drawer && isAdmin && <EvaluationDrawer candidateId={drawer.id} waveId={waveId} initialStep={drawer.step} onClose={() => setDrawer(null)} />}
-      {bulkSelect && <BulkSelectDialog people={candidates.filter((c) => sel.includes(c.id))} onClose={(done) => { setBulkSelect(false); if (done) { setSel([]); router.refresh(); } }} />}
+      {bulk && (
+        <BulkDecisionDialog
+          kind={bulk}
+          people={withView.filter((x) => sel.includes(x.c.id) && x.next === bulk).map((x) => x.c)}
+          skipped={withView.filter((x) => sel.includes(x.c.id) && x.next !== bulk).map((x) => x.c)}
+          onClose={(done) => { setBulk(null); if (done) { setSel([]); router.refresh(); } }}
+        />
+      )}
     </div>
   );
 }
@@ -227,8 +256,8 @@ type SortKey = "score" | "priority" | "client";
 /** Por cliente (A–Z, sin cliente al final); a igual cliente sigue el puntaje. */
 const byClient = (a: string | null | undefined, b: string | null | undefined) => (a ? (b ? a.localeCompare(b, "es") : -1) : b ? 1 : 0);
 
-/** Menú de acciones de una fila (···): ver detalle, reenviar acceso y eliminar (acción destructiva, al final). */
-function RowMenu({ name, detailHref, onEvaluate, onResend, onDelete }: { name: string; detailHref: string; onEvaluate?: () => void; onResend: () => void; onDelete: () => void }) {
+/** Menú «···» (por fila y en la barra de lo marcado): lo destructivo va al final. */
+function PopMenu({ label, children }: { label: string; children: (close: () => void) => React.ReactNode }) {
   const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const open = pos !== null;
   const setOpen = (v: boolean) => { if (!v) setPos(null); else place(); };
@@ -256,19 +285,14 @@ function RowMenu({ name, detailHref, onEvaluate, onResend, onDelete }: { name: s
     ref.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus({ preventScroll: true });
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); window.removeEventListener("scroll", away, true); window.removeEventListener("resize", away); };
   }, [open]);
-  const item = (f: () => void) => () => { setOpen(false); f(); };
   return (
     <div className="row-menu" ref={ref}>
-      <button ref={btn} type="button" className="row-menu-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`Acciones para ${name}`} onClick={() => setOpen(!open)}>
+      <button ref={btn} type="button" className="row-menu-btn" aria-haspopup="menu" aria-expanded={open} aria-label={label} onClick={() => setOpen(!open)}>
         <span aria-hidden="true">···</span>
       </button>
       {open && (
-        <div className="row-menu-pop" role="menu" aria-label={`Acciones para ${name}`} style={pos ?? undefined}>
-          <Link role="menuitem" href={detailHref} onClick={() => setOpen(false)}>Ver ficha completa</Link>
-          {onEvaluate && <button role="menuitem" type="button" onClick={item(onEvaluate)}>Ver evaluación</button>}
-          <button role="menuitem" type="button" onClick={item(onResend)}>Reenviar acceso</button>
-          <hr />
-          <button role="menuitem" type="button" className="danger" onClick={item(onDelete)}>Eliminar candidato</button>
+        <div className="row-menu-pop" role="menu" aria-label={label} style={pos ?? undefined}>
+          {children(() => setOpen(false))}
         </div>
       )}
     </div>

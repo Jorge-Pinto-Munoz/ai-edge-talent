@@ -33,9 +33,19 @@ select 'CLIENTE ve candidatos (tabla)', count(*) from candidates;
 select 'CLIENTE ve evaluaciones IA', count(*) from ai_evaluations;
 select 'CLIENTE vista', full_name, visible_status from client_candidate_status;
 
+reset role;
+insert into delivery_assignments (candidate_id, wave_id, delivery_email) select id, wave_id, 'delivery@kibernum.cl' from candidates where full_name = 'Ana Kiber';
+set role authenticated;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
-select 'DELIVERY ve candidatos', count(*) from candidates;
+select 'DELIVERY ve solo su asignada', count(*) = 1 and bool_and(full_name = 'Ana Kiber') from candidates;
+select 'DELIVERY postulacion solo asignada', count(*) = 1 from applications;
 select 'DELIVERY no ve puntajes', count(*) = 0 from ai_evaluations;
+update candidates set status = 'NOT_SELECTED';
+select 'DELIVERY no modifica (update sin efecto)', count(*) = 0 from candidates where status = 'NOT_SELECTED';
+do $$ begin
+  begin insert into candidates (wave_id, full_name, corporate_email, status) values ('wave-3', 'X', 'x@kibernum.cl', 'INVITED'); raise notice 'MAL: Delivery insertó candidato';
+  exception when others then raise notice 'Delivery insert bloqueado OK'; end;
+  begin delete from candidates; if (select count(*) from candidates) = 1 then raise notice 'Delivery delete sin efecto OK'; end if; end; end $$;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
 select 'ADMIN ve candidatos', count(*) from candidates;
 select 'ADMIN ve evaluaciones', count(*) from ai_evaluations;

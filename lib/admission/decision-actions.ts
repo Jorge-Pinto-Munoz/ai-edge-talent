@@ -153,7 +153,8 @@ export async function getReviewData(candidateId: string) {
 }
 
 /* ───────── Vista previa de correos ───────── */
-export async function previewDecisionEmail(candidateId: string, kind: "selected" | "rescue", explanation = "") {
+/** `explanation: null` usa el foco sugerido por la rúbrica (lo mismo que envía el rescate en lote). */
+export async function previewDecisionEmail(candidateId: string, kind: "selected" | "rescue", explanation: string | null = "") {
   await requireRole(["admin"]);
   const svc = supabaseService();
   const c = await loadCandidate(svc, candidateId);
@@ -162,6 +163,7 @@ export async function previewDecisionEmail(candidateId: string, kind: "selected"
     const r = renderIdentity("SELECTED_WELCOME", { name: c.full_name, wave: c.waveName, link: portalLink("ingresar", c.corporate_email), when: opening && new Date(opening) > new Date() ? fmtWhen(opening) : undefined });
     return { to: c.corporate_email, subject: r.subject, text: r.text };
   }
+  if (explanation === null) explanation = await suggestedRescueText(svc, c.id);
   const expires = new Date(Date.now() + RESCUE_WINDOW_HOURS * 3_600_000).toISOString();
   const r = renderIdentity("RESCUE_INVITE", { name: c.full_name, extra: explanation.trim() || undefined, link: `${env.appUrl}/postular/${c.invite_token}`, when: fmtWhen(expires), questions: RESCUE_QUESTIONS.map((q) => q.question) });
   return { to: c.corporate_email, subject: r.subject, text: r.text };
@@ -255,6 +257,22 @@ export async function offerRescue(candidateId: string, explanation: string, note
       email: r.ok ? "sent" : "failed",
       detail: r.ok ? undefined : r.error ?? undefined,
     };
+  } catch (e) {
+    return { ok: false, message: errText(e) };
+  }
+}
+
+/** Foco del rescate sugerido a partir de la última evaluación (por dimensión). */
+async function suggestedRescueText(svc: Svc, candidateId: string) {
+  const ev = await latestEvaluation(svc, candidateId);
+  return rescueExplanation((ev?.scores ?? null) as Record<string, { score?: number }> | null);
+}
+
+/** Rescate en lote: cada invitación lleva el foco sugerido por la rúbrica de esa persona. */
+export async function offerSuggestedRescue(candidateId: string, note = ""): Promise<DecisionResult> {
+  try {
+    await requireRole(["admin"]);
+    return await offerRescue(candidateId, await suggestedRescueText(supabaseService(), candidateId), note);
   } catch (e) {
     return { ok: false, message: errText(e) };
   }
