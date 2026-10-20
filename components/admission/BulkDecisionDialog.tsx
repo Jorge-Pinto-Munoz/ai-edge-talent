@@ -51,8 +51,9 @@ const COPY: Record<BulkKind, { verb: string; title: (n: number, name: string) =>
  * Decisión sobre varias personas a la vez. Antes de ejecutar muestra qué va a pasar y a quiénes; después, el
  * resultado real de cada uno. Usa las mismas acciones que la decisión individual (validan estado y no duplican).
  */
-export function BulkDecisionDialog({ kind, people, skipped, onClose }: { kind: BulkKind; people: CandidateListItem[]; skipped: CandidateListItem[]; onClose: (done: boolean) => void }) {
-  const t = COPY[kind];
+export function BulkDecisionDialog({ kind, advance, people, skipped, onClose }: { kind: BulkKind; advance?: boolean; people: CandidateListItem[]; skipped: CandidateListItem[]; onClose: (done: boolean) => void }) {
+  // `advance`: tras el rescate (video enviado o recibido por otro medio, aunque el plazo haya vencido).
+  const t = advance ? { ...COPY.select, verb: "Pasar a siguiente fase", title: (n: number, name: string) => (n === 1 ? `Pasar a ${name} a la siguiente fase` : `Pasar a ${n} personas a la siguiente fase`) } : COPY[kind];
   const [preview, setPreview] = useState<{ subject: string; text: string } | null>(null);
   const [note, setNote] = useState("");
   const [running, setRunning] = useState(false);
@@ -61,7 +62,7 @@ export function BulkDecisionDialog({ kind, people, skipped, onClose }: { kind: B
     if (people[0] && kind !== "reject") void previewDecisionEmail(people[0].id, kind === "select" ? "selected" : "rescue", null).then(setPreview);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const act = (id: string) => (kind === "select" ? confirmSelection(id, note) : kind === "rescue" ? offerSuggestedRescue(id, note) : closeNotSelected(id, note));
+  const act = (id: string) => (kind === "select" ? confirmSelection(id, advance ? `Rescate: ${note || "video revisado"}` : note) : kind === "rescue" ? offerSuggestedRescue(id, note) : closeNotSelected(id, note));
   const run = async () => {
     setRunning(true);
     const out: { name: string; r: DecisionResult }[] = [];

@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { decideCandidates, reviewRescue, type ActionResult } from "@/lib/admission/admin-actions";
+import { reviewRescue, type ActionResult } from "@/lib/admission/admin-actions";
+import { closeNotSelected, confirmSelection } from "@/lib/admission/decision-actions";
 import { RESCUE_CRITERIA, RESCUE_QUESTIONS, RESCUE_SCALE } from "@/lib/admission/rescue";
 import { SignedLink } from "@/components/journey/SignedLink";
 import { Callout, fmtDate } from "@/components/ui";
@@ -61,15 +62,22 @@ export function RescueReview({ waveId, candidateId, row, status }: { waveId: str
           </div>
           <div className="row">
             <button className="btn small" disabled={pending} onClick={() => run(() => reviewRescue(waveId, candidateId, v))}>{row.reviewed_at ? "Actualizar revisión" : "Guardar revisión"}</button>
-            {row.reviewed_at && status === "RESCUE_REQUIRED" && (
-              <>
-                <button className="btn secondary small" disabled={pending} onClick={() => confirm("¿Seleccionar a esta persona tras el rescate?") && run(() => decideCandidates(waveId, [candidateId], "SELECTED", `Rescate: ${v.note || "video revisado"}`))}>Seleccionar</button>
-                <button className="btn ghost small" disabled={pending} onClick={() => confirm("¿Registrar que no continúa en esta Wave?") && run(() => decideCandidates(waveId, [candidateId], "NOT_SELECTED", `Rescate: ${v.note || "video revisado"}`))}>No continúa (todavía no)</button>
-              </>
-            )}
           </div>
           {row.reviewed_at && <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}><small>Revisado {fmtDate(row.reviewed_at)}. La decisión queda registrada con tu nombre en el historial.</small></p>}
         </>
+      )}
+      {status === "RESCUE_REQUIRED" && (
+        <div className="rescue-decide">
+          <strong>Decisión tras el rescate</strong>
+          <p className="muted" style={{ margin: "4px 0 10px" }}>
+            {row ? "Puedes decidir haya o no guardado la revisión." : "Si el video llegó por otro medio (correo, Teams) o venció el plazo, igual puedes decidir aquí."}
+            {" "}Al pasar a la siguiente fase recibe el correo de bienvenida a AI First Mindset, con copia a su Delivery.
+          </p>
+          <div className="row">
+            <button className="btn small adm-go" disabled={pending} onClick={() => confirm("¿Pasar a esta persona a la siguiente fase? Recibirá el correo de bienvenida con copia a su Delivery.") && run(() => confirmSelection(candidateId, `Rescate: ${v.note || (row ? "video revisado" : "video recibido por otro medio")}`))}>Pasar a la siguiente fase</button>
+            <button className="btn ghost small" disabled={pending} onClick={() => confirm("¿Registrar que no continúa en esta Wave?") && run(() => closeNotSelected(candidateId, `Rescate: ${v.note || "sin video o no suficiente"}`))}>No continúa</button>
+          </div>
+        </div>
       )}
       {msg && <div style={{ marginTop: 10 }}><Callout tone={msg.ok ? "ok" : "bad"} title={msg.message} /></div>}
     </div>

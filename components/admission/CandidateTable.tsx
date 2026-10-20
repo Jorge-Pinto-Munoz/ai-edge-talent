@@ -34,7 +34,8 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
   const [pending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<{ id: string; step: "view" | "select" } | null>(null);
-  const [bulk, setBulk] = useState<BulkKind | null>(null);
+  // Decisión en lote: tipo y a quiénes aplica (calculado al abrir, según su siguiente paso).
+  const [bulk, setBulk] = useState<{ kind: BulkKind; ids: string[]; advance?: boolean } | null>(null);
   const [step, setStep] = useState<Exclude<NextStep, null> | "">("");
   const router = useRouter();
   const [toDelete, setToDelete] = useState<string[] | null>(null);
@@ -122,18 +123,23 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
         // Acciones según el siguiente paso recomendado de cada persona marcada; cada botón actúa solo sobre las suyas.
         const marked = withView.filter(({ c }) => sel.includes(c.id));
         const of = (k: NextStep) => marked.filter((x) => x.next === k).map((x) => x.c);
-        const individual = marked.filter((x) => x.next === "review" || x.next === "review_rescue" || x.next === "decide_expired").length;
+        const individual = marked.filter((x) => x.next === "review").length;
+        // En rescate (video enviado, plazo vencido o aún vigente con el video recibido por otro medio): pasar o cerrar.
+        const rescued = marked.filter((x) => x.c.status === "RESCUE_REQUIRED").map((x) => x.c);
+        const open = (kind: BulkKind, list: CandidateListItem[], advance?: boolean) => setBulk({ kind, ids: list.map((c) => c.id), advance });
+        const closing = [...of("reject"), ...rescued];
         const retry = of("retry_eval");
         return (
           <section className="card adm-bulk compact" aria-label="Acciones sobre la selección">
             <strong>{sel.length} marcado{sel.length === 1 ? "" : "s"}</strong>
             <span className="muted">Siguiente paso:</span>
-            {of("select").length > 0 && <button className="btn small adm-go" disabled={pending} onClick={() => setBulk("select")}>Seleccionar ({of("select").length})</button>}
-            {of("rescue").length > 0 && <button className="btn small adm-violet" disabled={pending} onClick={() => setBulk("rescue")}>Ofrecer rescate ({of("rescue").length})</button>}
-            {of("reject").length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => setBulk("reject")}>No seleccionar ({of("reject").length})</button>}
+            {rescued.length > 0 && <button className="btn small adm-go" disabled={pending} onClick={() => open("select", rescued, true)}>Pasar a siguiente fase ({rescued.length})</button>}
+            {of("select").length > 0 && <button className="btn small adm-go" disabled={pending} onClick={() => open("select", of("select"))}>Seleccionar ({of("select").length})</button>}
+            {of("rescue").length > 0 && <button className="btn small adm-violet" disabled={pending} onClick={() => open("rescue", of("rescue"))}>Ofrecer rescate ({of("rescue").length})</button>}
+            {closing.length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => open("reject", closing)}>No seleccionar ({closing.length})</button>}
             {retry.length > 0 && <button className="btn small ghost" disabled={pending} onClick={() => run(() => evaluateCandidates(waveId, retry.map((c) => c.id)))}>Reintentar evaluación ({retry.length})</button>}
             {individual > 0 && <small className="muted">{individual} requiere{individual === 1 ? "" : "n"} revisión individual (abre «Detalles»)</small>}
-            {marked.every((x) => !x.next) && <small className="muted">Sin decisiones pendientes en lo marcado.</small>}
+            {marked.every((x) => !x.next) && rescued.length === 0 && <small className="muted">Sin decisiones pendientes en lo marcado.</small>}
             <PopMenu label="Más acciones sobre lo marcado">
               {(close) => (
                 <>
@@ -239,9 +245,10 @@ export function CandidateTable({ waveId, candidates: all, isAdmin, initialChip =
       {drawer && isAdmin && <EvaluationDrawer candidateId={drawer.id} waveId={waveId} initialStep={drawer.step} onClose={() => setDrawer(null)} />}
       {bulk && (
         <BulkDecisionDialog
-          kind={bulk}
-          people={withView.filter((x) => sel.includes(x.c.id) && x.next === bulk).map((x) => x.c)}
-          skipped={withView.filter((x) => sel.includes(x.c.id) && x.next !== bulk).map((x) => x.c)}
+          kind={bulk.kind}
+          advance={bulk.advance}
+          people={candidates.filter((c) => bulk.ids.includes(c.id))}
+          skipped={candidates.filter((c) => sel.includes(c.id) && !bulk.ids.includes(c.id))}
           onClose={(done) => { setBulk(null); if (done) { setSel([]); router.refresh(); } }}
         />
       )}

@@ -564,3 +564,4 @@
 .row-menu-pop .strong { color: var(--brand); font-weight: 800; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bulk-what.violet { background: #261d3a; } }
 :root[data-theme="dark"] .bulk-what.violet { background: #261d3a; }
+.rescue-decide { margin-top: 14px; padding: 14px 16px; border-radius: 14px; background: var(--ok-soft); }
