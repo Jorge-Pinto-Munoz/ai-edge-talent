@@ -59,6 +59,7 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
             <Link href={`/admin/admision/${waveId}?vista=columnas`} aria-current={board}><Icon name="kanban" size={16} /> Columnas</Link>
           </nav>
           {isAdmin && <a className="btn small" href={`/admin/admision/${waveId}/exportar`} download>Descargar Excel</a>}
+          {isAdmin && <a className="btn small ghost" href={`/admin/admision/${waveId}/exportar/contactos`} download>Descargar contactos</a>}
         </div>
       </header>
 

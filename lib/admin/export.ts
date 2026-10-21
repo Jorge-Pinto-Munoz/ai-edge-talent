@@ -1,9 +1,10 @@
 import "server-only";
 import ExcelJS from "exceljs";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { DIMENSIONS, LEVEL_LABEL, PL_LABEL, RUBRIC_VERSION, type Level, type PlRecommendation } from "@/lib/ai/rubric";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { RESCUE_CRITERIA } from "@/lib/admission/rescue";
+import { homologate } from "@/lib/text/org";
 
 type DimScore = { score: number; evidence: string; justification: string };
 type Q = { id: string; prompt: string };
@@ -204,4 +205,70 @@ export async function buildAdmissionWorkbook(waveId: string, candidateId?: strin
   const buffer = Buffer.from(await wb.xlsx.writeBuffer());
   const slug = scope.normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_|_$/g, "");
   return { buffer, filename: `AET_${slug}_${stamp}.xlsx` };
+}
+
+/** Estado del video de rescate en palabras (para el informe de contactos). */
+export function rescueVideoLabel(inv: { expires_at: string | null } | null, video: { submitted_at: string } | null, now = new Date()): string {
+  if (video) return `Sí, envió video (${video.submitted_at.slice(0, 10)})`;
+  if (!inv) return "No aplica (sin rescate)";
+  if (inv.expires_at && new Date(inv.expires_at) < now) return "No envió (plazo vencido)";
+  return "Aún no envía (plazo vigente)";
+}
+
+/** Informe simple de contacto: nombre, cliente, rol, correo, teléfono, Delivery, puntaje, estado y video de rescate. Solo admin. */
+export async function buildContactWorkbook(waveId: string): Promise<{ buffer: Buffer; filename: string }> {
+  // El teléfono no se expone por columna a usuarios: la ruta ya verificó admin, se lee con la llave de servicio.
+  const db = supabaseService();
+  const { data: wave } = await db.from("waves").select("name").eq("id", waveId).single();
+  const { data: cands } = await db.from("candidates").select("id, full_name, corporate_email, phone, client_name, role_title, delivery_owner, status, user_id").eq("wave_id", waveId);
+  const list = cands ?? [];
+  const ids = list.map((c) => c.id);
+  const userIds = list.map((c) => c.user_id).filter(Boolean) as string[];
+  const [{ data: apps }, { data: invs }, { data: vids }, { data: profs }] = await Promise.all([
+    ids.length ? db.from("applications").select("id, candidate_id").in("candidate_id", ids) : Promise.resolve({ data: [] as { id: string; candidate_id: string }[] }),
+    ids.length ? db.from("rescue_invitations").select("candidate_id, expires_at").in("candidate_id", ids) : Promise.resolve({ data: [] as { candidate_id: string; expires_at: string | null }[] }),
+    ids.length ? db.from("rescue_videos").select("candidate_id, submitted_at").in("candidate_id", ids) : Promise.resolve({ data: [] as { candidate_id: string; submitted_at: string }[] }),
+    userIds.length ? db.from("profiles").select("id, phone").in("id", userIds) : Promise.resolve({ data: [] as { id: string; phone: string | null }[] }),
+  ]);
+  const appIds = (apps ?? []).map((a) => a.id);
+  const { data: evs } = appIds.length
+    ? await db.from("ai_evaluations").select("application_id, weighted_total, created_at").in("application_id", appIds).order("created_at", { ascending: false })
+    : { data: [] as { application_id: string; weighted_total: number }[] };
+  const showClient = homologate(list.map((c) => c.client_name));
+  const showRole = homologate(list.map((c) => c.role_title));
+  const rows = list.map((c) => {
+    const app = (apps ?? []).find((a) => a.candidate_id === c.id);
+    const ev = (evs ?? []).find((e) => e.application_id === app?.id);
+    return {
+      name: c.full_name,
+      client: showClient(c.client_name) ?? "",
+      role: showRole(c.role_title) ?? "",
+      email: c.corporate_email,
+      phone: c.phone ?? (profs ?? []).find((p) => p.id === c.user_id)?.phone ?? "",
+      delivery: c.delivery_owner ?? "Sin asignar",
+      score: ev ? Math.round(Number(ev.weighted_total)) : null,
+      status: ADMISSION_LABEL[c.status as AdmissionStatus] ?? c.status,
+      rescue: rescueVideoLabel((invs ?? []).find((i) => i.candidate_id === c.id) ?? null, (vids ?? []).find((v) => v.candidate_id === c.id) ?? null),
+    };
+  });
+  rows.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.name.localeCompare(b.name, "es"));
+
+  const waveName = wave?.name ?? waveId;
+  const stamp = new Date().toISOString().slice(0, 10);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "AET Platform";
+  wb.created = new Date();
+  const ws = wb.addWorksheet("Contactos");
+  header(ws, `AI EDGE TALENT — CONTACTOS DE ADMISIÓN · ${waveName}`, `${stamp} · Datos personales: uso interno, no compartir fuera de Kibernum`, [
+    { header: "Nombre", width: 30 }, { header: "Cliente", width: 20 }, { header: "Rol", width: 26 }, { header: "Correo", width: 32 }, { header: "Teléfono", width: 16 },
+    { header: "Delivery a cargo", width: 22 }, { header: "Puntaje admisión", width: 12 }, { header: "Estado", width: 22 }, { header: "Video de rescate", width: 30 },
+  ]);
+  for (const r of rows) {
+    const row = ws.addRow([r.name, r.client, r.role, r.email, r.phone, r.delivery, r.score ?? "Sin evaluación", r.status, r.rescue]);
+    wrapRow(row);
+  }
+  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: 9 } };
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  const slug = waveName.normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_|_$/g, "");
+  return { buffer, filename: `AET_Contactos_${slug}_${stamp}.xlsx` };
 }
