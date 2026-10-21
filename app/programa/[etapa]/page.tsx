@@ -9,6 +9,8 @@ import { Icon } from "@/components/site/Icon";
 import { Reveal } from "@/components/site/Reveal";
 import { Carousel } from "@/components/site/Carousel";
 import { cookies } from "next/headers";
+import { publicStageVideos } from "@/lib/site/stage-videos";
+import { embedUrl } from "@/lib/journey/rules";
 import { AUDIENCE, AUDIENCES, AUDIENCE_COOKIE, isAudience, stageRoles, type Audience } from "@/lib/site/audience";
 
 export function generateStaticParams() {
@@ -34,6 +36,8 @@ export default async function EtapaPage({ params, searchParams }: { params: Prom
     equipo: { a: { title: "Qué hace Delivery", items: roles.delivery, icon: "check" }, b: { title: "Evidencia que se registra", items: roles.evidence, icon: "star" } },
   };
   const blk = blocks[aud];
+  const videoLink = (await publicStageVideos())[stage.slug];
+  const video = videoLink ? embedUrl(videoLink) : null;
   const i = PUBLIC_STAGES.indexOf(stage);
   const prev = PUBLIC_STAGES[i - 1];
   const next = PUBLIC_STAGES[i + 1];
@@ -176,14 +180,24 @@ export default async function EtapaPage({ params, searchParams }: { params: Prom
 
       <section className="sec" style={{ paddingTop: 0 }}>
         <div className="sec-inner">
+          {video ? (
+            <Reveal className="video-embed">
+              {video.kind === "video" ? (
+                <video controls preload="metadata" src={video.src} poster={`/images/${stage.image}.webp`} />
+              ) : (
+                <iframe src={video.src} title={`Video: ${stage.name}`} allow="fullscreen; picture-in-picture; encrypted-media" loading="lazy" />
+              )}
+            </Reveal>
+          ) : (
           <Reveal className="video-card">
-            <span className="photo" style={{ backgroundImage: `url(/images/${stage.image}.webp)` }} />
-            <div>
-              <div className="play"><Icon name="play" size={28} /></div>
-              <strong style={{ fontSize: "1.25rem" }}>Video de la etapa</strong>
-              <p>Al inscribirte, en tu espacio verás un video corto que explica esta etapa.</p>
-            </div>
-          </Reveal>
+              <span className="photo" style={{ backgroundImage: `url(/images/${stage.image}.webp)` }} />
+              <div>
+                <div className="play"><Icon name="play" size={28} /></div>
+                <strong style={{ fontSize: "1.25rem" }}>Video de la etapa</strong>
+                <p>Al inscribirte, en tu espacio verás un video corto que explica esta etapa.</p>
+              </div>
+            </Reveal>
+          )}
         </div>
       </section>
 

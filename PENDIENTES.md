@@ -16,6 +16,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Waves con personas en el journey al publicar la apertura por Wave quedaron con AI First Mindset abierta; las nuevas parten cerradas.
 
 ## Hecho recientemente
+- Sitio público `/programa/[etapa]`: «Video de la etapa» ahora se carga desde Admin → Contenido → «Video de la etapa en el sitio público» (enlace por etapa, común a todas las Waves; `app_settings.public_stage_videos`). Sin enlace se muestra la tarjeta de reserva.
 - Admisión → «Descargar contactos» (Excel, solo admin): nombre, cliente y rol homologados, correo, teléfono (candidato o su perfil), Delivery a cargo, puntaje, estado y video de rescate (envió / no envió-vencido / plazo vigente / no aplica). Ruta `/admin/admision/[waveId]/exportar/contactos`.
 - Rescate: «Pasar a siguiente fase (n)» en la barra de marcados para todo candidato en rescate (video enviado, plazo vencido o vigente con video recibido por otro medio) → selección con correo de bienvenida + CC Delivery; «No seleccionar» también los incluye. En la ficha, bloque «Decisión tras el rescate» siempre visible en rescate (antes exigía video y revisión guardada y no enviaba correo).
 - Admisión: cada fila tiene «Detalles»; el siguiente paso recomendado (Seleccionar / Ofrecer rescate / No seleccionar / Reintentar evaluación) va en la barra de lo marcado, cada botón solo para quienes tienen ese paso, con confirmación; filtro «siguiente paso»; Eliminar y Quitar selección en «···». Rescate en lote con el foco sugerido por la rúbrica (`offerSuggestedRescue`).

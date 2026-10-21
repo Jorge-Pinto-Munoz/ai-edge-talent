@@ -3,6 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseUser } from "@/lib/supabase/server";
 import { ContentEditor } from "@/components/journey-admin/ContentEditor";
+import { PublicStageVideos } from "@/components/journey-admin/PublicStageVideos";
+import { publicStageVideos } from "@/lib/site/stage-videos";
+import { PUBLIC_STAGES } from "@/lib/data/site";
 import type { Capsule, StageGuide } from "@/lib/journey/queries";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +28,7 @@ export default async function Contenido({ params }: { params: Promise<{ waveId: 
         <h1 style={{ margin: 0 }}>Contenido y videos</h1>
         <p className="muted">Video explicativo por etapa y micro-cápsulas con material descargable y tareas. Los videos pueden ser un enlace (YouTube no listado, Vimeo, Stream) o un archivo subido.</p>
       </div>
+      <PublicStageVideos stages={PUBLIC_STAGES.map((st) => ({ slug: st.slug, name: st.name }))} videos={await publicStageVideos()} />
       <ContentEditor waveId={waveId} guides={(guides ?? []) as StageGuide[]} capsules={(capsules ?? []) as Capsule[]} />
     </div>
   );
