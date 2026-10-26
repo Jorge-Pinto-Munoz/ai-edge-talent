@@ -28,27 +28,29 @@
 .admin-logout:hover { background: var(--surface-2); color: var(--text); }
 .admin-main { min-width: 0; padding: 32px 0 24px; }
 
+.admin-mbar, .admin-scrim, .admin-side-close { display: none; }
 @media (max-width: 960px) {
   .admin-shell { grid-template-columns: 1fr; gap: 0; padding: 0 16px; }
-  .admin-side { position: sticky; top: 64px; z-index: 15; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 10px 0; margin: 0 -16px; padding-left: 16px; background: rgba(243, 246, 248, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
-  .admin-side::-webkit-scrollbar { display: none; }
-  .admin-side-top .eyebrow, .admin-side-foot .who { display: none; }
-  .admin-side .wave-picker { flex: none; }
-  .admin-side .wave-switch { min-height: 40px; border-radius: 999px; padding: 0 12px; }
-  .admin-side .wp-cur small { display: none; }
-  .admin-side-top { padding: 0; border: 0; }
-  .admin-nav { display: flex; gap: 4px; overflow: visible; margin: 0; padding: 0; flex: none; }
-  .admin-nav-group { display: flex; gap: 4px; }
-  .admin-nav-group.secondary { padding-left: 8px; margin-left: 4px; border-left: 1px solid var(--border); }
-  .admin-nav-label { display: none; }
-  .admin-nav a, .admin-nav-group.secondary a { flex: none; padding: 9px 14px; border-radius: 999px; white-space: nowrap; font-size: 0.94rem; }
-  .admin-side-foot { margin: 0; border: 0; padding: 0 16px 0 0; display: flex; gap: 4px; }
-  .admin-viewas { white-space: nowrap; border-radius: 999px; }
-  .admin-logout span, .admin-logout { white-space: nowrap; }
+  /* Barra superior: Wave, sección actual y botón de menú (sin deslizar horizontal). */
+  .admin-mbar { position: sticky; top: 64px; z-index: 15; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 0 -16px; padding: 10px 16px; background: rgba(243, 246, 248, 0.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+  .admin-mbar .wave-switch { min-height: 44px; border-radius: 999px; padding: 0 12px; }
+  .admin-mbar .wp-cur small { display: none; }
+  .admin-mbar-here { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--muted); }
+  .admin-mbar-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+  .admin-mbar-btn:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+  /* El lateral pasa a ser un panel deslizante desde la izquierda. */
+  .admin-scrim { display: block; position: fixed; inset: 0; z-index: 70; background: rgba(8, 11, 16, 0.5); animation: fade-in 160ms ease; }
+  .admin-side { position: fixed; top: 0; left: 0; bottom: 0; z-index: 80; width: min(320px, 86vw); height: 100vh; height: 100dvh; padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); background: var(--bg); box-shadow: 0 0 40px rgba(8, 11, 16, 0.3); transform: translateX(-105%); visibility: hidden; transition: transform 220ms ease, visibility 0s linear 220ms; }
+  .admin-side.open { transform: none; visibility: visible; transition: transform 220ms ease; }
+  .admin-side-top { display: none; }
+  .admin-side-close { display: grid; place-items: center; align-self: flex-end; flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--text); cursor: pointer; }
+  .admin-nav a { min-height: 44px; }
   .admin-main { padding-top: 20px; }
 }
+@media (prefers-reduced-motion: reduce) { .admin-side { transition: none !important; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .admin-side { background: transparent; } }
-@media (prefers-color-scheme: dark) and (max-width: 960px) { :root:not([data-theme="light"]) .admin-side { background: rgba(8, 11, 16, 0.92); } }
+@media (prefers-color-scheme: dark) and (max-width: 960px) { :root:not([data-theme="light"]) .admin-mbar { background: rgba(8, 11, 16, 0.92); } :root:not([data-theme="light"]) .admin-side { background: var(--bg); } }
 
 /* ───── Resumen ───── */
 .adm { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
@@ -577,3 +579,10 @@
 .cap-files { margin: 0 0 8px; padding-left: 18px; }
 .cap-link-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; margin-bottom: 8px; }
 @media (max-width: 720px) { .cap-link-row { grid-template-columns: 1fr; } .cap-admin-row { grid-template-columns: auto minmax(0, 1fr); } }
+.move-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 12px; margin-top: 12px; }
+@media (max-width: 640px) { .move-grid { grid-template-columns: 1fr; } }
+/* Accesibilidad móvil: contraste del KPI oscuro, casillas táctiles y enlaces de regreso con área suficiente. */
+.adm-kpi:first-child .adm-kpi-hint { color: var(--fog); }
+.admin-main input[type="checkbox"] { width: 20px; height: 20px; }
+.admin-main .eyebrow a { display: inline-flex; align-items: center; min-height: 32px; }
+@media (max-width: 420px) { .admin-mbar-here { display: none; } .admin-mbar { grid-template-columns: auto 1fr auto; } .admin-mbar-btn { grid-column: 3; } }

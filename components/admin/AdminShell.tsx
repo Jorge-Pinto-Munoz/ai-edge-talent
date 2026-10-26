@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { signOut } from "@/app/login/actions";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { WavePicker } from "./WavePicker";
@@ -50,7 +50,7 @@ function currentWave(path: string, search: URLSearchParams, waves: ShellWave[]):
   return waves.find((w) => w.id === id)?.id ?? waves[0]?.id ?? "wave-3";
 }
 
-/** Marco del portal de administración: barra lateral (computador) o barra superior deslizable (celular). */
+/** Marco del portal de administración: barra lateral (computador) o barra superior con menú hamburguesa (celular). */
 export function AdminShell({ waves, role, email, children }: { waves: ShellWave[]; role: ShellRole; email: string; children: ReactNode }) {
   const path = usePathname();
   const search = useSearchParams();
@@ -74,10 +74,33 @@ export function AdminShell({ waves, role, email, children }: { waves: ShellWave[
     </Link>
   );
   const adminLinks = sections.filter((s) => s.group === "admin");
+  // Celular: el lateral es un panel que se abre con el botón de menú; se cierra al navegar, con Escape o tocando fuera.
+  const [menu, setMenu] = useState(false);
+  const menuBtn = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => { setMenu(false); }, [path]);
+  useEffect(() => {
+    if (!menu) return;
+    document.body.style.overflow = "hidden";
+    panel.current?.querySelector<HTMLElement>("a, button")?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setMenu(false); menuBtn.current?.focus(); } };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = ""; window.removeEventListener("keydown", onKey); };
+  }, [menu]);
+  const here = viewing ? "Ver como otro rol" : active?.label ?? "Portal";
 
   return (
     <div className="admin-shell">
-      <aside className="admin-side" aria-label="Portal de administración">
+      <div className="admin-mbar">
+        <WavePicker waves={waves} value={wave} onChange={switchWave} />
+        <span className="admin-mbar-here" aria-hidden="true">{here}</span>
+        <button ref={menuBtn} type="button" className="admin-mbar-btn" aria-expanded={menu} aria-controls="admin-side" onClick={() => setMenu(true)}>
+          <Icon name="menu" size={22} /> <span>Menú</span>
+        </button>
+      </div>
+      {menu && <div className="admin-scrim" aria-hidden="true" onClick={() => setMenu(false)} />}
+      <aside id="admin-side" ref={panel} className={`admin-side${menu ? " open" : ""}`} aria-label="Portal de administración">
+        <button type="button" className="admin-side-close" aria-label="Cerrar menú" onClick={() => { setMenu(false); menuBtn.current?.focus(); }}><Icon name="close" size={22} /></button>
         <div className="admin-side-top">
           <div className="eyebrow" style={{ marginBottom: 6 }}>Portal AET</div>
           <WavePicker waves={waves} value={wave} onChange={switchWave} />

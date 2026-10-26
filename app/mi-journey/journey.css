@@ -314,3 +314,12 @@
 .vmodal-head button { width: 42px; height: 42px; border: 0; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.14); color: #fff; cursor: pointer; }
 .vmodal-head button:hover { background: rgba(255, 255, 255, 0.26); }
 .vmodal-head button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .mod-due { grid-template-columns: auto minmax(0, 1fr); }
+  .mod-due em { grid-column: 2; }
+  .dl-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .dl-row small { grid-column: 2; grid-row: 2; }
+  .dl-row .dl-ico { grid-column: 3; grid-row: 1 / span 2; }
+  .dl-name { white-space: normal; overflow-wrap: anywhere; }
+  .mod-steps > li { padding-left: 36px; }
+}

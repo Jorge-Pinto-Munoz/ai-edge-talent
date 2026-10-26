@@ -42,7 +42,7 @@ export function RescueReview({ waveId, candidateId, row, status }: { waveId: str
       {row && (
         <>
           <p style={{ margin: "6px 0" }}>
-            {row.video_path && <SignedLink bucket="submissions" path={row.video_path}>Ver video subido</SignedLink>}
+            {row.video_path && <SignedLink bucket="submissions" path={row.video_path} view>Ver video subido</SignedLink>}
             {row.video_url && <a className="link-context" href={row.video_url} target="_blank" rel="noopener noreferrer">Abrir enlace del video</a>}
           </p>
           {row.candidate_note && <p className="muted">“{row.candidate_note}”</p>}

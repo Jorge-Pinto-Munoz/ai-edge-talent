@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { MoveStage } from "@/components/journey-admin/MoveStage";
+import type { Layer as JourneyLayer } from "@/lib/journey/rules";
 import { notFound } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
@@ -25,7 +27,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
   // Delivery: solo sus candidatos asignados, en modo lectura (se verifica la asignación antes de leer con la llave del servidor).
   if (!isAdmin && !(await canViewCandidate(viewer, candidateId))) notFound();
   const db = isAdmin ? await supabaseUser() : supabaseService();
-  const { data: c } = await db.from("candidates").select("id, wave_id, full_name, corporate_email, client_name, role_title, specialty, status").eq("id", candidateId).eq("wave_id", waveId).single();
+  const { data: c } = await db.from("candidates").select("id, wave_id, full_name, corporate_email, client_name, role_title, specialty, status, journey_layer").eq("id", candidateId).eq("wave_id", waveId).single();
   if (!c) notFound();
   const [{ data: app }, { data: events }, { data: emails }, { data: commitments }] = await Promise.all([
     db.from("applications").select("id, answers, questions_snapshot, submitted_at, updated_at").eq("candidate_id", c.id).maybeSingle(),
@@ -64,6 +66,9 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
         </div>
       </div>
       <section className="card" aria-label="Estado por fase"><PhaseStrip status={c.status} /></section>
+      {isAdmin && ["SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(c.status) && (
+        <MoveStage candidateId={c.id} name={c.full_name} current={c.journey_layer as JourneyLayer | null} enrolled={["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(c.status)} />
+      )}
 
       {ev && (
         <div className="card">

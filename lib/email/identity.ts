@@ -5,7 +5,7 @@
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
   | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
-  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED";
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -30,6 +30,7 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   DELIVERY_DECISION: "Aviso a Delivery: decisión de admisión",
   RESCUE_RECEIVED: "Video de rescate recibido",
   PROGRAM_REMOVED: "Baja del programa",
+  STAGE_MOVED: "Cambio de etapa",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -125,6 +126,10 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
     case "PROGRAM_REMOVED": {
       const p = [hi, `Te informamos que tu participación en ${c.wave ?? "AI Edge Talent"} fue dada de baja por el equipo del programa.`, ...(c.extra ? [c.extra] : []), "Tu acceso al portal del programa quedó deshabilitado. Si crees que se trata de un error o tienes dudas, conversa con tu Delivery o responde este correo."];
       return { subject: "AI Edge Talent | Baja del programa", text: p.join("\n"), html: layout("Baja del programa", p, { foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "STAGE_MOVED": {
+      const p = [hi, `El equipo AI Edge Talent actualizó tu avance: desde hoy estás en la etapa ${c.stage ?? "siguiente"} de tu journey.`, ...(c.extra ? [c.extra] : []), "En tu portal verás lo que corresponde a esta etapa: actividades, materiales y próximos pasos. Ingresas con tu correo y un código de 6 dígitos de un solo uso.", "Si tienes dudas, conversa con tu Delivery o responde este correo."];
+      return { subject: `AI Edge Talent | Ahora estás en ${c.stage ?? "una nueva etapa"}`, text: [...p, "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout(`Ahora estás en ${c.stage ?? "una nueva etapa"}`, p, { cta: { label: "IR A MI JOURNEY", href: c.link ?? "" } }) };
     }
     case "STAGE_OPEN": {
       const p = [hi, `Tu primer reto de ${c.stage ?? "AI First Mindset"} ya está disponible.`, "Ingresa a tu portal y toca «Comenzar primer reto». Ingresas con tu correo y un código de 6 dígitos de un solo uso."];

@@ -7,7 +7,7 @@ import { certificationAttemptNote, type Layer } from "@/lib/journey/rules";
 import { LAB_CLASSES, labDecisionLabel, labStatusLabel } from "@/lib/hub/rules";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { StageIcon } from "@/components/site/StageIcon";
-import { SignedLink, VideoPlayer } from "@/components/journey/SignedLink";
+import { DownloadButton, SignedLink, VideoPlayer } from "@/components/journey/SignedLink";
 import { CertificationForm } from "@/components/journey/CertificationForm";
 import { LabFiles } from "@/components/hub/LabFiles";
 import { ModuleItem, VideoModal, type PlayTarget } from "./Modules";
@@ -585,17 +585,7 @@ function GuideContent({ v, stage }: { v: JourneyView; stage: PathStage }) {
 }
 
 function ResourceList({ items }: { items: { name: string; path: string; size: number }[] }) {
-  return (
-    <ul className="jr-files">
-      {items.map((r) => (
-        <li key={r.path}>
-          <Icon name="file" size={20} />
-          <SignedLink bucket="content" path={r.path}>{r.name}</SignedLink>
-          <small>{r.size > 1048576 ? `${(r.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(r.size / 1024))} KB`}</small>
-        </li>
-      ))}
-    </ul>
-  );
+  return <div className="dl-list">{items.map((r) => <DownloadButton key={r.path} bucket="content" path={r.path} name={r.name} size={r.size} />)}</div>;
 }
 
 /* ───────── Materiales: todo lo descargable de las etapas abiertas ───────── */
@@ -603,9 +593,9 @@ function Materials({ v, onGuide }: { v: JourneyView; onGuide: (s: PathStage) => 
   const open = v.path.stages.filter((s) => s.state !== "locked" && s.layer !== "ASSESSMENT");
   const groups = open.map((s) => ({
     s,
-    caps: s.nodes.filter((n) => n.capsuleId).map((n) => ({ n, c: v.capsules[n.capsuleId!] })).filter((x) => x.c?.resources.length),
+    caps: s.nodes.filter((n) => n.capsuleId).map((n) => ({ n, c: v.capsules[n.capsuleId!] })).filter((x) => x.c && x.c.resources.length + x.c.extras.length > 0),
   }));
-  const total = groups.reduce((a, g) => a + g.caps.reduce((b, x) => b + x.c.resources.length, 0), 0);
+  const total = groups.reduce((a, g) => a + g.caps.reduce((b, x) => b + x.c.resources.length + x.c.extras.length, 0), 0);
   return (
     <section className="jr-panel" aria-labelledby="mat-t">
       <h2 id="mat-t">Materiales</h2>
@@ -620,7 +610,7 @@ function Materials({ v, onGuide }: { v: JourneyView; onGuide: (s: PathStage) => 
           {(groups.find((g) => g.s.layer === s.layer)?.caps ?? []).map(({ n, c }) => (
             <div key={n.id} className="jr-mat">
               <strong className="jr-mat-title">{c.title}</strong>
-              <ResourceList items={c.resources} />
+              <ResourceList items={[...c.resources, ...c.extras]} />
             </div>
           ))}
         </div>

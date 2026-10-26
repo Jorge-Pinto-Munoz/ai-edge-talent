@@ -4,32 +4,46 @@ import { useEffect, useState } from "react";
 import { signedFileUrl } from "@/lib/journey/actions";
 import { embedUrl } from "@/lib/journey/rules";
 
-/** Enlace de descarga: pide una URL firmada al momento del clic (vence en 10 min). */
-export function SignedLink({ bucket, path, children }: { bucket: "content" | "submissions" | "certificates"; path: string; children: React.ReactNode }) {
+/**
+ * Enlace a un archivo privado: pide una URL firmada al momento del clic (vence en 10 min). Por defecto lo DESCARGA
+ * al dispositivo sin abrir pestañas (en iPhone queda en Archivos). `view`: lo abre en una pestaña (p. ej. un video).
+ */
+export function SignedLink({ bucket, path, children, view = false }: { bucket: "content" | "submissions" | "certificates"; path: string; children: React.ReactNode; view?: boolean }) {
   const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   return (
     <>
       <button
         type="button"
         className="link-context"
-        style={{ background: "none", border: 0, borderTop: "2px solid var(--accent)", cursor: "pointer", font: "inherit" }}
+        aria-busy={busy}
+        style={{ background: "none", border: 0, borderTop: "2px solid var(--accent)", cursor: "pointer", font: "inherit", padding: 0 }}
         onClick={async () => {
-          // La ventana se abre en el mismo gesto del clic (si no, el navegador la bloquea como popup)
-          // y recibe la URL firmada apenas el servidor la entrega.
-          const w = window.open("", "_blank");
-          const r = await signedFileUrl(bucket, path);
-          if (r.ok && r.data && w) {
-            w.opener = null;
-            w.location.href = r.data.url;
-          } else {
-            w?.close();
-            setErr(r.ok ? "Permite ventanas emergentes para ver el archivo." : r.message);
+          setErr(null);
+          if (view) {
+            // La ventana se abre en el mismo gesto del clic (si no, el navegador la bloquea) y recibe la URL firmada después.
+            const w = window.open("", "_blank");
+            const r = await signedFileUrl(bucket, path);
+            if (r.ok && r.data && w) { w.opener = null; w.location.href = r.data.url; }
+            else { w?.close(); setErr(r.ok ? "Permite ventanas emergentes para ver el archivo." : r.message); }
+            return;
           }
+          setBusy(true);
+          const name = (path.split("/").pop() ?? "archivo").replace(/^\d{10,}-/, "");
+          const r = await signedFileUrl(bucket, path, name);
+          setBusy(false);
+          if (!r.ok || !r.data) return setErr(r.message);
+          const a = document.createElement("a");
+          a.href = r.data.url;
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
         }}
       >
         {children}
       </button>
-      {err && <small className="error"> {err}</small>}
+      {err && <small className="error" role="alert"> {err}</small>}
     </>
   );
 }
@@ -45,7 +59,7 @@ export function DownloadButton({ bucket, path, name, size, kind = "file" }: { bu
       disabled={state === "busy"}
       onClick={async () => {
         setState("busy");
-        const r = await signedFileUrl(bucket, path, true);
+        const r = await signedFileUrl(bucket, path, name);
         if (!r.ok || !r.data) return setState("error");
         const a = document.createElement("a");
         a.href = r.data.url;

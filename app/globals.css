@@ -626,9 +626,9 @@ fieldset.preview-lock { border: 0; margin: 0; padding: 0; min-width: 0; display:
 .auth-forgot { justify-self: center; font-size: 0.92rem; }
 .auth-new { display: grid; gap: 10px; justify-items: center; margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.92rem; }
 .auth-new .btn { width: 100%; }
-.otp-boxes.n6 { gap: 8px; }
-.otp-boxes.n6 input { width: 48px; height: 52px; font-size: 1.4rem; }
-@media (max-width: 360px) { .otp-boxes.n6 input { width: 40px; height: 48px; } }
+/* 6 dígitos: casillas fluidas que nunca se salen de la tarjeta (se encogen en pantallas angostas). */
+.otp-boxes.n6 { display: grid; grid-template-columns: repeat(6, minmax(0, 52px)); justify-content: center; gap: clamp(4px, 1.6vw, 8px); }
+.otp-boxes.n6 input { width: 100%; height: clamp(44px, 12.5vw, 54px); font-size: clamp(1.15rem, 5vw, 1.4rem); border-radius: 12px; }
 @media (max-width: 760px) { .auth-page { padding-bottom: 88px; } }
 .auth-alt { display: flex; gap: 6px 18px; flex-wrap: wrap; align-items: center; justify-content: center; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
 /* Teléfono: prefijo de país + número, cada uno con la misma altura y estilo que los demás campos. */

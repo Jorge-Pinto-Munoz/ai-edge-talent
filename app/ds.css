@@ -267,8 +267,8 @@
 .ud-note { margin: 0; font-size: 0.82rem; }
 .ud-checks { display: grid; gap: 6px; border: 0; padding: 0; margin: 0; }
 .ud-checks legend { font-weight: 700; margin-bottom: 6px; }
-.ud-checks label { display: flex; gap: 8px; align-items: center; font-weight: 500; }
-.ud-checks input { width: 18px; height: 18px; }
+.ud-checks label { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; min-width: 0; min-height: 40px; font-weight: 500; overflow-wrap: anywhere; }
+.ud-checks input { width: 20px; height: 20px; flex: none; }
 .ud-danger { border-top: 1px dashed var(--border); padding-top: 10px; }
 .ud-danger summary { cursor: pointer; font-weight: 700; color: var(--bad-text); min-height: 36px; display: flex; align-items: center; }
 .ud-hist { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 0.9rem; }

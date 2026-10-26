@@ -60,8 +60,8 @@ export async function requestUpload(bucket: Bucket, fileName: string, sizeBytes:
 }
 
 /** URL de descarga/visualización de 10 minutos, solo si quien la pide tiene derecho a ese archivo. */
-/** `download`: la URL fuerza la descarga (el archivo baja sin abrir otra pestaña). */
-export async function signedFileUrl(bucket: Bucket, path: string, download = false): Promise<Result<{ url: string }>> {
+/** `download`: la URL fuerza la descarga (el archivo baja sin abrir otra pestaña); si es texto, con ese nombre. */
+export async function signedFileUrl(bucket: Bucket, path: string, download: boolean | string = false): Promise<Result<{ url: string }>> {
   try {
     const viewer = await getViewer();
     if (!viewer) throw new Error(SESSION_EXPIRED);
@@ -80,7 +80,7 @@ export async function signedFileUrl(bucket: Bucket, path: string, download = fal
       allowed = Boolean(data);
     }
     if (!allowed) throw new Error("No tienes acceso a este archivo.");
-    const { data, error } = await supabaseService().storage.from(bucket).createSignedUrl(path, 600, download ? { download: true } : undefined);
+    const { data, error } = await supabaseService().storage.from(bucket).createSignedUrl(path, 600, download ? { download } : undefined);
     if (error || !data) throw new Error("Archivo no disponible.");
     return { ok: true, message: "ok", data: { url: data.signedUrl } };
   } catch (e) {
