@@ -36,16 +36,7 @@ export interface JourneyView {
   waveName: string;
   delivery: string | null;
   path: JourneyPath;
-  capsules: Record<string, {
-    title: string;
-    description: string | null;
-    durationMin: number | null;
-    resources: { name: string; path: string; size: number }[];
-    hasTask: boolean;
-    required: boolean;
-    hasVideo: boolean;
-    feedback: string | null;
-  }>;
+  capsules: Record<string, ModuleView>;
   guides: Partial<Record<Layer, { title: string; summary: string | null; whatHappens: string | null; whatWeExpect: string | null; videoUrl: string | null; videoPath: string | null }>>;
   certifications: { id: string; attempt: number; result: string; status: string; reviewNote: string | null; filePath: string | null; createdAt: string }[];
   failedCerts: number;
@@ -67,4 +58,36 @@ export interface JourneyView {
     showcaseNotes: string | null;
     files: LabFile[];
   } | null;
+}
+
+export type FileRef = { name: string; path: string; size: number };
+/** Una cápsula vista como módulo desplegable: todo lo que el profesional necesita sin salir del camino. */
+export interface ModuleView {
+  n: number;
+  title: string;
+  description: string | null;
+  durationMin: number | null;
+  video: { url: string | null; path: string | null } | null;
+  resources: FileRef[];
+  extras: FileRef[];
+  links: { title: string; url: string; kind: "video" | "podcast" | "link" }[];
+  hasTask: boolean;
+  /** Reto: hay plantilla que descargar, completar y subir. */
+  challenge: boolean;
+  taskPrompt: string | null;
+  required: boolean;
+  maxAttempts: number | null;
+  usedAttempts: number;
+  /** Plazo en ISO (fecha y hora); null = sin plazo. */
+  due: string | null;
+  formats: import("@/lib/journey/formats").FormatKey[];
+  seen: boolean;
+  /** Motivo por el que no puede entregar ahora (entrega en revisión, sin intentos…), o null. */
+  blocked: string | null;
+  submissions: { id: string; attempt: number; status: string; score: number | null; feedback: string | null; submittedAt: string; files: FileRef[] }[];
+  /** Estado para la cabecera del módulo. */
+  status: { tone: "ok" | "wait" | "bad" | "now" | "todo"; label: string };
+  /** Mantiene compatibilidad con la hoja anterior. */
+  hasVideo: boolean;
+  feedback: string | null;
 }

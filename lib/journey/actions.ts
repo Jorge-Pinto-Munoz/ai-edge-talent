@@ -9,13 +9,15 @@ import { markRequirementsByException, syncMany, syncStageClosure } from "./closu
 import { audit } from "@/lib/identity/service";
 import { provisionParticipant } from "@/lib/identity/provision";
 import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
-import { errorText, normalizeYmd } from "@/lib/text/errors";
+import { errorText } from "@/lib/text/errors";
+import { chileToIso } from "@/lib/time/chile";
+import { FORMAT_GROUPS, SUBMISSION_MAX_MB, effectiveFormats, fileAllowed, formatsLabel } from "./formats";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
 const fail = (e: unknown): Result<never> => ({ ok: false, message: errorText(e) });
 
 type Bucket = "content" | "submissions" | "certificates";
-const MAX_UPLOAD_MB: Record<Bucket, number> = { content: 500, submissions: 50, certificates: 20 };
+const MAX_UPLOAD_MB: Record<Bucket, number> = { content: 500, submissions: SUBMISSION_MAX_MB, certificates: 20 };
 
 /* ───────── Participante actual ───────── */
 async function requireParticipant(): Promise<{ viewer: Viewer; candidate: { id: string; wave_id: string; journey_layer: Layer | null; status: string } }> {
@@ -58,7 +60,8 @@ export async function requestUpload(bucket: Bucket, fileName: string, sizeBytes:
 }
 
 /** URL de descarga/visualización de 10 minutos, solo si quien la pide tiene derecho a ese archivo. */
-export async function signedFileUrl(bucket: Bucket, path: string): Promise<Result<{ url: string }>> {
+/** `download`: la URL fuerza la descarga (el archivo baja sin abrir otra pestaña). */
+export async function signedFileUrl(bucket: Bucket, path: string, download = false): Promise<Result<{ url: string }>> {
   try {
     const viewer = await getViewer();
     if (!viewer) throw new Error(SESSION_EXPIRED);
@@ -77,7 +80,7 @@ export async function signedFileUrl(bucket: Bucket, path: string): Promise<Resul
       allowed = Boolean(data);
     }
     if (!allowed) throw new Error("No tienes acceso a este archivo.");
-    const { data, error } = await supabaseService().storage.from(bucket).createSignedUrl(path, 600);
+    const { data, error } = await supabaseService().storage.from(bucket).createSignedUrl(path, 600, download ? { download: true } : undefined);
     if (error || !data) throw new Error("Archivo no disponible.");
     return { ok: true, message: "ok", data: { url: data.signedUrl } };
   } catch (e) {
@@ -106,12 +109,15 @@ export async function submitTask(capsuleId: string, textAnswer: string, files: {
   try {
     const { candidate } = await requireParticipant();
     const db = await supabaseUser();
-    const { data: cap } = await db.from("capsules").select("id, wave_id, task_prompt, max_attempts, resources").eq("id", capsuleId).single();
+    const { data: cap } = await db.from("capsules").select("id, wave_id, task_prompt, max_attempts, resources, submission_formats").eq("id", capsuleId).single();
     if (!cap || cap.wave_id !== candidate.wave_id || !cap.task_prompt) throw new Error("Esta cápsula no tiene una tarea disponible.");
     // Reto con plantilla: se evalúa la plantilla completada, así que el archivo es obligatorio.
     if (Array.isArray(cap.resources) && cap.resources.length > 0 && files.length === 0) throw new Error("Sube la plantilla completada para enviar tu reto.");
     if (!textAnswer.trim() && files.length === 0) throw new Error("Agrega una respuesta o un archivo.");
     if (files.some((f) => !f.path.startsWith(`${candidate.id}/`))) throw new Error("Archivo no válido.");
+    const formats = effectiveFormats(cap.submission_formats, (cap.resources ?? []) as { name: string }[]);
+    const wrong = files.find((f) => !fileAllowed(f.name, formats));
+    if (wrong) throw new Error(`«${wrong.name}» no tiene un formato aceptado. Sube: ${formatsLabel(formats)}.`);
     const { data: prev } = await db.from("submissions").select("status").eq("candidate_id", candidate.id).eq("capsule_id", capsuleId).order("attempt");
     const gate = submissionGate((prev ?? []).map((p) => p.status as SubmissionStatus), cap.max_attempts);
     if (!gate.allowed) throw new Error(gate.reason);
@@ -190,10 +196,14 @@ export interface CapsuleInput {
   videoUrl: string;
   videoPath: string | null;
   resources: { name: string; path: string; size: number }[];
+  extras: { name: string; path: string; size: number }[];
+  links: { title: string; url: string; kind: "video" | "podcast" | "link" }[];
   taskPrompt: string;
   taskRequired: boolean;
   maxAttempts: number | null;
-  dueDate: string;
+  /** Plazo en hora de Chile, «AAAA-MM-DDTHH:MM» (vacío = sin plazo). */
+  dueAt: string;
+  formats: string[];
   published: boolean;
 }
 
@@ -201,8 +211,15 @@ export async function saveCapsule(c: CapsuleInput): Promise<Result> {
   try {
     await requireRole(["admin"]);
     if (!c.title.trim()) throw new Error("La cápsula necesita un título.");
-    const due = c.dueDate.trim() ? normalizeYmd(c.dueDate) : null;
-    if (c.dueDate.trim() && !due) throw new Error(`El plazo «${c.dueDate}» no es una fecha válida. Usa el formato AAAA-MM-DD, por ejemplo 2026-10-30.`);
+    const dueLocal = c.dueAt.trim();
+    if (dueLocal && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dueLocal)) throw new Error("El plazo debe tener fecha y hora (día, mes, año y hora).");
+    const dueAt = dueLocal ? chileToIso(dueLocal) : null;
+    const links = c.links
+      .map((l) => ({ title: l.title.trim(), url: l.url.trim(), kind: (["video", "podcast", "link"] as const).includes(l.kind) ? l.kind : "link" }))
+      .filter((l) => l.url);
+    const bad = links.find((l) => !/^https:\/\/\S+$/i.test(l.url));
+    if (bad) throw new Error(`El enlace «${bad.url}» no es válido: debe empezar con https://`);
+    if (c.videoUrl.trim() && !/^https:\/\/\S+$/i.test(c.videoUrl.trim())) throw new Error("El enlace del video principal debe empezar con https://");
     const db = await supabaseUser();
     const row = {
       wave_id: c.waveId,
@@ -211,19 +228,24 @@ export async function saveCapsule(c: CapsuleInput): Promise<Result> {
       title: c.title.trim(),
       description: c.description || null,
       duration_min: c.durationMin,
-      video_url: c.videoUrl || null,
+      video_url: c.videoUrl.trim() || null,
       video_path: c.videoPath,
       resources: c.resources,
+      extras: c.extras,
+      links: links.map((l) => ({ ...l, title: l.title || l.url })),
       task_prompt: c.taskPrompt.trim() || null,
       task_required: Boolean(c.taskPrompt.trim()) && c.taskRequired,
       max_attempts: c.maxAttempts,
-      due_date: due,
+      due_date: dueLocal ? dueLocal.slice(0, 10) : null,
+      due_at: dueAt,
+      submission_formats: c.taskPrompt.trim() && c.formats.length ? c.formats.filter((f) => f in FORMAT_GROUPS) : null,
       published: c.published,
     };
     const { error } = c.id ? await db.from("capsules").update(row).eq("id", c.id) : await db.from("capsules").insert(row);
     if (error) throw error;
     revalidatePath(`/admin/contenido/${c.waveId}`);
-    return { ok: true, message: c.id ? "Cápsula actualizada." : "Cápsula creada." };
+    revalidatePath("/mi-journey");
+    return { ok: true, message: c.id ? "Cápsula actualizada: los profesionales ya ven los cambios." : "Cápsula creada." };
   } catch (e) {
     return fail(e);
   }

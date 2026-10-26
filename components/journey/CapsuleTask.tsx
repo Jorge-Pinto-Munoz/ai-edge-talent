@@ -1,24 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-import { markCapsuleComplete, submitTask } from "@/lib/journey/actions";
-import { FileUpload, type UploadedFile } from "./FileUpload";
+import { useState, useTransition } from "react";
+import { submitTask } from "@/lib/journey/actions";
+import { DropUpload, type UploadedFile } from "./FileUpload";
+import { SUBMISSION_MAX_MB, acceptAttr, fileAllowed, formatsLabel, type FormatKey } from "@/lib/journey/formats";
 import { Callout } from "@/components/ui";
 
-/** Al abrir la cápsula queda como vista (una vez, sin que la persona tenga que marcar nada). */
-export function AutoSeen({ capsuleId, done }: { capsuleId: string; done: boolean }) {
-  const router = useRouter();
-  const sent = useRef(false);
-  useEffect(() => {
-    if (done || sent.current) return;
-    sent.current = true;
-    void markCapsuleComplete(capsuleId, true).then((r) => r.ok && router.refresh());
-  }, [capsuleId, done, router]);
-  return null;
-}
-
-export function TaskForm({ capsuleId, blockedReason, template = false }: { capsuleId: string; blockedReason: string | null; template?: boolean }) {
+export function TaskForm({ capsuleId, blockedReason, template = false, formats = ["pdf"] }: { capsuleId: string; blockedReason: string | null; template?: boolean; formats?: FormatKey[] }) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -33,14 +22,29 @@ export function TaskForm({ capsuleId, blockedReason, template = false }: { capsu
           <textarea id="ta" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="Describe tu trabajo y la evidencia. Puedes además adjuntar archivos." />
         </div>
       )}
-      <div className="row">
-        <FileUpload bucket="submissions" multiple={!template} label={template ? (files.length ? "Cambiar archivo" : "Subir plantilla completada") : "Adjuntar archivos"} onUploaded={(f) => setFiles((x) => (template ? [f] : [...x, f]))} />
-        {files.map((f) => (
-          <span key={f.path} className="badge">
-            {f.name} <button type="button" aria-label={`Quitar ${f.name}`} onClick={() => setFiles((x) => x.filter((y) => y.path !== f.path))} style={{ border: 0, background: "none", cursor: "pointer" }}>×</button>
-          </span>
-        ))}
-      </div>
+      {(!template || files.length === 0) && (
+        <DropUpload
+          bucket="submissions"
+          accept={acceptAttr(formats)}
+          formatsText={formatsLabel(formats)}
+          maxMb={SUBMISSION_MAX_MB}
+          multiple={!template}
+          allowed={(n) => fileAllowed(n, formats)}
+          title={template ? "Arrastra aquí tu plantilla completada" : "Arrastra aquí tus archivos"}
+          onUploaded={(f) => setFiles((x) => (template ? [f] : [...x, f]))}
+        />
+      )}
+      {files.length > 0 && (
+        <ul className="drop-files">
+          {files.map((f) => (
+            <li key={f.path}>
+              <span>{f.name}</span>
+              <small>{f.size > 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`}</small>
+              <button type="button" className="link-btn" aria-label={`Quitar ${f.name}`} onClick={() => setFiles((x) => x.filter((y) => y.path !== f.path))}>Quitar</button>
+            </li>
+          ))}
+        </ul>
+      )}
       {template && (
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="ta">Comentario (opcional)</label>

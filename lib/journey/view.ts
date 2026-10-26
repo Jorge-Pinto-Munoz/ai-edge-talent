@@ -1,8 +1,10 @@
 import "server-only";
 import { buildJourneyPath } from "@/lib/journey/path";
 import { certifiedRate } from "@/lib/aicert/stats";
-import type { Layer } from "@/lib/journey/rules";
-import type { JourneyView } from "@/components/journey/path/types";
+import { submissionGate, type Layer, type SubmissionStatus } from "@/lib/journey/rules";
+import type { FileRef, JourneyView, ModuleView } from "@/components/journey/path/types";
+import { dueIso, effectiveFormats } from "./formats";
+import { chileToIso } from "@/lib/time/chile";
 import type { myJourney } from "./queries";
 import { overallProgress, progressLabel } from "@/lib/aicert/progress";
 import { pulseDef } from "@/lib/pulse/definitions";
@@ -23,9 +25,6 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     certifications: j.certifications,
     lab: j.lab ? { status: j.lab.status, files: j.lab.lab_project_files.length } : null,
   });
-
-  const lastFeedback = (capsuleId: string) =>
-    [...j.submissions].filter((s) => s.capsule_id === capsuleId && s.feedback).sort((a, b) => b.attempt - a.attempt)[0]?.feedback ?? null;
 
   // Cierre de etapa: requisitos académicos (o excepción) → pulso de cierre → etapa cerrada.
   const layer = path.currentLayer;
@@ -98,21 +97,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     waveName: j.wave?.name ?? "AI Edge Talent",
     delivery: j.candidate.delivery_owner,
     path,
-    capsules: Object.fromEntries(
-      j.capsules.map((c) => [
-        c.id,
-        {
-          title: c.title,
-          description: c.description,
-          durationMin: c.duration_min,
-          resources: c.resources ?? [],
-          hasTask: Boolean(c.task_prompt),
-          required: c.task_required,
-          hasVideo: Boolean(c.video_url || c.video_path),
-          feedback: lastFeedback(c.id),
-        },
-      ]),
-    ),
+    capsules: Object.fromEntries(j.capsules.map((c) => [c.id, moduleView(c, j)])),
     guides: Object.fromEntries(
       j.guides.map((g) => [g.layer as Layer, { title: g.title, summary: g.summary, whatHappens: g.what_happens, whatWeExpect: g.what_we_expect, videoUrl: g.video_url, videoPath: g.video_path }]),
     ),
@@ -171,4 +156,46 @@ async function mindsetGate(j: Journey): Promise<JourneyView["mindsetGate"]> {
   const first = j.capsules.filter((c) => c.layer === "AI_MINDSET").sort((a, b) => a.position - b.position)[0];
   const untouched = first ? !j.completed.has(first.id) && !j.submissions.some((s) => s.capsule_id === first.id) : false;
   return { open, opensAt, firstCapsuleId: open && first && untouched ? first.id : null };
+}
+
+/** Cápsula → módulo: contenido, plazo, formatos, entregas y estado. */
+function moduleView(c: Journey["capsules"][number], j: Journey): ModuleView {
+  const subs = j.submissions.filter((s) => s.capsule_id === c.id).sort((a, b) => b.attempt - a.attempt);
+  const last = subs[0];
+  const gate = submissionGate(subs.map((s) => s.status as SubmissionStatus), c.max_attempts);
+  const seen = j.completed.has(c.id);
+  const n = j.capsules.filter((x) => x.layer === c.layer).sort((a, b) => a.position - b.position).findIndex((x) => x.id === c.id) + 1;
+  const status: ModuleView["status"] = last?.status === "APPROVED"
+    ? { tone: "ok", label: "Aprobada" }
+    : last?.status === "SUBMITTED" || last?.status === "HUMAN_REVIEW"
+      ? { tone: "wait", label: "Entregada · en revisión" }
+      : last?.status === "NOT_APPROVED"
+        ? { tone: "bad", label: "No aprobada · vuelve a entregar" }
+        : c.task_prompt
+          ? seen ? { tone: "now", label: "Falta tu entrega" } : { tone: "todo", label: "Por comenzar" }
+          : seen ? { tone: "ok", label: "Vista" } : { tone: "todo", label: "Por ver" };
+  return {
+    n,
+    title: c.title,
+    description: c.description,
+    durationMin: c.duration_min,
+    video: c.video_url || c.video_path ? { url: c.video_url, path: c.video_path } : null,
+    resources: c.resources ?? [],
+    extras: c.extras ?? [],
+    links: c.links ?? [],
+    hasTask: Boolean(c.task_prompt),
+    challenge: Boolean(c.task_prompt) && (c.resources ?? []).length > 0,
+    taskPrompt: c.task_prompt,
+    required: c.task_required,
+    maxAttempts: c.max_attempts,
+    usedAttempts: subs.filter((s) => s.status === "NOT_APPROVED").length,
+    due: dueIso(c.due_at, c.due_date, chileToIso),
+    formats: effectiveFormats(c.submission_formats, c.resources ?? []),
+    seen,
+    blocked: gate.allowed ? null : gate.reason ?? "No puedes entregar ahora.",
+    submissions: subs.map((s) => ({ id: s.id, attempt: s.attempt, status: s.status, score: s.score === null ? null : Number(s.score), feedback: s.feedback, submittedAt: s.submitted_at, files: (s.files ?? []) as FileRef[] })),
+    status,
+    hasVideo: Boolean(c.video_url || c.video_path),
+    feedback: last?.feedback ?? null,
+  };
 }

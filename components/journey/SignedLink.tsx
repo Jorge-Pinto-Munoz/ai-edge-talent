@@ -34,6 +34,36 @@ export function SignedLink({ bucket, path, children }: { bucket: "content" | "su
   );
 }
 
+/** Descarga directa: el archivo baja en la misma pestaña (sin abrir ventanas nuevas). */
+export function DownloadButton({ bucket, path, name, size, kind = "file" }: { bucket: "content" | "submissions" | "certificates"; path: string; name: string; size?: number; kind?: "file" | "template" }) {
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const ext = name.split(".").pop()?.toUpperCase() ?? "";
+  return (
+    <button
+      type="button"
+      className={`dl-row ${kind}`}
+      disabled={state === "busy"}
+      onClick={async () => {
+        setState("busy");
+        const r = await signedFileUrl(bucket, path, true);
+        if (!r.ok || !r.data) return setState("error");
+        const a = document.createElement("a");
+        a.href = r.data.url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setState("done");
+      }}
+    >
+      <span className="dl-ext" aria-hidden="true">{ext.slice(0, 4)}</span>
+      <span className="dl-name">{name}</span>
+      <small>{state === "busy" ? "Preparando…" : state === "error" ? "No disponible" : state === "done" ? "Descargado" : size ? (size > 1048576 ? `${(size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`) : ""}</small>
+      <span className="dl-ico" aria-hidden="true">↓</span>
+    </button>
+  );
+}
+
 /** Reproductor: enlace externo (YouTube/Vimeo/Stream) o archivo en Storage. */
 export function VideoPlayer({ url, path, title }: { url: string | null; path: string | null; title: string }) {
   const [src, setSrc] = useState<string | null>(null);

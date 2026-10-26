@@ -14,12 +14,22 @@ export interface Capsule {
   video_url: string | null;
   video_path: string | null;
   resources: { name: string; path: string; size: number }[];
+  /** Archivos complementarios para estudio (PDF y otros). */
+  extras: { name: string; path: string; size: number }[];
+  /** Videos, podcasts y enlaces complementarios. */
+  links: CapsuleLink[];
   task_prompt: string | null;
   task_required: boolean;
   max_attempts: number | null;
   due_date: string | null;
+  /** Plazo con hora (prima sobre due_date). */
+  due_at: string | null;
+  /** Formatos aceptados en la entrega (claves de FORMAT_GROUPS); null = PDF + formato de la plantilla. */
+  submission_formats: string[] | null;
   published: boolean;
 }
+export type CapsuleLinkKind = "video" | "podcast" | "link";
+export interface CapsuleLink { title: string; url: string; kind: CapsuleLinkKind }
 export interface StageGuide {
   wave_id: string;
   layer: Layer;

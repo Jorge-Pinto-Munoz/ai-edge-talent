@@ -10,6 +10,7 @@ import { StageIcon } from "@/components/site/StageIcon";
 import { SignedLink, VideoPlayer } from "@/components/journey/SignedLink";
 import { CertificationForm } from "@/components/journey/CertificationForm";
 import { LabFiles } from "@/components/hub/LabFiles";
+import { ModuleItem, VideoModal, type PlayTarget } from "./Modules";
 import { SignOut } from "@/components/admission/SignOut";
 import { fmtDate, fmtYmd } from "@/components/ui";
 import { Sheet } from "@/components/site/Sheet";
@@ -68,6 +69,20 @@ export function JourneyApp({ v }: { v: JourneyView }) {
   const [rulesOpen, setRulesOpen] = useState(false);
   useEffect(() => { if (v.showStageRules) setRulesOpen(true); }, [v.showStageRules]);
   const close = useCallback(() => setOpen(null), []);
+  // Módulos (cápsulas): se despliegan en el mismo camino; un video se ve en un modal centrado.
+  const [mod, setMod] = useState<string | null>(null);
+  const [play, setPlay] = useState<PlayTarget | null>(null);
+  const closePlay = useCallback(() => setPlay(null), []);
+  const focusModule = useCallback((id: string) => {
+    setTab("camino");
+    setMod(id);
+    setTimeout(() => document.getElementById(`m-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }, []);
+  // Enlace directo a un módulo: /mi-journey?m=<id>
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("m");
+    if (id && v.capsules[id]) focusModule(id);
+  }, [focusModule, v.capsules]);
   const stageOf = (l: Layer) => v.path.stages.find((s) => s.layer === l)!;
   const next = v.path.next;
   const reviewing = v.path.stages.flatMap((s) => s.nodes).filter((n) => n.state === "review");
@@ -116,19 +131,20 @@ export function JourneyApp({ v }: { v: JourneyView }) {
           ) : v.closing ? (
             <ClosingCard v={v} onOpen={() => setClosingOpen(true)} />
           ) : (
-            <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => setOpen({ type: "node", node: n, stage: stageOf(next!.stage) })} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
+            <NextStep v={v} reviewing={reviewing.length} onOpen={(n) => (n.kind === "capsule" && n.capsuleId ? focusModule(n.capsuleId) : setOpen({ type: "node", node: n, stage: stageOf(next!.stage) }))} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.path.currentLayer) })} />
           )}
           {!v.path.notStarted && <StageStatusCard v={v} onRules={() => setRulesOpen(true)} />}
           {REMIND[v.path.currentLayer] && !v.path.notStarted && (
             <p className="jr-remind"><Icon name="alert" size={18} /><span><strong>Recuerda:</strong> en esta etapa {REMIND[v.path.currentLayer]}</span></p>
           )}
           <StageChips stages={v.path.stages} />
-          <PathView v={v} stages={v.path.stages} onNode={(node, stage) => setOpen({ type: "node", node, stage })} onGuide={(stage) => setOpen({ type: "guide", stage })} />
+          <PathView v={v} stages={v.path.stages} onNode={(node, stage) => setOpen({ type: "node", node, stage })} onGuide={(stage) => setOpen({ type: "guide", stage })} mod={mod} onModule={(id) => setMod((x) => (x === id ? null : id))} onPlay={setPlay} />
         </>
       )}
       {tab === "materiales" && <Materials v={v} onGuide={(stage) => setOpen({ type: "guide", stage })} />}
-      {tab === "entregas" && <Deliverables v={v} />}
+      {tab === "entregas" && <Deliverables v={v} onModule={focusModule} />}
 
+      <VideoModal target={play} onClose={closePlay} />
       <Sheet
         open={open !== null}
         onClose={close}
@@ -240,7 +256,7 @@ function NextStep({ v, reviewing, onOpen, onGuide }: { v: JourneyView; reviewing
         <p>{n.hint}</p>
       </div>
       {isCapsule ? (
-        <Link className="jr-cta" href={`/mi-journey/capsula/${n.capsuleId}`}>{n.capsuleId === v.mindsetGate?.firstCapsuleId ? "Comenzar primer reto" : n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></Link>
+        <button type="button" className="jr-cta" onClick={() => onOpen(n)}>{n.capsuleId === v.mindsetGate?.firstCapsuleId ? "Comenzar primer reto" : n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></button>
       ) : (
         <button type="button" className="jr-cta" onClick={() => onOpen(n)}>{n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></button>
       )}
@@ -357,7 +373,7 @@ function StageChips({ stages }: { stages: PathStage[] }) {
 }
 
 /* ───────── El camino ───────── */
-function PathView({ v, stages, onNode, onGuide }: { v: JourneyView; stages: PathStage[]; onNode: (n: PathNode, s: PathStage) => void; onGuide: (s: PathStage) => void }) {
+function PathView({ v, stages, onNode, onGuide, mod, onModule, onPlay }: { v: JourneyView; stages: PathStage[]; onNode: (n: PathNode, s: PathStage) => void; onGuide: (s: PathStage) => void; mod: string | null; onModule: (id: string) => void; onPlay: (t: PlayTarget) => void }) {
   const currentRef = useRef<HTMLLIElement>(null);
   const [away, setAway] = useState<"up" | "down" | null>(null);
 
@@ -387,7 +403,9 @@ function PathView({ v, stages, onNode, onGuide }: { v: JourneyView; stages: Path
           </div>
 
           <ol className="jr-steps">
-            {s.nodes.map((n) => (
+            {s.nodes.map((n) => n.kind === "capsule" && n.capsuleId && v.capsules[n.capsuleId] ? (
+              <ModuleItem key={n.id} id={n.capsuleId} m={v.capsules[n.capsuleId]} open={mod === n.capsuleId} locked={n.state === "locked"} preview={Boolean(v.preview)} onToggle={() => onModule(n.capsuleId!)} onPlay={onPlay} />
+            ) : (
               <li key={n.id} className={`jr-step ${n.state}`} ref={n.state === "current" ? currentRef : undefined}>
                 <button type="button" className="jr-step-btn" onClick={() => onNode(n, s)} aria-current={n.state === "current" ? "step" : undefined}>
                   <span className="jr-dot" aria-hidden="true"><Icon name={nodeIcon(n)} size={n.state === "current" ? 24 : 20} /></span>
@@ -442,7 +460,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
         {v.preview ? (
           <p className="jr-feedback">Aquí el profesional abre la cápsula: video, material y entrega de la tarea.</p>
         ) : (
-          <Link className="jr-cta wide" href={`/mi-journey/capsula/${node.capsuleId}`} data-autofocus>
+          <Link className="jr-cta wide" href={`/mi-journey?m=${node.capsuleId}`} data-autofocus>
             {node.state === "done" ? "Volver a ver la cápsula" : node.cta ?? "Abrir la cápsula"} <Icon name="arrowRight" size={18} />
           </Link>
         )}
@@ -601,7 +619,7 @@ function Materials({ v, onGuide }: { v: JourneyView; onGuide: (s: PathStage) => 
           </div>
           {(groups.find((g) => g.s.layer === s.layer)?.caps ?? []).map(({ n, c }) => (
             <div key={n.id} className="jr-mat">
-              {v.preview ? <strong className="jr-mat-title">{c.title}</strong> : <Link href={`/mi-journey/capsula/${n.capsuleId}`} className="jr-mat-title">{c.title}</Link>}
+              <strong className="jr-mat-title">{c.title}</strong>
               <ResourceList items={c.resources} />
             </div>
           ))}
@@ -613,7 +631,7 @@ function Materials({ v, onGuide }: { v: JourneyView; onGuide: (s: PathStage) => 
 }
 
 /* ───────── Entregas: todo lo que subiste ───────── */
-function Deliverables({ v }: { v: JourneyView }) {
+function Deliverables({ v, onModule }: { v: JourneyView; onModule: (id: string) => void }) {
   const empty = !v.submissions.length && !v.certifications.length && !v.lab?.files.length && !v.pendingTasks.length;
   const SUB = { SUBMITTED: ["wait", "En revisión"], HUMAN_REVIEW: ["wait", "Revisión humana"], APPROVED: ["ok", "Aprobada"], NOT_APPROVED: ["bad", "No aprobada"] } as Record<string, [string, string]>;
   return (
@@ -630,7 +648,7 @@ function Deliverables({ v }: { v: JourneyView }) {
               <li key={t.capsuleId}>
                 <div className="top"><strong>{t.title}</strong><span className="jr-pill now">{t.required ? "Obligatoria" : "Opcional"}</span></div>
                 {t.due && <small className="muted">Plazo: {fmtYmd(t.due)}</small>}
-                {v.preview ? <small className="muted">Se entrega dentro de la cápsula</small> : <Link className="more-link" href={`/mi-journey/capsula/${t.capsuleId}`}>Entregar en la cápsula <Icon name="arrowRight" size={16} /></Link>}
+                <button type="button" className="more-link" onClick={() => onModule(t.capsuleId)}>Entregar en el módulo <Icon name="arrowRight" size={16} /></button>
               </li>
             ))}
           </ul>
@@ -643,7 +661,7 @@ function Deliverables({ v }: { v: JourneyView }) {
           <ul className="jr-deliv">
             {v.submissions.map((s) => (
               <li key={s.id}>
-                <div className="top">{v.preview ? <strong>{s.capsuleTitle}</strong> : <Link href={`/mi-journey/capsula/${s.capsuleId}`}><strong>{s.capsuleTitle}</strong></Link>}<span className={`jr-pill ${SUB[s.status]?.[0] ?? ""}`}>{SUB[s.status]?.[1] ?? s.status}</span></div>
+                <div className="top"><button type="button" className="link-btn" onClick={() => onModule(s.capsuleId)}><strong>{s.capsuleTitle}</strong></button><span className={`jr-pill ${SUB[s.status]?.[0] ?? ""}`}>{SUB[s.status]?.[1] ?? s.status}</span></div>
                 <small className="muted">Intento {s.attempt} · {fmtDate(s.submittedAt)}</small>
                 {s.feedback && <p className="fb">{s.feedback}</p>}
                 {s.files.map((f) => <span key={f.path} className="file"><Icon name="file" size={16} /><SignedLink bucket="submissions" path={f.path}>{f.name}</SignedLink></span>)}
