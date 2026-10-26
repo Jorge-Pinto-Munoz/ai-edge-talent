@@ -4,7 +4,7 @@ import { getViewer } from "@/lib/admission/auth";
 import { myJourney } from "@/lib/journey/queries";
 import { layerName, submissionGate, type SubmissionStatus } from "@/lib/journey/rules";
 import { SignedLink, VideoPlayer } from "@/components/journey/SignedLink";
-import { CompleteToggle, TaskForm } from "@/components/journey/CapsuleTask";
+import { AutoSeen, TaskForm } from "@/components/journey/CapsuleTask";
 import { Badge, fmtDate, fmtYmd } from "@/components/ui";
 import { Icon } from "@/components/site/Icon";
 
@@ -29,6 +29,17 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
   const usedAttempts = subs.filter((s) => s.status === "NOT_APPROVED").length;
   // Reto con plantilla: material para descargar + tarea → se entrega la misma plantilla completada.
   const challenge = Boolean(c.task_prompt) && c.resources.length > 0;
+  // Estado de la cápsula: vista al abrirla; con entrega queda «lista, en revisión» hasta que el equipo la apruebe.
+  const last = [...subs].sort((a, b) => b.attempt - a.attempt)[0];
+  const state: [string, string] = last?.status === "APPROVED"
+    ? ["ok", "Aprobada"]
+    : last?.status === "SUBMITTED" || last?.status === "HUMAN_REVIEW"
+      ? ["wait", "Entregada · en revisión"]
+      : last?.status === "NOT_APPROVED"
+        ? ["bad", "No aprobada · vuelve a entregar"]
+        : c.task_prompt
+          ? ["now", "Vista · falta tu entrega"]
+          : ["ok", "Vista"];
 
   return (
     <div className="jr cap-page">
@@ -36,6 +47,7 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
       <header className="cap-head">
         <span className="jr-k">{layerName(c.layer)} · Cápsula {c.position}</span>
         <h1>{c.title}</h1>
+        <span className={`jr-pill ${state[0]}`}>{state[1]}</span>
         {c.description && <p>{c.description}</p>}
         <ul className="jr-meta">
           {c.duration_min && <li><Icon name="clock" size={16} /> {c.duration_min} min</li>}
@@ -44,7 +56,7 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
         </ul>
       </header>
       {(c.video_url || c.video_path) && <VideoPlayer url={c.video_url} path={c.video_path} title={c.title} />}
-      <CompleteToggle capsuleId={c.id} done={j.completed.has(c.id)} />
+      <AutoSeen capsuleId={c.id} done={j.completed.has(c.id)} />
 
       {c.resources.length > 0 && !challenge && (
         <section className="jr-group">
@@ -79,7 +91,7 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
             </li>
             <li>
               <strong>Sube la misma plantilla completada</strong>
-              <p className="muted"><small>La revisa tu AI Coach y recibes feedback aquí.</small></p>
+              <p className="muted"><small>Al enviarla, la cápsula queda lista y en revisión. La aprueba el equipo AI Edge Talent y recibes el feedback aquí.</small></p>
               <TaskForm capsuleId={c.id} template blockedReason={gate.allowed ? null : gate.reason ?? null} />
             </li>
           </ol>
@@ -122,6 +134,8 @@ export default async function CapsulePage({ params }: { params: Promise<{ id: st
               </ul>
             </>
           )}
+          <h3>Tu entrega</h3>
+          <p className="muted"><small>Al enviarla, la cápsula queda lista y en revisión. La aprueba el equipo AI Edge Talent y recibes el feedback aquí.</small></p>
           <TaskForm capsuleId={c.id} blockedReason={gate.allowed ? null : gate.reason ?? null} />
         </section>
       )}

@@ -119,10 +119,20 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     certifications: j.certifications.map((c) => ({ id: c.id, attempt: c.attempt, result: c.result, status: c.status, reviewNote: c.review_note, filePath: c.file_path, createdAt: c.created_at })),
     certStat: await certifiedRate(),
     failedCerts: j.certifications.filter((c) => c.result === "FAILED" && c.status === "VERIFIED").length,
+    // Tareas por entregar (sin entrega o con la última no aprobada): se entregan dentro de su cápsula.
+    pendingTasks: j.capsules
+      .filter((c) => c.task_prompt && c.layer === (j.candidate.journey_layer ?? "AI_MINDSET"))
+      .filter((c) => {
+        const last = j.submissions.filter((s) => s.capsule_id === c.id).sort((a, b) => b.attempt - a.attempt)[0];
+        return !last || last.status === "NOT_APPROVED";
+      })
+      .sort((a, b) => a.position - b.position)
+      .map((c) => ({ capsuleId: c.id, title: c.title, required: c.task_required, due: c.due_date })),
     submissions: [...j.submissions]
       .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at))
       .map((s) => ({
         id: s.id,
+        capsuleId: s.capsule_id,
         capsuleTitle: j.capsules.find((c) => c.id === s.capsule_id)?.title ?? "Tarea",
         attempt: s.attempt,
         status: s.status,

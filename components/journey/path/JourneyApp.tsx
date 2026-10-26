@@ -614,7 +614,7 @@ function Materials({ v, onGuide }: { v: JourneyView; onGuide: (s: PathStage) => 
 
 /* ───────── Entregas: todo lo que subiste ───────── */
 function Deliverables({ v }: { v: JourneyView }) {
-  const empty = !v.submissions.length && !v.certifications.length && !v.lab?.files.length;
+  const empty = !v.submissions.length && !v.certifications.length && !v.lab?.files.length && !v.pendingTasks.length;
   const SUB = { SUBMITTED: ["wait", "En revisión"], HUMAN_REVIEW: ["wait", "Revisión humana"], APPROVED: ["ok", "Aprobada"], NOT_APPROVED: ["bad", "No aprobada"] } as Record<string, [string, string]>;
   return (
     <section className="jr-panel" aria-labelledby="ent-t">
@@ -622,13 +622,28 @@ function Deliverables({ v }: { v: JourneyView }) {
       <p className="muted">Lo que has subido en tu journey y en qué estado está.</p>
       {empty && <div className="jr-empty"><Icon name="upload" size={26} /><p>Todavía no subes nada. Aquí verás tus tareas de AI Mindset, tu certificado AI CERT y tu presentación del Showcase.</p></div>}
 
+      {v.pendingTasks.length > 0 && (
+        <div className="jr-group">
+          <h3>Por entregar</h3>
+          <ul className="jr-deliv">
+            {v.pendingTasks.map((t) => (
+              <li key={t.capsuleId}>
+                <div className="top"><strong>{t.title}</strong><span className="jr-pill now">{t.required ? "Obligatoria" : "Opcional"}</span></div>
+                {t.due && <small className="muted">Plazo: {fmtYmd(t.due)}</small>}
+                {v.preview ? <small className="muted">Se entrega dentro de la cápsula</small> : <Link className="more-link" href={`/mi-journey/capsula/${t.capsuleId}`}>Entregar en la cápsula <Icon name="arrowRight" size={16} /></Link>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {v.submissions.length > 0 && (
         <div className="jr-group">
           <h3>Tareas</h3>
           <ul className="jr-deliv">
             {v.submissions.map((s) => (
               <li key={s.id}>
-                <div className="top"><strong>{s.capsuleTitle}</strong><span className={`jr-pill ${SUB[s.status]?.[0] ?? ""}`}>{SUB[s.status]?.[1] ?? s.status}</span></div>
+                <div className="top">{v.preview ? <strong>{s.capsuleTitle}</strong> : <Link href={`/mi-journey/capsula/${s.capsuleId}`}><strong>{s.capsuleTitle}</strong></Link>}<span className={`jr-pill ${SUB[s.status]?.[0] ?? ""}`}>{SUB[s.status]?.[1] ?? s.status}</span></div>
                 <small className="muted">Intento {s.attempt} · {fmtDate(s.submittedAt)}</small>
                 {s.feedback && <p className="fb">{s.feedback}</p>}
                 {s.files.map((f) => <span key={f.path} className="file"><Icon name="file" size={16} /><SignedLink bucket="submissions" path={f.path}>{f.name}</SignedLink></span>)}

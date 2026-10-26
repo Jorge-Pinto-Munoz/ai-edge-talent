@@ -1,33 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { markCapsuleComplete, submitTask } from "@/lib/journey/actions";
 import { FileUpload, type UploadedFile } from "./FileUpload";
 import { Callout } from "@/components/ui";
 
-export function CompleteToggle({ capsuleId, done }: { capsuleId: string; done: boolean }) {
-  const [checked, setChecked] = useState(done);
-  const [, start] = useTransition();
+/** Al abrir la cápsula queda como vista (una vez, sin que la persona tenga que marcar nada). */
+export function AutoSeen({ capsuleId, done }: { capsuleId: string; done: boolean }) {
   const router = useRouter();
-  return (
-    <label className="check" style={{ marginBottom: 0 }}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => {
-          const v = e.target.checked;
-          setChecked(v); // optimista: se revierte si falla
-          start(async () => {
-            const r = await markCapsuleComplete(capsuleId, v);
-            if (!r.ok) setChecked(!v);
-            router.refresh();
-          });
-        }}
-      />
-      <span>Vi esta cápsula</span>
-    </label>
-  );
+  const sent = useRef(false);
+  useEffect(() => {
+    if (done || sent.current) return;
+    sent.current = true;
+    void markCapsuleComplete(capsuleId, true).then((r) => r.ok && router.refresh());
+  }, [capsuleId, done, router]);
+  return null;
 }
 
 export function TaskForm({ capsuleId, blockedReason, template = false }: { capsuleId: string; blockedReason: string | null; template?: boolean }) {
