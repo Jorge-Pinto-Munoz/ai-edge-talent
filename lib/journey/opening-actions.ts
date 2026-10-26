@@ -5,11 +5,12 @@ import { supabaseService } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admission/auth";
 import { audit } from "@/lib/identity/service";
 import { notifyStageOpen } from "./opening";
+import { errorText } from "@/lib/text/errors";
 
 /** Abrir o programar AI First Mindset de una Wave. Solo Administración; todo queda en la auditoría. */
 export type OpeningResult = { ok: boolean; message: string };
 const LAYER = "AI_MINDSET";
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const errText = (e: unknown) => (errorText(e));
 const fmt = (iso: string) =>
   new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso)) + " (hora de Chile)";
 

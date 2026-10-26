@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { supabaseUser } from "@/lib/supabase/server";
 import { getViewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { todayChile, type ClassInput } from "./rules";
+import { errorText } from "@/lib/text/errors";
 
 export type Result = { ok: boolean; message: string };
-const fail = (e: unknown): Result => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
+const fail = (e: unknown): Result => ({ ok: false, message: errorText(e) });
 const clean = (s: string) => s.trim() || null;
 
 /** Guarda una clase con su asistencia. Queda visible de inmediato para Delivery y admin. */

@@ -9,9 +9,10 @@ import { markRequirementsByException, syncMany, syncStageClosure } from "./closu
 import { audit } from "@/lib/identity/service";
 import { provisionParticipant } from "@/lib/identity/provision";
 import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
+import { errorText, normalizeYmd } from "@/lib/text/errors";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
-const fail = (e: unknown): Result<never> => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
+const fail = (e: unknown): Result<never> => ({ ok: false, message: errorText(e) });
 
 type Bucket = "content" | "submissions" | "certificates";
 const MAX_UPLOAD_MB: Record<Bucket, number> = { content: 500, submissions: 50, certificates: 20 };
@@ -200,6 +201,8 @@ export async function saveCapsule(c: CapsuleInput): Promise<Result> {
   try {
     await requireRole(["admin"]);
     if (!c.title.trim()) throw new Error("La cápsula necesita un título.");
+    const due = c.dueDate.trim() ? normalizeYmd(c.dueDate) : null;
+    if (c.dueDate.trim() && !due) throw new Error(`El plazo «${c.dueDate}» no es una fecha válida. Usa el formato AAAA-MM-DD, por ejemplo 2026-10-30.`);
     const db = await supabaseUser();
     const row = {
       wave_id: c.waveId,
@@ -214,7 +217,7 @@ export async function saveCapsule(c: CapsuleInput): Promise<Result> {
       task_prompt: c.taskPrompt.trim() || null,
       task_required: Boolean(c.taskPrompt.trim()) && c.taskRequired,
       max_attempts: c.maxAttempts,
-      due_date: c.dueDate || null,
+      due_date: due,
       published: c.published,
     };
     const { error } = c.id ? await db.from("capsules").update(row).eq("id", c.id) : await db.from("capsules").insert(row);

@@ -145,7 +145,7 @@ function CapsuleForm({ waveId, layer, capsule, nextPosition, onDone }: { waveId:
         <div className="grid grid-3">
           <label className="check"><input type="checkbox" checked={c.taskRequired} onChange={(e) => setC({ ...c, taskRequired: e.target.checked })} /><span>Obligatoria para avanzar de etapa</span></label>
           <div className="field"><label htmlFor="ca">Máximo de intentos</label><input id="ca" type="text" inputMode="numeric" value={c.maxAttempts ?? ""} placeholder="sin máximo" onChange={(e) => setC({ ...c, maxAttempts: e.target.value ? Number(e.target.value) : null })} /></div>
-          <div className="field"><label htmlFor="cf">Plazo (AAAA-MM-DD)</label><input id="cf" type="text" value={c.dueDate} onChange={txt("dueDate")} /></div>
+          <div className="field"><label htmlFor="cf">Plazo</label><input id="cf" type="date" value={c.dueDate} onChange={txt("dueDate")} /></div>
         </div>
       )}
       <label className="check"><input type="checkbox" checked={c.published} onChange={(e) => setC({ ...c, published: e.target.checked })} /><span>Publicada (visible para los participantes)</span></label>

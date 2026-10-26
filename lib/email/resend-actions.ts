@@ -5,6 +5,7 @@ import { supabaseService } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admission/auth";
 import { audit } from "@/lib/identity/service";
 import { sendEmail } from "./send";
+import { errorText } from "@/lib/text/errors";
 
 /**
  * Reenvía un correo emitido tal como salió (mismo asunto, cuerpo y copia), o a otra dirección. Los correos con
@@ -30,6 +31,6 @@ export async function resendEmail(id: string, toOverride?: string): Promise<{ ok
     revalidatePath("/admin/comunicaciones");
     return res.error ? { ok: false, message: `No se pudo reenviar: ${res.error}` } : { ok: true, message: `Reenviado a ${to}${cc.length ? ` con copia a ${cc.join(", ")}` : ""}.` };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }

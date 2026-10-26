@@ -16,6 +16,7 @@ import { isAcceptableVideoUrl } from "./rescue";
 import { applicationWindow } from "./window";
 import { deliveryDirectory } from "@/lib/identity/directory";
 import { cleanAnswers, missingRequired, type Question } from "./assessment";
+import { errorText } from "@/lib/text/errors";
 
 /**
  * Acciones del postulante. Se identifican con su enlace personal (token aleatorio de 144 bits): al registrarse
@@ -162,7 +163,7 @@ export async function acknowledgeAndStart(token: string, checkedIds: string[]): 
     if (["NOMINATED", "INVITED", "IDENTIFIED"].includes(c.status)) await moveTo(svc, c.id, c.status, "APPLICATION_STARTED");
     return { ok: true, message: "ok" };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }
 
@@ -220,7 +221,7 @@ export async function saveAnswers(token: string, answers: Record<string, string>
     if (process.env.ANTHROPIC_API_KEY) after(async () => void (await evaluateOne(supabaseService(), c.id, null)));
     return { ok: true, state: "submitted", savedAt: upd[0].updated_at, message: "submitted" };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }
 
@@ -254,7 +255,7 @@ export async function acceptCommitmentByToken(token: string, fullName: string, c
     }
     return { ok: true, message: "enrolled" };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }
 

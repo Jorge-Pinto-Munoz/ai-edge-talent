@@ -12,10 +12,11 @@ import { renderEmail, type EmailTemplate } from "@/lib/email/templates";
 import { sendEmail } from "@/lib/email/send";
 import type { AdmissionStatus } from "@/lib/domain/types";
 import { fmtDeadline } from "@/components/ui";
+import { errorText } from "@/lib/text/errors";
 
 export type ActionResult = { ok: boolean; message: string; details?: string[] };
 
-const fail = (e: unknown): ActionResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
+const fail = (e: unknown): ActionResult => ({ ok: false, message: errorText(e) });
 
 /* ───────── Importar base de candidatos ───────── */
 export async function importCandidates(waveId: string, csvText: string): Promise<ActionResult> {
@@ -223,7 +224,7 @@ export async function reviewRescue(waveId: string, candidateId: string, input: {
     revalidatePath(`/admin/admision/${waveId}/c/${candidateId}`);
     return { ok: true, message: "Revisión del video guardada. Registra ahora la decisión en la lista de candidatos." };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }
 

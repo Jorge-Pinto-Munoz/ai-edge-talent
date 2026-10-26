@@ -6,6 +6,7 @@ import { getViewer, myStaffWaves, type Viewer, SESSION_EXPIRED } from "@/lib/adm
 import { advanceGate, safeFileName, type Layer } from "@/lib/journey/rules";
 import { LAB_DECISIONS, LAB_STATUS, type LabDecision, type LabMode, type LabStatus } from "./rules";
 import { syncMany } from "@/lib/journey/closure-sync";
+import { errorText } from "@/lib/text/errors";
 
 /** Integrantes de un proyecto: al presentarse en el Showcase se habilita su pulso de cierre. */
 async function syncProject(projectId: string, actor: string) {
@@ -14,7 +15,7 @@ async function syncProject(projectId: string, actor: string) {
 }
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
-const fail = (e: unknown): Result<never> => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
+const fail = (e: unknown): Result<never> => ({ ok: false, message: errorText(e) });
 const MAX_LAB_MB = 100;
 
 /** Admin, o líder del Hub AI asignado a esta Wave. */

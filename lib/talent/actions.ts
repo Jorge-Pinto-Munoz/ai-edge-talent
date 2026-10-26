@@ -4,9 +4,10 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admission/auth";
 import { followUpDates, parseHistoricalCsv, specialtyFamily, type ServiceStatus } from "./rules";
+import { errorText } from "@/lib/text/errors";
 
 export type TalentResult = { ok: boolean; message: string; details?: string[] };
-const fail = (e: unknown): TalentResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
+const fail = (e: unknown): TalentResult => ({ ok: false, message: errorText(e) });
 
 export async function updateServiceStatus(talentId: string, status: ServiceStatus, since: string, reason: string): Promise<TalentResult> {
   try {

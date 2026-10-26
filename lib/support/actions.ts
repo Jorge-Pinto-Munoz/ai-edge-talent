@@ -7,6 +7,7 @@ import { getViewer, requireRole } from "@/lib/admission/auth";
 import { sendEmail } from "@/lib/email/send";
 import { env } from "@/lib/supabase/env";
 import { SUPPORT_TOPICS } from "@/lib/data/help";
+import { errorText } from "@/lib/text/errors";
 
 export type SupportResult = { ok: boolean; message: string };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -72,6 +73,6 @@ export async function setSupportStatus(id: string, status: "OPEN" | "RESOLVED"):
     revalidatePath("/admin/soporte");
     return { ok: true, message: status === "RESOLVED" ? "Marcada como resuelta." : "Reabierta." };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseUser } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admission/auth";
 import type { AiCertCourse } from "./progress";
+import { errorText } from "@/lib/text/errors";
 
 export type Result = { ok: boolean; message: string };
 export interface AiCertInput {
@@ -46,6 +47,6 @@ export async function saveAiCertProgress(input: AiCertInput): Promise<Result> {
     revalidatePath(`/admin/pulsos/${input.waveId}`);
     return { ok: true, message: "Avance guardado." };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }

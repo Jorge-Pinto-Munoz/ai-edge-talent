@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { homologate, orgKey, prettyName } from "@/lib/text/org";
+import { errorText, normalizeYmd } from "@/lib/text/errors";
 
 describe("homologar clientes", () => {
   it("misma clave aunque se escriban distinto", () => {
@@ -16,5 +17,20 @@ describe("homologar clientes", () => {
   it("capitaliza textos en minúscula o mayúscula", () => {
     expect(prettyName("analista de calidad")).toBe("Analista de Calidad");
     expect(prettyName("Analista QA")).toBe("Analista QA");
+  });
+});
+
+describe("fechas y errores legibles", () => {
+  it("normaliza el plazo escrito de varias formas", () => {
+    expect(normalizeYmd("2026-10.30")).toBe("2026-10-30");
+    expect(normalizeYmd("2026/10/30")).toBe("2026-10-30");
+    expect(normalizeYmd("30-10-2026")).toBe("2026-10-30");
+    expect(normalizeYmd("2026-02-30")).toBeNull();
+    expect(normalizeYmd("mañana")).toBeNull();
+  });
+  it("muestra el mensaje de errores de Supabase (objetos, no Error)", () => {
+    expect(errorText({ message: "invalid input syntax for type date" })).toBe("invalid input syntax for type date");
+    expect(errorText(new Error("x"))).toBe("x");
+    expect(errorText({})).toBe("Ocurrió un error inesperado.");
   });
 });

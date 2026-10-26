@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/admission/auth";
 import { supabaseService } from "@/lib/supabase/server";
 import { PUBLIC_STAGES } from "@/lib/data/site";
 import { PUBLIC_VIDEOS_KEY, publicStageVideos } from "./stage-videos";
+import { errorText } from "@/lib/text/errors";
 
 /** Guarda (o quita, con enlace vacío) el video público de una etapa del sitio. Solo admin. */
 export async function savePublicStageVideo(slug: string, url: string): Promise<{ ok: boolean; message: string }> {
@@ -22,6 +23,6 @@ export async function savePublicStageVideo(slug: string, url: string): Promise<{
     revalidatePath(`/programa/${slug}`);
     return { ok: true, message: link ? "Video guardado: ya se ve en la página pública de la etapa." : "Video quitado de la página pública." };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    return { ok: false, message: errorText(e) };
   }
 }

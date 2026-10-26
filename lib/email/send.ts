@@ -1,6 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { emailConfig, routeMessage } from "./provider";
+import { errorText } from "@/lib/text/errors";
 
 /**
  * Envía un correo con el proveedor configurado (SMTP de iCloud, o Resend por API REST). Las credenciales
@@ -31,6 +32,6 @@ export async function sendEmail(to: string | string[], subject: string, text: st
     if (!res.ok) return { id: null, error: `Resend ${res.status}: ${body.message ?? body.name ?? "error"}` };
     return { id: body.id ?? null, error: null };
   } catch (e) {
-    return { id: null, error: e instanceof Error ? e.message : String(e) };
+    return { id: null, error: errorText(e) };
   }
 }

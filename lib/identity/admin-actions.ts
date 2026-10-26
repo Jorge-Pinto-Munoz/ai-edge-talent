@@ -7,11 +7,12 @@ import { LAYERS, type Layer } from "@/lib/journey/rules";
 import { CODE_TTL, audit, ensureAccount, issueCode, portalLink, revokeSessions, sendIdentityEmail, setAuthBan } from "./service";
 import { normalizePhone } from "./phone";
 import { CREATABLE_ROLES, ROLE_LABEL, isRole, type CreatableRole, type Role } from "./roles";
+import { errorText } from "@/lib/text/errors";
 
 export type AdminResult = { ok: boolean; message: string; devCode?: string };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const dev = () => process.env.NODE_ENV !== "production";
-const fail = (e: unknown): AdminResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
+const fail = (e: unknown): AdminResult => ({ ok: false, message: errorText(e) });
 /** Mensaje legible si la base rechaza el cambio (cuenta principal, última cuenta admin). */
 const dbCheck = (error: { message: string } | null) => {
   if (error) throw new Error(/administración|principal|autorizado/i.test(error.message) ? error.message : "No pudimos guardar el cambio.");
