@@ -323,3 +323,4 @@
   .dl-name { white-space: normal; overflow-wrap: anywhere; }
   .mod-steps > li { padding-left: 36px; }
 }
+.jr-preview-warn { display: block; margin-top: 6px; color: var(--warn-text); }

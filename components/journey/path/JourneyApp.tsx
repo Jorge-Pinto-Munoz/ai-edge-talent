@@ -93,7 +93,7 @@ export function JourneyApp({ v }: { v: JourneyView }) {
         <div className="jr-preview" role="note">
           <Icon name="user" size={18} />
           <span>{v.preview.demo ? <><strong>Cuenta de demostración</strong> · datos ficticios. Puedes recorrer todo; los envíos están desactivados.</> : <><strong>Vista de admin</strong> · así ve su journey {v.preview.label}. Puedes recorrer todo; los envíos están desactivados.</>}</span>
-        </div>
+        {v.preview.hiddenNote && <strong className="jr-preview-warn"> {v.preview.hiddenNote}</strong>}</div>
       )}
       <JourneyHero v={v} />
 

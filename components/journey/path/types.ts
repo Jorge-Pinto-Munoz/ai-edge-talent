@@ -42,7 +42,7 @@ export interface JourneyView {
   failedCerts: number;
   certStat: CertStat | null;
   /** Vista previa del admin: se ve igual, sin poder enviar nada. */
-  preview?: { label: string; demo?: boolean } | null;
+  preview?: { label: string; demo?: boolean; hiddenNote?: string } | null;
   submissions: { id: string; capsuleId: string; capsuleTitle: string; attempt: number; status: string; feedback: string | null; files: { name: string; path: string; size: number }[]; submittedAt: string }[];
   /** Tareas de la etapa actual sin entrega o con la última no aprobada (se entregan dentro de su cápsula). */
   pendingTasks: { capsuleId: string; title: string; required: boolean; due: string | null }[];

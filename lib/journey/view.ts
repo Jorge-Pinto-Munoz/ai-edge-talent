@@ -17,6 +17,13 @@ type Journey = NonNullable<Awaited<ReturnType<typeof myJourney>>>;
 
 /** Arma la vista del portal del profesional (la misma para el profesional y para la vista previa del admin). */
 export async function buildJourneyView(j: Journey, viewerId: string, preview: JourneyView["preview"] = null): Promise<JourneyView> {
+  // La vista previa del admin lee con la llave del servidor (sin RLS): ocultamos lo mismo que la base le oculta al
+  // profesional. Si AI First Mindset no está abierta para su Wave, no ve esas cápsulas.
+  if (preview && !(await stageOpen(j.candidate.wave_id, "AI_MINDSET"))) {
+    const hidden = j.capsules.filter((c) => c.layer === "AI_MINDSET" && c.published).length;
+    j = { ...j, capsules: j.capsules.filter((c) => c.layer !== "AI_MINDSET") };
+    if (hidden) preview = { ...preview, hiddenNote: `${hidden} cápsula(s) de AI First Mindset no se le muestran: la etapa aún no está abierta para su Wave. Ábrela en Journey → AI First Mindset.` };
+  }
   const path = buildJourneyPath({
     layer: j.candidate.journey_layer,
     capsules: j.capsules,
@@ -198,4 +205,9 @@ function moduleView(c: Journey["capsules"][number], j: Journey): ModuleView {
     hasVideo: Boolean(c.video_url || c.video_path),
     feedback: last?.feedback ?? null,
   };
+}
+
+async function stageOpen(waveId: string, layer: Layer): Promise<boolean> {
+  const { data } = await supabaseService().from("wave_stage_openings").select("opens_at").eq("wave_id", waveId).eq("layer", layer).maybeSingle();
+  return Boolean(data?.opens_at && new Date(data.opens_at).getTime() <= Date.now());
 }
