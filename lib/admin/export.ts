@@ -5,6 +5,7 @@ import { DIMENSIONS, LEVEL_LABEL, PL_LABEL, RUBRIC_VERSION, type Level, type PlR
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { RESCUE_CRITERIA } from "@/lib/admission/rescue";
 import { homologate } from "@/lib/text/org";
+import { deliveryState, type DeliveryState } from "@/lib/journey/delivery-status";
 
 type DimScore = { score: number; evidence: string; justification: string };
 type Q = { id: string; prompt: string };
@@ -92,7 +93,7 @@ const OBSIDIAN = "FF080B10";
 const CYAN = "FF3DC9D4";
 const LEVEL_FILL: Record<string, string> = { A: "FFB2D5AD", B: "FFDFF1F3", C: "FFFFF3DB", D: "FFFFE9E7" };
 
-function header(ws: ExcelJS.Worksheet, title: string, subtitle: string, cols: { header: string; width: number }[]) {
+export function header(ws: ExcelJS.Worksheet, title: string, subtitle: string, cols: { header: string; width: number }[]) {
   ws.addRow([title]).font = { bold: true, size: 16, color: { argb: OBSIDIAN } };
   ws.addRow([subtitle]).font = { italic: true, color: { argb: "FF4B5763" } };
   ws.addRow([]);
@@ -108,7 +109,7 @@ function header(ws: ExcelJS.Worksheet, title: string, subtitle: string, cols: { 
   ws.views = [{ state: "frozen", ySplit: 4 }];
 }
 
-function wrapRow(row: ExcelJS.Row) {
+export function wrapRow(row: ExcelJS.Row) {
   row.eachCell((cell) => (cell.alignment = { vertical: "top", wrapText: true }));
 }
 
@@ -271,4 +272,72 @@ export async function buildContactWorkbook(waveId: string): Promise<{ buffer: Bu
   const buffer = Buffer.from(await wb.xlsx.writeBuffer());
   const slug = waveName.normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_|_$/g, "");
   return { buffer, filename: `AET_Contactos_${slug}_${stamp}.xlsx` };
+}
+
+/**
+ * Reporte de entregas de una etapa: una fila por persona inscrita en la Wave con su estado, puntaje y feedback.
+ * El feedback es el enviado por quien revisó; si aún no se revisa, la propuesta de la IA marcada como borrador. Solo admin.
+ */
+export async function buildDeliveriesWorkbook(waveId: string, layer: string, stageName: string): Promise<{ buffer: Buffer; filename: string }> {
+  const svc = supabaseService();
+  const { data: wave } = await svc.from("waves").select("name").eq("id", waveId).single();
+  const { data: people } = await svc.from("candidates").select("id, full_name, corporate_email, client_name, role_title, delivery_owner").eq("wave_id", waveId).in("status", ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"]).order("full_name");
+  const { data: tasks } = await svc.from("capsules").select("id, task_required").eq("wave_id", waveId).eq("layer", layer).eq("published", true).not("task_prompt", "is", null);
+  const taskIds = (tasks ?? []).map((t) => t.id);
+  const required = (tasks ?? []).filter((t) => t.task_required).map((t) => t.id);
+  const ids = (people ?? []).map((p) => p.id);
+  const { data: subs } = ids.length && taskIds.length
+    ? await svc.from("submissions").select("id, candidate_id, capsule_id, attempt, status, score, feedback, submitted_at, reviewed_at, capsules(title), submission_ai_reviews(status, score, feedback)").in("candidate_id", ids).in("capsule_id", taskIds)
+    : { data: [] as never[] };
+  const list = people ?? [];
+  const showClient = homologate(list.map((c) => c.client_name));
+  const showRole = homologate(list.map((c) => c.role_title));
+  const STATE: Record<DeliveryState, string> = { approved: "Aprobado", not_approved: "Insuficiente (no cumple)", pending: "Entregado · por revisar", missing: "No entregado" };
+  const rows = list.map((p) => {
+    const mine = (subs ?? []).filter((s) => s.candidate_id === p.id);
+    const last = [...mine].sort((a, b) => b.attempt - a.attempt || String(b.submitted_at).localeCompare(String(a.submitted_at)))[0];
+    const ai = last ? ([last.submission_ai_reviews].flat()[0] as { status: string; score: number | null; feedback: string | null } | undefined) : undefined;
+    const reviewed = Boolean(last?.reviewed_at && (last.status === "APPROVED" || last.status === "NOT_APPROVED"));
+    const feedback = last?.feedback?.trim() ? last.feedback : ai?.status === "done" && ai.feedback ? ai.feedback : "";
+    const source = !last ? "" : last.feedback?.trim() ? (reviewed ? "Enviado al profesional" : "Borrador de quien revisa") : ai?.status === "done" ? "Propuesta IA (no enviada)" : "";
+    const score = last?.score != null ? Number(last.score) : ai?.status === "done" && ai.score != null ? Number(ai.score) : null;
+    return {
+      name: p.full_name,
+      email: p.corporate_email,
+      client: showClient(p.client_name) ?? "",
+      role: showRole(p.role_title) ?? "",
+      delivery: p.delivery_owner ?? "Sin asignar",
+      state: STATE[deliveryState(mine, required)],
+      module: last ? (last.capsules as unknown as { title: string } | null)?.title ?? "" : "",
+      attempt: last?.attempt ?? "",
+      submitted: last?.submitted_at ? String(last.submitted_at).slice(0, 10) : "",
+      score: score ?? "",
+      feedback,
+      source,
+    };
+  });
+  const order = ["No entregado", "Insuficiente (no cumple)", "Entregado · por revisar", "Aprobado"];
+  rows.sort((a, b) => order.indexOf(a.state) - order.indexOf(b.state) || a.name.localeCompare(b.name, "es"));
+
+  const waveName = wave?.name ?? waveId;
+  const stamp = new Date().toISOString().slice(0, 10);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "AET Platform";
+  wb.created = new Date();
+  const ws = wb.addWorksheet("Entregas");
+  header(ws, `AI EDGE TALENT — ENTREGAS ${stageName.toUpperCase()} · ${waveName}`, `${stamp} · Uso interno · La decisión es humana; «Propuesta IA (no enviada)» es un borrador sin revisar`, [
+    { header: "Nombre", width: 28 }, { header: "Correo", width: 30 }, { header: "Cliente", width: 18 }, { header: "Rol", width: 22 }, { header: "Delivery", width: 20 },
+    { header: "Estado", width: 22 }, { header: "Módulo", width: 26 }, { header: "Intento", width: 8 }, { header: "Fecha entrega", width: 12 }, { header: "Puntaje", width: 9 },
+    { header: "Feedback de la entrega", width: 70 }, { header: "Origen del feedback", width: 22 },
+  ]);
+  const FILL: Record<string, string> = { Aprobado: "FFDDF1E2", "Insuficiente (no cumple)": "FFFFF3DB", "Entregado · por revisar": "FFDFF1F3", "No entregado": "FFFFE9E7" };
+  for (const r of rows) {
+    const row = ws.addRow([r.name, r.email, r.client, r.role, r.delivery, r.state, r.module, r.attempt, r.submitted, r.score, r.feedback, r.source]);
+    wrapRow(row);
+    row.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: FILL[r.state] } };
+  }
+  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: 12 } };
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  const slug = `${stageName}_${waveName}`.normalize("NFD").replace(/[^\w]+/g, "_").replace(/^_|_$/g, "");
+  return { buffer, filename: `AET_Entregas_${slug}_${stamp}.xlsx` };
 }

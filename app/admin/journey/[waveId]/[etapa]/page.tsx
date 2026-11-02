@@ -157,6 +157,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         const mine = (subs ?? []).filter((s) => (s.capsules as unknown as { layer: string } | null)?.layer === stage.layer);
         const { data: tasks } = await db.from("capsules").select("id, task_required").eq("wave_id", waveId).eq("layer", stage.layer).eq("published", true).not("task_prompt", "is", null);
         return <>
+          {isAdmin && <div className="row" style={{ justifyContent: "flex-end" }}><a className="btn small ghost" href={`${base}/exportar-entregas`} download>Descargar reporte (Excel)</a></div>}
           <WaveDeliveryBoard people={enrolled ?? []} subs={mine as never} required={(tasks ?? []).filter((t) => t.task_required).map((t) => t.id)} />
           <ReviewQueue kind="submissions" waveId={waveId} isAdmin={isAdmin} items={mine.map((s) => ({ ...s, person: nameOf(s.candidate_id), ai: [s.submission_ai_reviews].flat()[0] ?? null })) as never} />
         </>;
