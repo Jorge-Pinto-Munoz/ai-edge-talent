@@ -15,6 +15,8 @@ import { notifyStageOpen } from "@/lib/journey/opening";
 
 export const metadata = { title: "Mi journey · AI Edge Talent" };
 export const dynamic = "force-dynamic";
+// Margen para las revisiones con IA que corren en segundo plano (after) tras una entrega o al pedirlas.
+export const maxDuration = 300;
 
 export default async function MiJourney() {
   const viewer = await getViewer();

@@ -20,6 +20,8 @@ import { StageOpeningPanel } from "@/components/journey-admin/StageOpeningPanel"
 import { mindsetOpening, notifyStageOpen } from "@/lib/journey/opening";
 
 export const dynamic = "force-dynamic";
+// Margen para las revisiones con IA que corren en segundo plano (after) tras una entrega o al pedirlas.
+export const maxDuration = 300;
 
 export async function generateMetadata({ params }: { params: Promise<{ etapa: string }> }) {
   return { title: `${stageBySlug((await params).etapa)?.name ?? "Etapa"} · Journey · Portal AET` };
@@ -149,10 +151,10 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
 
       {tab.key === "entregas" && (await (async () => {
         const { data: subs } = ids.length
-          ? await db.from("submissions").select("id, candidate_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts)").in("candidate_id", ids).order("submitted_at", { ascending: false })
+          ? await db.from("submissions").select("id, candidate_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts), submission_ai_reviews(status, score, threshold, verdict, criteria, strengths, improvements, feedback, internal_note, error, updated_at)").in("candidate_id", ids).order("submitted_at", { ascending: false })
           : { data: [] };
         const mine = (subs ?? []).filter((s) => (s.capsules as unknown as { layer: string } | null)?.layer === stage.layer);
-        return <ReviewQueue kind="submissions" items={mine.map((s) => ({ ...s, person: nameOf(s.candidate_id) })) as never} />;
+        return <ReviewQueue kind="submissions" waveId={waveId} isAdmin={isAdmin} items={mine.map((s) => ({ ...s, person: nameOf(s.candidate_id), ai: [s.submission_ai_reviews].flat()[0] ?? null })) as never} />;
       })())}
 
       {tab.key === "aicert" && (await (async () => {

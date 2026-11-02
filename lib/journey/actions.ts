@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "next/server";
+import { aiConfigured } from "@/lib/ai/client";
+import { aiReviewSubmission } from "./ai-review";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
@@ -121,14 +124,16 @@ export async function submitTask(capsuleId: string, textAnswer: string, files: {
     const { data: prev } = await db.from("submissions").select("status").eq("candidate_id", candidate.id).eq("capsule_id", capsuleId).order("attempt");
     const gate = submissionGate((prev ?? []).map((p) => p.status as SubmissionStatus), cap.max_attempts);
     if (!gate.allowed) throw new Error(gate.reason);
-    const { error } = await supabaseService().from("submissions").insert({
+    const { data: created, error } = await supabaseService().from("submissions").insert({
       candidate_id: candidate.id,
       capsule_id: capsuleId,
       attempt: gate.nextAttempt,
       text_answer: textAnswer.trim() || null,
       files,
-    });
+    }).select("id").single();
     if (error) throw error;
+    // Propuesta de revisión con IA en segundo plano (borrador para quien revisa; no cambia el estado).
+    if (aiConfigured()) after(() => aiReviewSubmission(created.id).then(() => undefined, (e) => console.error("[revisión IA]", errorText(e))));
     revalidatePath("/mi-journey");
     return { ok: true, message: "Entrega recibida. Te avisaremos cuando esté revisada." };
   } catch (e) {

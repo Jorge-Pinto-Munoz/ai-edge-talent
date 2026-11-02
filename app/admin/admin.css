@@ -586,3 +586,14 @@
 .admin-main input[type="checkbox"] { width: 20px; height: 20px; }
 .admin-main .eyebrow a { display: inline-flex; align-items: center; min-height: 32px; }
 @media (max-width: 420px) { .admin-mbar-here { display: none; } .admin-mbar { grid-template-columns: auto 1fr auto; } .admin-mbar-btn { grid-column: 3; } }
+/* Revisión con IA de entregas */
+.ai-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+@media (max-width: 640px) { .ai-bar { grid-template-columns: 1fr; } }
+.ai-panel { margin: 10px 0; padding: 12px 14px; border-radius: 12px; background: var(--info-soft, var(--surface-2)); }
+.ai-panel.bad { background: var(--bad-soft); }
+.ai-panel summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; cursor: pointer; }
+.ai-score { font-size: 1.4rem; font-weight: 800; }
+.ai-score small { font-size: 0.8rem; color: var(--muted); }
+.ai-criteria { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.ai-note { margin: 10px 0 0; font-size: 0.92rem; }
+.ai-draft-note { margin: 0 0 8px; font-size: 0.86rem; color: var(--brand); font-weight: 600; }

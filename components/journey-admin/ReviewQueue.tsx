@@ -2,14 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { reviewCertification, reviewSubmission } from "@/lib/journey/actions";
+import { generateAiReviews, regenerateAiReview } from "@/lib/journey/ai-review-actions";
+import { useRouter } from "next/navigation";
 import { SignedLink } from "@/components/journey/SignedLink";
 import { Callout, fmtDate, fmtYmd } from "@/components/ui";
 import { layerName, type Layer } from "@/lib/journey/rules";
 
-type Sub = { id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
+type AiReview = { status: "pending" | "done" | "error"; score: number | null; threshold: number | null; verdict: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW" | null; criteria: { criterion: string; met: "si" | "parcial" | "no"; evidence: string }[]; strengths: string[]; improvements: string[]; feedback: string | null; internal_note: string | null; error: string | null; updated_at: string };
+const VERDICT: Record<string, string> = { APPROVED: "Aprobar", NOT_APPROVED: "No aprobada", HUMAN_REVIEW: "Revisión humana" };
+const MET: Record<string, [string, string]> = { si: ["ok", "Cumple"], parcial: ["warn", "Parcial"], no: ["bad", "No cumple"] };
+type Sub = { ai: AiReview | null; id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
 type Cert = { id: string; person: string; attempt: number; result: string; status: string; file_path: string | null; credential_url: string | null; issued_on: string | null; review_note: string | null; created_at: string };
 
-export function ReviewQueue({ kind, items }: { kind: "submissions" | "certifications"; items: (Sub | Cert)[] }) {
+export function ReviewQueue({ kind, items, waveId, isAdmin = false }: { kind: "submissions" | "certifications"; items: (Sub | Cert)[]; waveId?: string; isAdmin?: boolean }) {
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [notice, setNotice] = useState<string | null>(null);
   const pendingStatuses = kind === "submissions" ? ["SUBMITTED", "HUMAN_REVIEW"] : ["PENDING_REVIEW"];
@@ -20,6 +25,7 @@ export function ReviewQueue({ kind, items }: { kind: "submissions" | "certificat
         <button className={`btn small ${filter === "pending" ? "" : "ghost"}`} onClick={() => setFilter("pending")}>Por revisar ({items.filter((i) => pendingStatuses.includes(i.status)).length})</button>
         <button className={`btn small ${filter === "all" ? "" : "ghost"}`} onClick={() => setFilter("all")}>Todas</button>
       </div>
+      {kind === "submissions" && isAdmin && waveId && <AiBar waveId={waveId} subs={items as Sub[]} />}
       {notice && <Callout tone="ok" title={notice} />}
       {shown.length === 0 && <p className="muted">Nada por revisar.</p>}
       {shown.map((i) => (kind === "submissions" ? <SubmissionCard key={i.id} s={i as Sub} onDone={setNotice} /> : <CertCard key={i.id} c={i as Cert} onDone={setNotice} />))}
@@ -28,8 +34,10 @@ export function ReviewQueue({ kind, items }: { kind: "submissions" | "certificat
 }
 
 function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) {
-  const [score, setScore] = useState(s.score?.toString() ?? "");
-  const [fb, setFb] = useState(s.feedback ?? "");
+  // Sin revisión humana aún: los campos parten con la propuesta de la IA, para editar y enviar.
+  const draft = s.ai?.status === "done" && s.score === null && !s.feedback ? s.ai : null;
+  const [score, setScore] = useState(s.score?.toString() ?? (draft?.score != null ? String(Math.round(draft.score)) : ""));
+  const [fb, setFb] = useState(s.feedback ?? draft?.feedback ?? "");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const act = (status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW") =>
@@ -46,6 +54,8 @@ function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) 
       </div>
       {s.text_answer && <p style={{ whiteSpace: "pre-wrap" }}>{s.text_answer}</p>}
       {s.files.length > 0 && <ul>{s.files.map((f) => <li key={f.path}><SignedLink bucket="submissions" path={f.path}>{f.name}</SignedLink></li>)}</ul>}
+      <AiPanel s={s} />
+      {draft && <p className="ai-draft-note">Puntaje y feedback precargados con la propuesta de la IA: revísalos, edítalos si quieres y elige la decisión. Nada se envía hasta que tú lo decides.</p>}
       <div className="grid grid-3">
         <div className="field"><label htmlFor={`sc-${s.id}`}>Puntaje (0–100, opcional)</label><input id={`sc-${s.id}`} type="text" inputMode="numeric" value={score} onChange={(e) => setScore(e.target.value.replace(/[^0-9.]/g, ""))} /></div>
       </div>
@@ -85,5 +95,60 @@ function CertCard({ c, onDone }: { c: Cert; onDone: (m: string) => void }) {
       </div>
       {msg && <div style={{ marginTop: 8 }}><Callout tone="bad" title={msg} /></div>}
     </div>
+  );
+}
+
+function AiBar({ waveId, subs }: { waveId: string; subs: Sub[] }) {
+  const pending = subs.filter((s) => ["SUBMITTED", "HUMAN_REVIEW"].includes(s.status));
+  const missing = pending.filter((s) => !s.ai || s.ai.status === "error").length;
+  const running = pending.filter((s) => s.ai?.status === "pending").length;
+  const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
+  const [busy, start] = useTransition();
+  const router = useRouter();
+  return (
+    <div className="ai-bar">
+      <div>
+        <strong>Revisión con IA (Claude)</strong>
+        <small className="muted">
+          {" "}· {pending.length - missing - running} de {pending.length} entregas por revisar tienen propuesta{running ? ` · ${running} en proceso` : ""}. La IA propone puntaje y feedback; la decisión es tuya.
+        </small>
+      </div>
+      <div className="row">
+        {missing > 0 && <button type="button" className="btn small" disabled={busy} onClick={() => start(async () => { setMsg(await generateAiReviews(waveId)); router.refresh(); })}>{busy ? "Enviando a Claude…" : `Generar propuestas (${missing})`}</button>}
+        {running > 0 && <button type="button" className="btn small ghost" onClick={() => router.refresh()}>Actualizar</button>}
+      </div>
+      {msg && <div style={{ gridColumn: "1 / -1" }}><Callout tone={msg.ok ? "ok" : "bad"} title={msg.message} /></div>}
+    </div>
+  );
+}
+
+function AiPanel({ s }: { s: Sub }) {
+  const [busy, start] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  const router = useRouter();
+  const ai = s.ai;
+  const redo = <button type="button" className="link-btn" disabled={busy} onClick={() => start(async () => { const r = await regenerateAiReview(s.id); if (!r.ok) setErr(r.message); router.refresh(); })}>{busy ? "Revisando con Claude…" : ai ? "Volver a generar" : "Generar propuesta"}</button>;
+  if (!ai) return <div className="ai-panel muted"><small>Sin propuesta de la IA todavía. </small>{redo}</div>;
+  if (ai.status === "pending") return <div className="ai-panel"><small>Claude está revisando esta entrega… actualiza en un momento.</small></div>;
+  if (ai.status === "error") return <div className="ai-panel bad"><small>La revisión con IA falló: {ai.error} </small>{redo}{err && <small className="error"> {err}</small>}</div>;
+  return (
+    <details className="ai-panel" open>
+      <summary>
+        <strong>Propuesta de la IA</strong> <small className="muted">· no es una decisión</small>
+        <span className="ai-score">{ai.score != null ? Math.round(ai.score) : "—"}<small>/100</small></span>
+        {ai.verdict && <span className={`badge ${ai.verdict === "APPROVED" ? "ok" : ai.verdict === "NOT_APPROVED" ? "warn" : ""}`}>Sugiere: {VERDICT[ai.verdict]}</span>}
+        {ai.threshold != null && <small className="muted">umbral {ai.threshold}</small>}
+      </summary>
+      {ai.criteria.length > 0 && (
+        <ul className="ai-criteria">
+          {ai.criteria.map((c, i) => (
+            <li key={i}><span className={`badge ${MET[c.met][0]}`}>{MET[c.met][1]}</span> <strong>{c.criterion}</strong><br /><small className="muted">{c.evidence}</small></li>
+          ))}
+        </ul>
+      )}
+      {ai.internal_note && <p className="ai-note"><strong>Nota para quien revisa:</strong> {ai.internal_note}</p>}
+      <div className="row">{redo}</div>
+      {err && <small className="error">{err}</small>}
+    </details>
   );
 }
