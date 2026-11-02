@@ -9,6 +9,7 @@ import { waveReport } from "@/lib/pulse/report";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { ParticipantsBoard } from "@/components/journey-admin/ParticipantsBoard";
 import { ReviewQueue } from "@/components/journey-admin/ReviewQueue";
+import { WaveDeliveryBoard } from "@/components/journey-admin/WaveDeliveryBoard";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ClassesWorkspace } from "@/components/teacher/ClassesWorkspace";
 import { LabWorkspace } from "@/components/hub/LabWorkspace";
@@ -151,10 +152,14 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
 
       {tab.key === "entregas" && (await (async () => {
         const { data: subs } = ids.length
-          ? await db.from("submissions").select("id, candidate_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts), submission_ai_reviews(status, score, threshold, verdict, criteria, strengths, improvements, feedback, internal_note, error, updated_at)").in("candidate_id", ids).order("submitted_at", { ascending: false })
+          ? await db.from("submissions").select("id, candidate_id, capsule_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts), submission_ai_reviews(status, score, threshold, verdict, criteria, strengths, improvements, feedback, internal_note, error, updated_at)").in("candidate_id", ids).order("submitted_at", { ascending: false })
           : { data: [] };
         const mine = (subs ?? []).filter((s) => (s.capsules as unknown as { layer: string } | null)?.layer === stage.layer);
-        return <ReviewQueue kind="submissions" waveId={waveId} isAdmin={isAdmin} items={mine.map((s) => ({ ...s, person: nameOf(s.candidate_id), ai: [s.submission_ai_reviews].flat()[0] ?? null })) as never} />;
+        const { data: tasks } = await db.from("capsules").select("id, task_required").eq("wave_id", waveId).eq("layer", stage.layer).eq("published", true).not("task_prompt", "is", null);
+        return <>
+          <WaveDeliveryBoard people={enrolled ?? []} subs={mine as never} required={(tasks ?? []).filter((t) => t.task_required).map((t) => t.id)} />
+          <ReviewQueue kind="submissions" waveId={waveId} isAdmin={isAdmin} items={mine.map((s) => ({ ...s, person: nameOf(s.candidate_id), ai: [s.submission_ai_reviews].flat()[0] ?? null })) as never} />
+        </>;
       })())}
 
       {tab.key === "aicert" && (await (async () => {

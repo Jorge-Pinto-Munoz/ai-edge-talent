@@ -47,14 +47,14 @@ function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) 
       else setMsg(r.message);
     });
   return (
-    <div className="card">
+    <div className="card" id={`sub-${s.id}`} style={{ scrollMarginTop: 140 }}>
       <div className="spread">
         <strong>{s.person} · {s.capsules.title}</strong>
         <small className="muted">{layerName(s.capsules.layer)} · intento {s.attempt}{s.capsules.max_attempts ? ` de ${s.capsules.max_attempts}` : ""} · {fmtDate(s.submitted_at)}</small>
       </div>
       {s.text_answer && <p style={{ whiteSpace: "pre-wrap" }}>{s.text_answer}</p>}
       {s.files.length > 0 && <ul>{s.files.map((f) => <li key={f.path}><SignedLink bucket="submissions" path={f.path}>{f.name}</SignedLink></li>)}</ul>}
-      <AiPanel s={s} />
+      <AiPanel s={s} onUse={(text, sc) => { setFb(text); if (sc != null) setScore(String(Math.round(sc))); }} />
       {draft && <p className="ai-draft-note">Puntaje y feedback precargados con la propuesta de la IA: revísalos, edítalos si quieres y elige la decisión. Nada se envía hasta que tú lo decides.</p>}
       <div className="grid grid-3">
         <div className="field"><label htmlFor={`sc-${s.id}`}>Puntaje (0–100, opcional)</label><input id={`sc-${s.id}`} type="text" inputMode="numeric" value={score} onChange={(e) => setScore(e.target.value.replace(/[^0-9.]/g, ""))} /></div>
@@ -122,33 +122,47 @@ function AiBar({ waveId, subs }: { waveId: string; subs: Sub[] }) {
   );
 }
 
-function AiPanel({ s }: { s: Sub }) {
+function AiPanel({ s, onUse }: { s: Sub; onUse: (feedback: string, score: number | null) => void }) {
   const [busy, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
   const ai = s.ai;
   const redo = <button type="button" className="link-btn" disabled={busy} onClick={() => start(async () => { const r = await regenerateAiReview(s.id); if (!r.ok) setErr(r.message); router.refresh(); })}>{busy ? "Revisando con Claude…" : ai ? "Volver a generar" : "Generar propuesta"}</button>;
   if (!ai) return <div className="ai-panel muted"><small>Sin propuesta de la IA todavía. </small>{redo}</div>;
   if (ai.status === "pending") return <div className="ai-panel"><small>Claude está revisando esta entrega… actualiza en un momento.</small></div>;
   if (ai.status === "error") return <div className="ai-panel bad"><small>La revisión con IA falló: {ai.error} </small>{redo}{err && <small className="error"> {err}</small>}</div>;
+  const n = (k: "si" | "parcial" | "no") => ai.criteria.filter((c) => c.met === k).length;
   return (
-    <details className="ai-panel" open>
-      <summary>
+    <div className="ai-panel">
+      <div className="ai-head">
         <strong>Propuesta de la IA</strong> <small className="muted">· no es una decisión</small>
         <span className="ai-score">{ai.score != null ? Math.round(ai.score) : "—"}<small>/100</small></span>
-        {ai.verdict && <span className={`badge ${ai.verdict === "APPROVED" ? "ok" : ai.verdict === "NOT_APPROVED" ? "warn" : ""}`}>Sugiere: {VERDICT[ai.verdict]}</span>}
-        {ai.threshold != null && <small className="muted">umbral {ai.threshold}</small>}
-      </summary>
-      {ai.criteria.length > 0 && (
-        <ul className="ai-criteria">
-          {ai.criteria.map((c, i) => (
-            <li key={i}><span className={`badge ${MET[c.met][0]}`}>{MET[c.met][1]}</span> <strong>{c.criterion}</strong><br /><small className="muted">{c.evidence}</small></li>
-          ))}
-        </ul>
+        {ai.verdict && <span className={`badge ${ai.verdict === "APPROVED" ? "ok" : ai.verdict === "NOT_APPROVED" ? "warn" : ""}`}>{ai.verdict === "APPROVED" ? "Aprobado" : ai.verdict === "NOT_APPROVED" ? "No cumple" : "Revisión humana"}</span>}
+        {ai.threshold != null && <small className="muted">mínimo {ai.threshold}</small>}
+      </div>
+      {ai.feedback && (
+        <>
+          <p className="ai-fb">{ai.feedback}</p>
+          <div className="row" style={{ marginTop: 8 }}>
+            <button type="button" className="btn small" onClick={() => onUse(ai.feedback!, ai.score)}>Usar en el feedback</button>
+            <button type="button" className="btn small ghost" onClick={async () => { try { await navigator.clipboard.writeText(ai.feedback!); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setErr("No se pudo copiar: selecciona el texto y cópialo."); } }}>{copied ? "Copiado ✓" : "Copiar texto"}</button>
+          </div>
+        </>
       )}
-      {ai.internal_note && <p className="ai-note"><strong>Nota para quien revisa:</strong> {ai.internal_note}</p>}
-      <div className="row">{redo}</div>
+      {ai.criteria.length > 0 && (
+        <details className="ai-crit">
+          <summary>Ver los {ai.criteria.length} criterios · {n("si")} cumple{n("parcial") ? ` · ${n("parcial")} parcial` : ""}{n("no") ? ` · ${n("no")} no cumple` : ""}</summary>
+          <ul className="ai-criteria">
+            {ai.criteria.map((c, i) => (
+              <li key={i}><span className={`badge ${MET[c.met][0]}`}>{MET[c.met][1]}</span> <strong>{c.criterion}</strong><br /><small className="muted">{c.evidence}</small></li>
+            ))}
+          </ul>
+          {ai.internal_note && <p className="ai-note"><strong>Nota para quien revisa:</strong> {ai.internal_note}</p>}
+        </details>
+      )}
+      <div className="row" style={{ marginTop: 6 }}>{redo}</div>
       {err && <small className="error">{err}</small>}
-    </details>
+    </div>
   );
 }

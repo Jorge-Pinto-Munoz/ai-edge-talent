@@ -26,3 +26,16 @@ describe("revisión con IA de entregas", () => {
     expect(suggestedVerdict({ readable: false, score: 0, threshold: 75, criteria: [] })).toBe("HUMAN_REVIEW");
   });
 });
+
+import { deliveryState } from "@/lib/journey/delivery-status";
+describe("estado de entrega en la Wave", () => {
+  const s = (capsule_id: string, attempt: number, status: string) => ({ capsule_id, attempt, status });
+  it("verde, amarillo, por revisar y rojo", () => {
+    expect(deliveryState([], ["c1"])).toBe("missing");
+    expect(deliveryState([s("c1", 1, "APPROVED")], ["c1"])).toBe("approved");
+    expect(deliveryState([s("c1", 1, "NOT_APPROVED")], ["c1"])).toBe("not_approved");
+    expect(deliveryState([s("c1", 1, "NOT_APPROVED"), s("c1", 2, "SUBMITTED")], ["c1"])).toBe("pending");
+    expect(deliveryState([s("c1", 1, "NOT_APPROVED"), s("c1", 2, "APPROVED")], ["c1"])).toBe("approved");
+    expect(deliveryState([s("c1", 1, "APPROVED")], ["c1", "c2"])).toBe("missing");
+  });
+});

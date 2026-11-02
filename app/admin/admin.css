@@ -597,3 +597,19 @@
 .ai-criteria { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
 .ai-note { margin: 10px 0 0; font-size: 0.92rem; }
 .ai-draft-note { margin: 0 0 8px; font-size: 0.86rem; color: var(--brand); font-weight: 600; }
+/* Estado de entrega de la Wave */
+.wdb-sum { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.wdb-sum li { padding: 6px 12px; border-radius: 999px; font-size: 0.86rem; font-weight: 600; }
+.wdb-sum strong { font-size: 1rem; margin-right: 2px; }
+.wdb-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.wdb-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.wdb-list li small { grid-column: 2; color: var(--muted); }
+.wdb-list a, .wdb-list span:not(.wdb-dot) { font-weight: 700; overflow-wrap: anywhere; }
+.wdb-dot { grid-row: 1 / span 2; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); }
+.t-ok .wdb-dot { background: #2e9e5b; } .wdb-sum .t-ok { background: var(--ok-soft); color: var(--ok-text); }
+.t-warn .wdb-dot { background: #e5a823; } .wdb-sum .t-warn { background: var(--warn-soft); color: var(--warn-text); }
+.t-info .wdb-dot { background: #3b82c4; } .wdb-sum .t-info { background: var(--info-soft, var(--surface-2)); color: var(--text); }
+.t-bad .wdb-dot { background: #d64545; } .wdb-sum .t-bad { background: var(--bad-soft); color: var(--bad-text); }
+.ai-fb { margin: 10px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); white-space: pre-wrap; line-height: 1.55; }
+.ai-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ai-crit summary { cursor: pointer; color: var(--brand); font-weight: 700; margin-top: 10px; }
