@@ -33,7 +33,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
   {
     slug: "mindset", layer: "AI_MINDSET", n: 2, name: "AI First Mindset", icon: "brain",
     purpose: purposeOf("mindset"), milestones: milestonesOf("mindset"),
-    tabs: [{ key: "participantes", label: "Participantes" }, { key: "entregas", label: "Desafío y entregas" }, { key: "clases", label: "Clases y asistencia" }],
+    tabs: [{ key: "participantes", label: "Participantes" }, { key: "entregas", label: "Desafío y entregas" }, { key: "clases", label: "Clases y asistencia" }, { key: "contenido", label: "Contenido", adminOnly: true }],
   },
   {
     slug: "role-enablement", layer: "ROLE_ENABLEMENT", n: 3, name: "Role Enablement", icon: "badge",
@@ -44,6 +44,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
       { key: "certificaciones", label: "Certificaciones" },
       { key: "entregas", label: "Entregas" },
       { key: "clases", label: "Clases y asistencia" },
+      { key: "contenido", label: "Contenido", adminOnly: true },
     ],
   },
   {
@@ -55,12 +56,13 @@ export const JOURNEY_STAGES: JourneyStage[] = [
       { key: "clases", label: "Clases del Lab" },
       { key: "proyectos", label: "Proyectos" },
       { key: "showcase", label: "Showcase" },
+      { key: "contenido", label: "Contenido", adminOnly: true },
     ],
   },
   {
     slug: "cierre", layer: "CLOSURE", n: 5, name: "Cierre", icon: "flag",
     purpose: purposeOf("closure"), milestones: milestonesOf("closure"),
-    tabs: [{ key: "participantes", label: "Participantes" }, { key: "resultados", label: "Resultados" }],
+    tabs: [{ key: "participantes", label: "Participantes" }, { key: "resultados", label: "Resultados" }, { key: "contenido", label: "Contenido", adminOnly: true }],
   },
 ];
 

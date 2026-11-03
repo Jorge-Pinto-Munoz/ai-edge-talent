@@ -259,7 +259,7 @@ export async function saveCapsule(c: CapsuleInput): Promise<Result> {
 /* ───────── Admin / Delivery: revisión ───────── */
 export async function reviewSubmission(id: string, status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW", score: number | null, feedback: string, notify = true): Promise<Result> {
   try {
-    const viewer = await requireRole(["admin", "delivery"]);
+    const viewer = await requireRole(["admin"]);
     const db = await supabaseUser();
     const { data: sub, error } = await db
       .from("submissions")
@@ -311,7 +311,7 @@ async function notifySubmissionReview(id: string, status: "APPROVED" | "NOT_APPR
 
 export async function reviewCertification(id: string, status: "VERIFIED" | "REJECTED", note: string): Promise<Result> {
   try {
-    const viewer = await requireRole(["admin", "delivery"]);
+    const viewer = await requireRole(["admin"]);
     const db = await supabaseUser();
     const { data: cert, error } = await db
       .from("certifications")

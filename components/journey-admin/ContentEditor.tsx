@@ -12,19 +12,20 @@ import { Callout } from "@/components/ui";
 
 const EDITABLE: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
 
-export function ContentEditor({ waveId, guides, capsules }: { waveId: string; guides: StageGuide[]; capsules: Capsule[] }) {
-  const [layer, setLayer] = useState<Layer>("AI_MINDSET");
+/** `fixedLayer`: dentro de una etapa se edita solo su contenido (sin selector de etapa). */
+export function ContentEditor({ waveId, guides, capsules, fixedLayer }: { waveId: string; guides: StageGuide[]; capsules: Capsule[]; fixedLayer?: Layer }) {
+  const [layer, setLayer] = useState<Layer>(fixedLayer ?? "AI_MINDSET");
   const [editing, setEditing] = useState<Capsule | "new" | null>(null);
   const list = capsules.filter((c) => c.layer === layer);
   return (
     <div className="stack">
-      <nav className="row" aria-label="Etapas del contenido">
+      {!fixedLayer && <nav className="row" aria-label="Etapas del contenido">
         {EDITABLE.map((l) => (
           <button key={l} className={`btn small ${layer === l ? "" : "ghost"}`} onClick={() => { setLayer(l); setEditing(null); }}>
             {LAYERS.find((x) => x.id === l)!.name}
           </button>
         ))}
-      </nav>
+      </nav>}
       <GuideForm key={layer} waveId={waveId} layer={layer} guide={guides.find((g) => g.layer === layer) ?? null} />
       <div className="card">
         <div className="spread">

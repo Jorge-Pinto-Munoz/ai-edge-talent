@@ -9,6 +9,12 @@ import { waveReport } from "@/lib/pulse/report";
 import { ADMISSION_LABEL, type AdmissionStatus } from "@/lib/domain/types";
 import { ParticipantsBoard } from "@/components/journey-admin/ParticipantsBoard";
 import { ReviewQueue } from "@/components/journey-admin/ReviewQueue";
+import { ContentEditor } from "@/components/journey-admin/ContentEditor";
+import { PublicStageVideos } from "@/components/journey-admin/PublicStageVideos";
+import { publicStageVideos } from "@/lib/site/stage-videos";
+import { PUBLIC_STAGES } from "@/lib/data/site";
+import type { Capsule, StageGuide } from "@/lib/journey/queries";
+import type { Layer } from "@/lib/journey/rules";
 import { WaveDeliveryBoard } from "@/components/journey-admin/WaveDeliveryBoard";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ClassesWorkspace } from "@/components/teacher/ClassesWorkspace";
@@ -101,6 +107,21 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         })}
       </nav>
 
+      {/* ───── Contenido de la etapa (admin) ───── */}
+      {tab.key === "contenido" && isAdmin && stage.layer !== "ASSESSMENT" && (await (async () => {
+        const [{ data: guides }, { data: caps }] = await Promise.all([
+          db.from("stage_guides").select("*").eq("wave_id", waveId).eq("layer", stage.layer),
+          db.from("capsules").select("*").eq("wave_id", waveId).eq("layer", stage.layer).order("position"),
+        ]);
+        const pub = PUBLIC_STAGES.find((p) => p.slug === ({ mindset: "mindset", "role-enablement": "role-enablement", "ai-lab": "ai-lab-showcase", cierre: "cierre" } as Record<string, string>)[stage.slug]);
+        return (
+          <div className="stack">
+            <ContentEditor waveId={waveId} guides={(guides ?? []) as StageGuide[]} capsules={(caps ?? []) as Capsule[]} fixedLayer={stage.layer as Layer} />
+            {pub && <PublicStageVideos stages={[{ slug: pub.slug, name: pub.name }]} videos={await publicStageVideos()} />}
+          </div>
+        );
+      })())}
+
       {/* ───── Assessment ───── */}
       {stage.layer === "ASSESSMENT" && tab.key === "resumen" && (await (async () => {
         const { data: cs } = await db.from("candidates").select("id, full_name, client_name, role_title, status").eq("wave_id", waveId).order("full_name");
@@ -171,7 +192,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
 
       {tab.key === "certificaciones" && (await (async () => {
         const { data: certs } = ids.length ? await db.from("certifications").select("*").in("candidate_id", ids).order("created_at", { ascending: false }) : { data: [] };
-        return <ReviewQueue kind="certifications" items={(certs ?? []).map((c) => ({ ...c, person: nameOf(c.candidate_id) })) as never} />;
+        return <ReviewQueue kind="certifications" isAdmin={isAdmin} items={(certs ?? []).map((c) => ({ ...c, person: nameOf(c.candidate_id) })) as never} />;
       })())}
 
       {tab.key === "clases" && stage.layer !== "AI_LAB_SHOWCASE" && (

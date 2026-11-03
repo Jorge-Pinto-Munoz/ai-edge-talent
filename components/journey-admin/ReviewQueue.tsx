@@ -10,6 +10,7 @@ import { layerName, type Layer } from "@/lib/journey/rules";
 
 type AiReview = { status: "pending" | "done" | "error"; score: number | null; threshold: number | null; verdict: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW" | null; criteria: { criterion: string; met: "si" | "parcial" | "no"; evidence: string }[]; strengths: string[]; improvements: string[]; feedback: string | null; internal_note: string | null; error: string | null; updated_at: string };
 const VERDICT: Record<string, string> = { APPROVED: "Aprobar", NOT_APPROVED: "No aprobada", HUMAN_REVIEW: "Revisión humana" };
+const SUB_LABEL: Record<string, [string, string]> = { SUBMITTED: ["Por revisar", ""], HUMAN_REVIEW: ["Revisión humana", ""], APPROVED: ["Aprobada", "ok"], NOT_APPROVED: ["No aprobada · reintento", "warn"] };
 const MET: Record<string, [string, string]> = { si: ["ok", "Cumple"], parcial: ["warn", "Parcial"], no: ["bad", "No cumple"] };
 type Sub = { ai: AiReview | null; id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
 type Cert = { id: string; person: string; attempt: number; result: string; status: string; file_path: string | null; credential_url: string | null; issued_on: string | null; review_note: string | null; created_at: string };
@@ -28,12 +29,12 @@ export function ReviewQueue({ kind, items, waveId, isAdmin = false }: { kind: "s
       {kind === "submissions" && isAdmin && waveId && <AiBar waveId={waveId} subs={items as Sub[]} />}
       {notice && <Callout tone="ok" title={notice} />}
       {shown.length === 0 && <p className="muted">Nada por revisar.</p>}
-      {shown.map((i) => (kind === "submissions" ? <SubmissionCard key={i.id} s={i as Sub} onDone={setNotice} /> : <CertCard key={i.id} c={i as Cert} onDone={setNotice} />))}
+      {shown.map((i) => (kind === "submissions" ? <SubmissionCard key={i.id} s={i as Sub} onDone={setNotice} canReview={isAdmin} /> : <CertCard key={i.id} c={i as Cert} onDone={setNotice} canReview={isAdmin} />))}
     </div>
   );
 }
 
-function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) {
+function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: string) => void; canReview: boolean }) {
   // Sin revisión humana aún: los campos parten con la propuesta de la IA, para editar y enviar.
   const draft = s.ai?.status === "done" && s.score === null && !s.feedback ? s.ai : null;
   const [score, setScore] = useState(s.score?.toString() ?? (draft?.score != null ? String(Math.round(draft.score)) : ""));
@@ -56,6 +57,14 @@ function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) 
       </div>
       {s.text_answer && <p style={{ whiteSpace: "pre-wrap" }}>{s.text_answer}</p>}
       {s.files.length > 0 && <ul>{s.files.map((f) => <li key={f.path}><SignedLink bucket="submissions" path={f.path}>{f.name}</SignedLink></li>)}</ul>}
+      {!canReview ? (
+        <p className="muted" style={{ margin: "8px 0 0" }}>
+          <span className={`badge ${SUB_LABEL[s.status]?.[1] ?? ""}`}>{SUB_LABEL[s.status]?.[0] ?? s.status}</span>
+          {s.score !== null && <> · {Math.round(Number(s.score))}/100</>}
+          {s.feedback && <><br /><small><strong>Feedback enviado:</strong> {s.feedback}</small></>}
+          <br /><small>La revisión la hace el equipo AI Edge Talent (admin).</small>
+        </p>
+      ) : (<>
       <AiPanel s={s} onUse={(text, sc) => { setFb(text); if (sc != null) setScore(String(Math.round(sc))); }} />
       {draft && <p className="ai-draft-note">Puntaje y feedback precargados con la propuesta de la IA: revísalos, edítalos si quieres y elige la decisión. Nada se envía hasta que tú lo decides.</p>}
       <div className="grid grid-3">
@@ -73,12 +82,13 @@ function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) 
         <button className="btn ghost small" disabled={pending} onClick={() => act("HUMAN_REVIEW")}>Revisión humana</button>
         <span className="badge">{s.status}</span>
       </div>
+      </>)}
       {msg && <div style={{ marginTop: 8 }}><Callout tone="bad" title={msg} /></div>}
     </div>
   );
 }
 
-function CertCard({ c, onDone }: { c: Cert; onDone: (m: string) => void }) {
+function CertCard({ c, onDone, canReview }: { c: Cert; onDone: (m: string) => void; canReview: boolean }) {
   const [note, setNote] = useState(c.review_note ?? "");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -93,12 +103,14 @@ function CertCard({ c, onDone }: { c: Cert; onDone: (m: string) => void }) {
         {c.file_path && <SignedLink bucket="certificates" path={c.file_path}>Ver certificado</SignedLink>}
         {c.credential_url && <a href={c.credential_url} target="_blank" rel="noopener noreferrer">Credencial en línea ↗</a>}
       </div>
+      {canReview ? (<>
       <div className="field" style={{ marginTop: 10 }}><label htmlFor={`cn-${c.id}`}>Nota</label><input id={`cn-${c.id}`} type="text" value={note} onChange={(e) => setNote(e.target.value)} /></div>
       <div className="row">
         <button className="btn small" disabled={pending} onClick={() => start(async () => { const r = await reviewCertification(c.id, "VERIFIED", note); if (r.ok) onDone(`${c.person}: ${r.message}`); else setMsg(r.message); })}>Verificar</button>
         <button className="btn ghost small" disabled={pending} onClick={() => start(async () => { const r = await reviewCertification(c.id, "REJECTED", note); if (r.ok) onDone(`${c.person}: ${r.message}`); else setMsg(r.message); })}>Rechazar registro</button>
         <span className="badge">{c.status}</span>
       </div>
+      </>) : <p className="muted"><span className="badge">{c.status === "VERIFIED" ? "Verificado" : c.status === "REJECTED" ? "Rechazado" : "En verificación"}</span> <small>La verificación la hace el admin.</small></p>}
       {msg && <div style={{ marginTop: 8 }}><Callout tone="bad" title={msg} /></div>}
     </div>
   );

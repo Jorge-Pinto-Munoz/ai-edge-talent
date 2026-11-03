@@ -20,7 +20,7 @@ const STAFF: ShellRole[] = ["admin", "delivery"];
 const ADMIN: ShellRole[] = ["admin"];
 const ROLE_LABEL: Record<ShellRole, string> = { admin: "Admin", delivery: "Delivery", profesor: "Profesor", hub: "Líder Hub AI" };
 
-type Section = { key: string; label: string; icon: IconName; href: (w: string) => string; match: RegExp; roles: ShellRole[]; perWave?: boolean; group: "wave" | "admin" };
+type Section = { key: string; label: string; icon: IconName; href: (w: string) => string; match: RegExp; roles: ShellRole[]; perWave?: boolean; group: "wave" | "stages" | "admin" };
 
 /**
  * Nivel 1 de la navegación. Lo propio de una etapa (clases, AI Lab, criterios de evaluación) vive dentro de
@@ -28,13 +28,17 @@ type Section = { key: string; label: string; icon: IconName; href: (w: string) =
  */
 const SECTIONS: Section[] = [
   { key: "resumen", label: "Resumen", icon: "grid", href: (w) => `/admin?wave=${w}`, match: /^\/admin\/?$/, roles: STAFF, perWave: true, group: "wave" },
-  { key: "admision", label: "Admisión", icon: "users", href: (w) => `/admin/admision/${w}`, match: /^\/admin\/admision/, roles: STAFF, perWave: true, group: "wave" },
-  { key: "journey", label: "Journey", icon: "route", href: (w) => `/admin/journey/${w}`, match: /^\/admin\/(journey|profesor|evaluacion)|^\/admin\/lab/, roles: STAFF, perWave: true, group: "wave" },
+  { key: "pulsos", label: "Avance y experiencia", icon: "chat", href: (w) => `/admin/pulsos/${w}`, match: /^\/admin\/pulsos/, roles: ADMIN, perWave: true, group: "wave" },
+  { key: "journey", label: "Journey", icon: "route", href: (w) => `/admin/journey/${w}`, match: /^\/admin\/journey\/[^/]+\/?$|^\/admin\/(profesor|evaluacion|contenido)/, roles: STAFF, perWave: true, group: "wave" },
+  { key: "talento", label: "Talento", icon: "star", href: () => "/admin/talento", match: /^\/admin\/talento/, roles: STAFF, group: "wave" },
+  // Etapas: cada una con su resumen, participantes, entregas y su contenido (pestaña «Contenido»).
+  { key: "st-assessment", label: "Assessment", icon: "target", href: (w) => `/admin/admision/${w}`, match: /^\/admin\/admision|^\/admin\/journey\/[^/]+\/assessment/, roles: STAFF, perWave: true, group: "stages" },
+  { key: "st-mindset", label: "AI First Mindset", icon: "brain", href: (w) => `/admin/journey/${w}/mindset`, match: /^\/admin\/journey\/[^/]+\/mindset/, roles: STAFF, perWave: true, group: "stages" },
+  { key: "st-role", label: "Role Enablement", icon: "badge", href: (w) => `/admin/journey/${w}/role-enablement`, match: /^\/admin\/journey\/[^/]+\/role-enablement/, roles: STAFF, perWave: true, group: "stages" },
+  { key: "st-lab", label: "AI Lab & Showcase", icon: "flask", href: (w) => `/admin/journey/${w}/ai-lab`, match: /^\/admin\/journey\/[^/]+\/ai-lab|^\/admin\/lab/, roles: STAFF, perWave: true, group: "stages" },
+  { key: "st-cierre", label: "Cierre", icon: "flag", href: (w) => `/admin/journey/${w}/cierre`, match: /^\/admin\/journey\/[^/]+\/cierre/, roles: STAFF, perWave: true, group: "stages" },
   // El Líder Hub AI trabaja solo en el AI Lab & Showcase de sus Waves.
   { key: "lab", label: "AI Lab & Showcase", icon: "flask", href: (w) => `/admin/lab/${w}`, match: /^\/admin\/lab/, roles: ["hub"], perWave: true, group: "wave" },
-  { key: "pulsos", label: "Avance y experiencia", icon: "chat", href: (w) => `/admin/pulsos/${w}`, match: /^\/admin\/pulsos/, roles: ADMIN, perWave: true, group: "wave" },
-  { key: "contenido", label: "Contenido", icon: "book", href: (w) => `/admin/contenido/${w}`, match: /^\/admin\/contenido/, roles: ADMIN, perWave: true, group: "wave" },
-  { key: "talento", label: "Talento", icon: "star", href: () => "/admin/talento", match: /^\/admin\/talento/, roles: STAFF, group: "wave" },
   { key: "asignaciones", label: "Equipo de la Wave", icon: "user", href: (w) => `/admin/asignaciones/${w}`, match: /^\/admin\/asignaciones/, roles: ADMIN, perWave: true, group: "admin" },
   { key: "usuarios", label: "Usuarios y accesos", icon: "key", href: () => "/admin/usuarios", match: /^\/admin\/usuarios/, roles: ADMIN, group: "admin" },
   { key: "comunicaciones", label: "Comunicaciones", icon: "send", href: () => "/admin/comunicaciones", match: /^\/admin\/comunicaciones/, roles: ADMIN, group: "admin" },
@@ -109,6 +113,12 @@ export function AdminShell({ waves, role, email, children }: { waves: ShellWave[
           <div className="admin-nav-group" role="group" aria-label="Wave">
             {sections.filter((s) => s.group === "wave").map(link)}
           </div>
+          {sections.some((s) => s.group === "stages") && (
+            <div className="admin-nav-group" role="group" aria-labelledby="nav-st">
+              <span className="admin-nav-label" id="nav-st">Etapas</span>
+              {sections.filter((s) => s.group === "stages").map(link)}
+            </div>
+          )}
           {adminLinks.length > 0 && (
             <div className="admin-nav-group secondary" role="group" aria-labelledby="nav-adm">
               <span className="admin-nav-label" id="nav-adm">Administración</span>

@@ -17,7 +17,7 @@ import { ApplicationWindow } from "@/components/admission/ApplicationWindow";
 import { applicationWindow } from "@/lib/admission/window";
 import { env } from "@/lib/supabase/env";
 
-export const metadata = { title: "Admisión · Portal AET" };
+export const metadata = { title: "Assessment · Portal AET" };
 export const dynamic = "force-dynamic";
 
 /** Admisión de una Wave: indicadores, referencia de selección, flujo por fases y gestión de candidatos. */
@@ -45,10 +45,10 @@ export default async function WaveAdmission({ params, searchParams }: { params: 
 
   return (
     <div className="adm">
-      <Breadcrumbs items={[{ label: wave.name.replace("AI Edge Talent · ", ""), href: `/admin?wave=${waveId}` }, { label: "Admisión" }]} />
+      <Breadcrumbs items={[{ label: wave.name.replace("AI Edge Talent · ", ""), href: `/admin?wave=${waveId}` }, { label: "Assessment" }]} />
       <header className="adm-head">
         <div>
-          <h1>Admisión</h1>
+          <h1>Assessment <small className="muted" style={{ fontSize: "0.5em", fontWeight: 600 }}>· admisión</small></h1>
           <p className="muted">
             {k.total === 1 ? "1 candidato" : `${k.total} candidatos`} en la Wave{""}. No hay límite de postulaciones.
           </p>
