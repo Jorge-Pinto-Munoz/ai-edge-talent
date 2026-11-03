@@ -660,3 +660,26 @@
 .mail-meta dt { font-weight: 700; color: var(--muted); }
 .mail-meta dd { margin: 0; overflow-wrap: anywhere; }
 .mail-frame { width: 100%; height: 420px; border: 1px solid var(--border); border-radius: 12px; background: #eef2f5; }
+/* Avance del grupo en la etapa (semáforo) */
+.gp-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.gp-big { text-align: right; }
+.gp-big strong { display: block; font-size: 2.2rem; line-height: 1; font-variant-numeric: tabular-nums; color: #1f7a45; }
+.gp-big strong small { font-size: 1.1rem; color: var(--muted); }
+.gp-big span { font-size: 0.86rem; font-weight: 700; color: var(--muted); }
+.gp-bar { display: flex; height: 26px; margin: 14px 0 8px; border-radius: 999px; overflow: hidden; background: var(--surface-2); }
+.gp-seg { display: grid; place-items: center; color: #fff; font-size: 0.78rem; font-weight: 800; min-width: 4px; transition: width 300ms ease; }
+.gp-seg.green { background: #2e9e5b; } .gp-seg.yellow { background: #e5a823; color: #3a2a00; } .gp-seg.red { background: #d64545; }
+.gp-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.9rem; }
+.gp-legend i, .gp-col h3 i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: middle; }
+.gp-legend .green i, .gp-col.green h3 i { background: #2e9e5b; } .gp-legend .yellow i, .gp-col.yellow h3 i { background: #e5a823; } .gp-legend .red i, .gp-col.red h3 i { background: #d64545; }
+.gp-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--ok-soft); color: var(--ok-text); font-size: 0.88rem; font-weight: 600; }
+.gp-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+@media (max-width: 820px) { .gp-cols { grid-template-columns: 1fr; } }
+.gp-col { padding: 12px; border-radius: 14px; border: 1px solid var(--border); border-top: 4px solid var(--border); background: var(--bg); }
+.gp-col.green { border-top-color: #2e9e5b; } .gp-col.yellow { border-top-color: #e5a823; } .gp-col.red { border-top-color: #d64545; }
+.gp-col h3 { margin: 0; font-size: 0.98rem; display: flex; align-items: center; gap: 6px; }
+.gp-col h3 small { margin-left: auto; color: var(--muted); font-weight: 700; }
+.gp-col p { margin: 2px 0 8px; }
+.gp-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
+.gp-col li { display: grid; padding: 8px 10px; border-radius: 10px; background: var(--surface); }
+.gp-col li small { color: var(--muted); }

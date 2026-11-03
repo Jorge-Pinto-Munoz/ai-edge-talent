@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireStaffPage } from "@/lib/admission/auth";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { stageBySlug } from "@/lib/journey/stages";
 import { journeyOverview, STAGE_STATE_LABEL } from "@/lib/journey/overview";
 import { JOURNEY_STATUSES } from "@/lib/admission/view-as";
@@ -16,6 +16,8 @@ import { PUBLIC_STAGES } from "@/lib/data/site";
 import type { Capsule, StageGuide } from "@/lib/journey/queries";
 import type { Layer } from "@/lib/journey/rules";
 import { SubmissionsPanel } from "@/components/journey-admin/SubmissionsPanel";
+import { GroupProgress } from "@/components/journey-admin/GroupProgress";
+import { stageCoverage } from "@/lib/journey/coverage";
 import { EvaluateView } from "@/components/journey-admin/EvaluateView";
 import { AiBar } from "@/components/journey-admin/ReviewQueue";
 import { deliveryState } from "@/lib/journey/delivery-status";
@@ -92,6 +94,48 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         <div className="adm-kpi"><span className="ico"><Icon name="alert" size={20} /></span><strong>{sum.actions.reduce((n, a) => n + a.count, 0)}</strong><small>Requieren intervención</small></div>
         <div className="adm-kpi"><span className="ico"><Icon name="target" size={20} /></span><strong>{sum.pct === null ? "—" : `${sum.pct}%`}</strong><small>Avance de la Wave</small></div>
       </section>
+
+      {stage.layer !== "ASSESSMENT" && (await (async () => {
+        // Grupo completo: todos los que pasaron el Assessment (seleccionados en adelante) en esta Wave.
+        const { data: group } = await db.from("candidates").select("id, full_name, client_name, status, journey_layer, user_id").eq("wave_id", waveId).in("status", ["SELECTED", "CONDITIONS_PENDING", ...JOURNEY_STATUSES]).order("full_name");
+        const gids = (group ?? []).map((g) => g.id);
+        const uids = (group ?? []).map((g) => g.user_id).filter(Boolean) as string[];
+        const svc = supabaseService();
+        const [{ data: profs }, { data: gsubs }, { data: gcerts }, { data: glabs }, { data: gtasks }] = await Promise.all([
+          uids.length ? svc.from("profiles").select("id, status").in("id", uids) : Promise.resolve({ data: [] as { id: string; status: string }[] }),
+          stage.layer === "AI_MINDSET" && gids.length ? svc.from("submissions").select("candidate_id, capsule_id, attempt, status, capsules!inner(layer)").in("candidate_id", gids).eq("capsules.layer", "AI_MINDSET") : Promise.resolve({ data: [] as { candidate_id: string; capsule_id: string; attempt: number; status: string }[] }),
+          stage.layer === "ROLE_ENABLEMENT" && gids.length ? svc.from("certifications").select("candidate_id, result, status, created_at").in("candidate_id", gids).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as { candidate_id: string; result: string; status: string }[] }),
+          stage.layer === "AI_LAB_SHOWCASE" && gids.length ? svc.from("lab_project_members").select("candidate_id, lab_projects(status)").in("candidate_id", gids) : Promise.resolve({ data: [] as { candidate_id: string; lab_projects: unknown }[] }),
+          stage.layer === "AI_MINDSET" ? svc.from("capsules").select("id").eq("wave_id", waveId).eq("layer", "AI_MINDSET").eq("published", true).eq("task_required", true) : Promise.resolve({ data: [] as { id: string }[] }),
+        ]);
+        const active = new Set((profs ?? []).filter((x) => x.status === "ACTIVE").map((x) => x.id));
+        const LAB: Record<string, string> = { IDEA: "Proyecto: idea", BUILDING: "Proyecto en construcción", READY: "Proyecto listo para el Showcase" };
+        const signal = (p: { id: string }): { light: "green" | "yellow" | "red"; reason: string } | null => {
+          if (stage.layer === "AI_MINDSET") {
+            const st = deliveryState((gsubs ?? []).filter((x) => x.candidate_id === p.id), (gtasks ?? []).map((t) => t.id));
+            return st === "approved" ? { light: "green", reason: "Reto aprobado" } : st === "pending" ? { light: "yellow", reason: "Entregado · por revisar" } : st === "not_approved" ? { light: "yellow", reason: "Corrigiendo para su reintento" } : { light: "red", reason: "No ha entregado su reto" };
+          }
+          if (stage.layer === "ROLE_ENABLEMENT") {
+            const c = (gcerts ?? []).find((x) => x.candidate_id === p.id);
+            if (!c) return { light: "red", reason: "Sin certificación registrada" };
+            if (c.status === "VERIFIED" && c.result === "PASSED") return { light: "green", reason: "Certificación verificada" };
+            return { light: "yellow", reason: c.status === "PENDING_REVIEW" ? "Certificado en verificación" : "Reintentando la certificación" };
+          }
+          if (stage.layer === "AI_LAB_SHOWCASE") {
+            const st = ((glabs ?? []).find((x) => x.candidate_id === p.id)?.lab_projects as { status: string } | null)?.status;
+            if (!st) return { light: "red", reason: "Sin proyecto en el AI Lab" };
+            return st === "PRESENTED" ? { light: "green", reason: "Presentó en el Showcase" } : { light: "yellow", reason: LAB[st] ?? "Proyecto en curso" };
+          }
+          return { light: "green", reason: "En cierre" };
+        };
+        const cov = stageCoverage(
+          (group ?? []).map((g) => ({ id: g.id, name: g.full_name, client: g.client_name ? prettyName(g.client_name) : null, layer: g.journey_layer as Layer | null, enrolled: (JOURNEY_STATUSES as readonly string[]).includes(g.status), activated: Boolean(g.user_id && active.has(g.user_id)) })),
+          stage.layer as Layer,
+          signal,
+        );
+        const DONE: Record<string, string> = { AI_MINDSET: "aprobaron su reto", ROLE_ENABLEMENT: "certificaron", AI_LAB_SHOWCASE: "presentaron", CLOSURE: "llegaron al cierre" };
+        return <GroupProgress cov={cov} stageName={stage.name} doneLabel={DONE[stage.layer] ?? "completaron"} />;
+      })())}
 
       {stage.layer === "AI_MINDSET" && (await (async () => {
         // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).
