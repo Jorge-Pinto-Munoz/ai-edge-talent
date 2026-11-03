@@ -15,7 +15,11 @@ import { publicStageVideos } from "@/lib/site/stage-videos";
 import { PUBLIC_STAGES } from "@/lib/data/site";
 import type { Capsule, StageGuide } from "@/lib/journey/queries";
 import type { Layer } from "@/lib/journey/rules";
-import { WaveDeliveryBoard } from "@/components/journey-admin/WaveDeliveryBoard";
+import { SubmissionsPanel } from "@/components/journey-admin/SubmissionsPanel";
+import { EvaluateView } from "@/components/journey-admin/EvaluateView";
+import { AiBar } from "@/components/journey-admin/ReviewQueue";
+import { deliveryState } from "@/lib/journey/delivery-status";
+import { prettyName } from "@/lib/text/org";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ClassesWorkspace } from "@/components/teacher/ClassesWorkspace";
 import { LabWorkspace } from "@/components/hub/LabWorkspace";
@@ -37,9 +41,9 @@ export async function generateMetadata({ params }: { params: Promise<{ etapa: st
 const TO_DECIDE = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED"];
 
 /** Detalle de una etapa (nivel 3): sus participantes, actividades, evaluaciones, entregables y acciones. */
-export default async function StageDetail({ params, searchParams }: { params: Promise<{ waveId: string; etapa: string }>; searchParams: Promise<{ tab?: string; clase?: string }> }) {
+export default async function StageDetail({ params, searchParams }: { params: Promise<{ waveId: string; etapa: string }>; searchParams: Promise<{ tab?: string; clase?: string; sub?: string }> }) {
   const { waveId, etapa } = await params;
-  const { tab: rawTab, clase } = await searchParams;
+  const { tab: rawTab, clase, sub: subParam } = await searchParams;
   const stage = stageBySlug(etapa);
   if (!stage) notFound();
   const viewer = await requireStaffPage(`/admin/journey/${waveId}/${etapa}`);
@@ -177,10 +181,45 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           : { data: [] };
         const mine = (subs ?? []).filter((s) => (s.capsules as unknown as { layer: string } | null)?.layer === stage.layer);
         const { data: tasks } = await db.from("capsules").select("id, task_required").eq("wave_id", waveId).eq("layer", stage.layer).eq("published", true).not("task_prompt", "is", null);
+        const required = (tasks ?? []).filter((t) => t.task_required).map((t) => t.id);
+        const maxOf = (x: (typeof mine)[number]) => (x.capsules as unknown as { max_attempts: number | null } | null)?.max_attempts ?? null;
+        const aiOf = (x: (typeof mine)[number]) => [x.submission_ai_reviews].flat()[0] as { status: string; score: number | null } | undefined;
+        const asSub = (x: (typeof mine)[number]) => ({ ...x, person: nameOf(x.candidate_id), ai: [x.submission_ai_reviews].flat()[0] ?? null });
+        const rows = (enrolled ?? []).map((p) => {
+          const own = mine.filter((x) => x.candidate_id === p.id);
+          const last = [...own].sort((a, b) => b.attempt - a.attempt || String(b.submitted_at).localeCompare(String(a.submitted_at)))[0];
+          const ai = last ? aiOf(last) : undefined;
+          return {
+            id: p.id, name: p.full_name, client: p.client_name ? prettyName(p.client_name) : null, role: p.role_title ? prettyName(p.role_title) : null,
+            state: deliveryState(own, required), subId: last?.id ?? null, attempt: last?.attempt ?? null, maxAttempts: last ? maxOf(last) : null,
+            score: last?.score != null ? Number(last.score) : null, aiScore: ai?.status === "done" && ai.score != null ? Number(ai.score) : null, submittedAt: last?.submitted_at ?? null,
+          };
+        });
+        const selected = subParam ? mine.find((x) => x.id === subParam) : undefined;
+        if (selected) {
+          const p = (enrolled ?? []).find((x) => x.id === selected.candidate_id);
+          const history = mine.filter((x) => x.candidate_id === selected.candidate_id && x.capsule_id === selected.capsule_id && x.id !== selected.id).sort((a, b) => b.attempt - a.attempt);
+          const next = rows.find((r) => r.state === "pending" && r.subId && r.subId !== selected.id);
+          return (
+            <EvaluateView
+              sub={asSub(selected) as never}
+              person={{ client: p?.client_name ? prettyName(p.client_name) : null, role: p?.role_title ? prettyName(p.role_title) : null }}
+              state={rows.find((r) => r.id === selected.candidate_id)?.state ?? "pending"}
+              history={history as never}
+              backHref={`${base}?tab=entregas`}
+              nextHref={next ? `${base}?tab=entregas&sub=${next.subId}` : null}
+              isAdmin={isAdmin}
+            />
+          );
+        }
         return <>
-          {isAdmin && <div className="row" style={{ justifyContent: "flex-end" }}><a className="btn small ghost" href={`${base}/exportar-entregas`} download>Descargar reporte (Excel)</a></div>}
-          <WaveDeliveryBoard people={enrolled ?? []} subs={mine as never} required={(tasks ?? []).filter((t) => t.task_required).map((t) => t.id)} />
-          <ReviewQueue kind="submissions" waveId={waveId} isAdmin={isAdmin} items={mine.map((s) => ({ ...s, person: nameOf(s.candidate_id), ai: [s.submission_ai_reviews].flat()[0] ?? null })) as never} />
+          {isAdmin && (
+            <div className="sp-tools">
+              <AiBar waveId={waveId} subs={mine.map(asSub) as never} />
+              <a className="btn small ghost" href={`${base}/exportar-entregas`} download>Descargar reporte (Excel)</a>
+            </div>
+          )}
+          <SubmissionsPanel base={base} rows={rows} isAdmin={isAdmin} />
         </>;
       })())}
 

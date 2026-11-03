@@ -9,7 +9,8 @@ import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admi
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
 import { CLOSING_PULSE } from "./closure";
 import { markRequirementsByException, syncMany, syncStageClosure } from "./closure-sync";
-import { audit, portalLink, sendIdentityEmail } from "@/lib/identity/service";
+import { audit, deliveryCc, portalLink, sendIdentityEmail } from "@/lib/identity/service";
+import { renderIdentity } from "@/lib/email/identity";
 import { provisionParticipant } from "@/lib/identity/provision";
 import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 import { errorText } from "@/lib/text/errors";
@@ -284,28 +285,53 @@ export async function reviewSubmission(id: string, status: "APPROVED" | "NOT_APP
   }
 }
 
-/** Correo de resultado de una entrega: una vez por decisión (si se cambia la decisión, se avisa la nueva). */
-async function notifySubmissionReview(id: string, status: "APPROVED" | "NOT_APPROVED", score: number | null, feedback: string, actor: string): Promise<"sent" | "failed" | "skipped"> {
-  const svc = supabaseService();
-  const { data: s } = await svc.from("submissions").select("id, candidate_id, capsule_id, attempt, capsules(title, max_attempts, due_at, due_date), candidates(full_name, corporate_email, wave_id, user_id), submission_ai_reviews(threshold)").eq("id", id).single();
-  if (!s) return "skipped";
+/** Arma el correo de resultado de una entrega (lo mismo para la vista previa y para el envío). */
+async function submissionEmail(svc: ReturnType<typeof supabaseService>, id: string, status: "APPROVED" | "NOT_APPROVED", score: number | null, feedback: string) {
+  const { data: s } = await svc.from("submissions").select("id, candidate_id, capsule_id, attempt, status, capsules(title, max_attempts, due_at, due_date), candidates(full_name, corporate_email, wave_id, user_id), submission_ai_reviews(threshold)").eq("id", id).single();
+  if (!s) return null;
   const cap = s.capsules as unknown as { title: string; max_attempts: number | null; due_at: string | null; due_date: string | null };
   const cand = s.candidates as unknown as { full_name: string; corporate_email: string; wave_id: string; user_id: string | null };
-  const first = await audit("journey.submission.notified", { actor, candidateId: s.candidate_id, waveId: cand.wave_id, targetEmail: cand.corporate_email, details: { submission: id, status, score }, eventKey: `submission-review:${id}:${status}` }, svc);
-  if (!first) return "skipped";
-  const { count: failed } = await svc.from("submissions").select("id", { count: "exact", head: true }).eq("candidate_id", s.candidate_id).eq("capsule_id", s.capsule_id).eq("status", "NOT_APPROVED");
+  // Intentos no aprobados: los anteriores + este, si la decisión es «no aprobada».
+  const { count: before } = await svc.from("submissions").select("id", { count: "exact", head: true }).eq("candidate_id", s.candidate_id).eq("capsule_id", s.capsule_id).eq("status", "NOT_APPROVED").neq("id", id);
+  const used = (before ?? 0) + (status === "NOT_APPROVED" ? 1 : 0);
   const threshold = ([s.submission_ai_reviews].flat()[0] as { threshold: number | null } | undefined)?.threshold ?? 75;
   const due = cap.due_at ?? (cap.due_date ? chileToIso(`${cap.due_date}T23:59`) : null);
-  const r = await sendIdentityEmail(status === "APPROVED" ? "SUBMISSION_APPROVED" : "SUBMISSION_RETRY", cand.corporate_email, {
+  const template = status === "APPROVED" ? ("SUBMISSION_APPROVED" as const) : ("SUBMISSION_RETRY" as const);
+  const ctx = {
     name: cand.full_name,
     stage: cap.title,
     score,
     minScore: threshold,
     extra: feedback.trim() || undefined,
-    attempts: { used: failed ?? s.attempt, max: cap.max_attempts },
+    attempts: { used, max: cap.max_attempts },
     when: due && new Date(due) > new Date() ? fmtDue(due) : undefined,
     link: portalLink("ingresar", cand.corporate_email, `/mi-journey?m=${s.capsule_id}`),
-  }, { userId: cand.user_id, candidateId: s.candidate_id, waveId: cand.wave_id, sentBy: actor }, svc);
+  };
+  return { template, ctx, to: cand.corporate_email, candidateId: s.candidate_id as string, waveId: cand.wave_id, userId: cand.user_id };
+}
+
+/** Admin: vista previa del correo de resultado (destinatario, copias, asunto y contenido) antes de decidir. */
+export async function previewSubmissionEmail(id: string, status: "APPROVED" | "NOT_APPROVED", score: number | null, feedback: string): Promise<Result<{ to: string; cc: string[]; subject: string; html: string }>> {
+  try {
+    await requireRole(["admin"]);
+    const svc = supabaseService();
+    const m = await submissionEmail(svc, id, status, score, feedback);
+    if (!m) throw new Error("Entrega no encontrada.");
+    const r = renderIdentity(m.template, m.ctx);
+    return { ok: true, message: "ok", data: { to: m.to, cc: await deliveryCc(svc, m.candidateId, m.to), subject: r.subject, html: r.html } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Correo de resultado de una entrega: una vez por decisión (si se cambia la decisión, se avisa la nueva). */
+async function notifySubmissionReview(id: string, status: "APPROVED" | "NOT_APPROVED", score: number | null, feedback: string, actor: string): Promise<"sent" | "failed" | "skipped"> {
+  const svc = supabaseService();
+  const m = await submissionEmail(svc, id, status, score, feedback);
+  if (!m) return "skipped";
+  const first = await audit("journey.submission.notified", { actor, candidateId: m.candidateId, waveId: m.waveId, targetEmail: m.to, details: { submission: id, status, score }, eventKey: `submission-review:${id}:${status}` }, svc);
+  if (!first) return "skipped";
+  const r = await sendIdentityEmail(m.template, m.to, m.ctx, { userId: m.userId, candidateId: m.candidateId, waveId: m.waveId, sentBy: actor }, svc);
   return r.ok ? "sent" : "failed";
 }
 

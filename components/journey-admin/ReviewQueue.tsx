@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { reviewCertification, reviewSubmission } from "@/lib/journey/actions";
+import { previewSubmissionEmail, reviewCertification, reviewSubmission } from "@/lib/journey/actions";
 import { generateAiReviews, regenerateAiReview } from "@/lib/journey/ai-review-actions";
 import { useRouter } from "next/navigation";
 import { SignedLink } from "@/components/journey/SignedLink";
@@ -12,7 +12,7 @@ type AiReview = { status: "pending" | "done" | "error"; score: number | null; th
 const VERDICT: Record<string, string> = { APPROVED: "Aprobar", NOT_APPROVED: "No aprobada", HUMAN_REVIEW: "Revisión humana" };
 const SUB_LABEL: Record<string, [string, string]> = { SUBMITTED: ["Por revisar", ""], HUMAN_REVIEW: ["Revisión humana", ""], APPROVED: ["Aprobada", "ok"], NOT_APPROVED: ["No aprobada · reintento", "warn"] };
 const MET: Record<string, [string, string]> = { si: ["ok", "Cumple"], parcial: ["warn", "Parcial"], no: ["bad", "No cumple"] };
-type Sub = { ai: AiReview | null; id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
+export type Sub = { ai: AiReview | null; id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
 type Cert = { id: string; person: string; attempt: number; result: string; status: string; file_path: string | null; credential_url: string | null; issued_on: string | null; review_note: string | null; created_at: string };
 
 export function ReviewQueue({ kind, items, waveId, isAdmin = false }: { kind: "submissions" | "certifications"; items: (Sub | Cert)[]; waveId?: string; isAdmin?: boolean }) {
@@ -34,7 +34,7 @@ export function ReviewQueue({ kind, items, waveId, isAdmin = false }: { kind: "s
   );
 }
 
-function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: string) => void; canReview: boolean }) {
+export function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: string) => void; canReview: boolean }) {
   // Sin revisión humana aún: los campos parten con la propuesta de la IA, para editar y enviar.
   const draft = s.ai?.status === "done" && s.score === null && !s.feedback ? s.ai : null;
   const [score, setScore] = useState(s.score?.toString() ?? (draft?.score != null ? String(Math.round(draft.score)) : ""));
@@ -42,13 +42,28 @@ function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: string) 
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [notify, setNotify] = useState(true);
-  const act = (status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW") =>
+  // Antes de aprobar o no aprobar con aviso: vista previa del correo (para, copia, asunto y contenido).
+  const [preview, setPreview] = useState<{ status: "APPROVED" | "NOT_APPROVED"; to: string; cc: string[]; subject: string; html: string } | null>(null);
+  const send = (status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW", withMail: boolean) =>
     start(async () => {
-      if (status !== "HUMAN_REVIEW" && notify && !confirm(`${status === "APPROVED" ? "Aprobar" : "Marcar como no aprobada"} la entrega de ${s.person}.\n\nSe le enviará un correo con el puntaje y el feedback${status === "NOT_APPROVED" ? ", pidiéndole los ajustes para su reintento" : ""}, con copia a su Delivery.`)) return;
-      const r = await reviewSubmission(s.id, status, score ? Number(score) : null, fb, notify);
+      const r = await reviewSubmission(s.id, status, score ? Number(score) : null, fb, withMail);
+      setPreview(null);
       if (r.ok) onDone(`${s.person} · ${s.capsules.title}: ${r.message}`);
       else setMsg(r.message);
     });
+  const act = (status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW") => {
+    setMsg(null);
+    if (status === "HUMAN_REVIEW") return send(status, false);
+    if (!notify) {
+      if (confirm(`${status === "APPROVED" ? "Aprobar" : "Marcar como no aprobada"} la entrega de ${s.person} sin enviarle correo?`)) send(status, false);
+      return;
+    }
+    start(async () => {
+      const r = await previewSubmissionEmail(s.id, status, score ? Number(score) : null, fb);
+      if (r.ok && r.data) setPreview({ status, ...r.data });
+      else setMsg(r.message);
+    });
+  };
   return (
     <div className="card" id={`sub-${s.id}`} style={{ scrollMarginTop: 140 }}>
       <div className="spread">
@@ -84,6 +99,24 @@ function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: string) 
       </div>
       </>)}
       {msg && <div style={{ marginTop: 8 }}><Callout tone="bad" title={msg} /></div>}
+      {preview && (
+        <div className="adm-modal" role="dialog" aria-modal="true" aria-labelledby={`pv-${s.id}`} onKeyDown={(e) => e.key === "Escape" && !pending && setPreview(null)}>
+          <div className="adm-modal-card mail-preview">
+            <h2 id={`pv-${s.id}`}>{preview.status === "APPROVED" ? "Aprobar y enviar el resultado" : "No aprobar y pedir ajustes"}</h2>
+            <dl className="mail-meta">
+              <dt>Para</dt><dd>{preview.to}</dd>
+              <dt>Copia</dt><dd>{preview.cc.length ? preview.cc.join(", ") : <span className="muted">Sin Delivery asignado: el correo no lleva copia.</span>}</dd>
+              <dt>Asunto</dt><dd><strong>{preview.subject}</strong></dd>
+            </dl>
+            <iframe className="mail-frame" title="Vista previa del correo" srcDoc={preview.html} sandbox="" />
+            <p className="muted"><small>{preview.status === "APPROVED" ? "La entrega queda aprobada." : "La entrega queda «no aprobada» y la persona podrá subir su reintento."} Para cambiar el texto, vuelve y edita el feedback.</small></p>
+            <div className="adm-modal-actions">
+              <button type="button" className="btn ghost" disabled={pending} onClick={() => setPreview(null)}>Volver a editar</button>
+              <button type="button" className={`btn${preview.status === "APPROVED" ? " adm-go" : ""}`} disabled={pending} onClick={() => send(preview.status, true)}>{pending ? "Enviando…" : "Confirmar y enviar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -116,7 +149,7 @@ function CertCard({ c, onDone, canReview }: { c: Cert; onDone: (m: string) => vo
   );
 }
 
-function AiBar({ waveId, subs }: { waveId: string; subs: Sub[] }) {
+export function AiBar({ waveId, subs }: { waveId: string; subs: Sub[] }) {
   const pending = subs.filter((s) => ["SUBMITTED", "HUMAN_REVIEW"].includes(s.status));
   const missing = pending.filter((s) => !s.ai || s.ai.status === "error").length;
   const running = pending.filter((s) => s.ai?.status === "pending").length;

@@ -64,6 +64,20 @@ export default async function MiJourney() {
         </div>
       );
     }
+    // Equipo interno (admin, Delivery…) que abre un enlace de un correo al profesional: el enlace es personal de él.
+    if (["admin", "delivery", "profesor", "hub", "bp", "mentor"].includes(viewer.role)) {
+      return (
+        <section className="state-page" aria-labelledby="mj-staff">
+          <span className="state-code" aria-hidden="true"><Icon name="user" size={34} /></span>
+          <h1 id="mj-staff">Este enlace es del profesional</h1>
+          <p>Lo abriste con tu cuenta de equipo ({viewer.email}), que no tiene un journey propio. Al profesional este mismo enlace le abre su módulo, con su feedback y la zona para subir su entrega. Para ver exactamente lo que ve, usa «Ver como».</p>
+          <div className="row" style={{ gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            {viewer.role === "admin" && <Link className="btn" href="/admin/vista">Ver como el profesional</Link>}
+            <Link className="btn ghost" href="/admin">Ir al portal de equipo</Link>
+          </div>
+        </section>
+      );
+    }
     return (
       <section className="state-page" aria-labelledby="mj-empty">
         <span className="state-code" aria-hidden="true"><Icon name="route" size={34} /></span>
