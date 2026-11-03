@@ -40,16 +40,18 @@ function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) 
   const [fb, setFb] = useState(s.feedback ?? draft?.feedback ?? "");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [notify, setNotify] = useState(true);
   const act = (status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW") =>
     start(async () => {
-      const r = await reviewSubmission(s.id, status, score ? Number(score) : null, fb);
+      if (status !== "HUMAN_REVIEW" && notify && !confirm(`${status === "APPROVED" ? "Aprobar" : "Marcar como no aprobada"} la entrega de ${s.person}.\n\nSe le enviará un correo con el puntaje y el feedback${status === "NOT_APPROVED" ? ", pidiéndole los ajustes para su reintento" : ""}, con copia a su Delivery.`)) return;
+      const r = await reviewSubmission(s.id, status, score ? Number(score) : null, fb, notify);
       if (r.ok) onDone(`${s.person} · ${s.capsules.title}: ${r.message}`);
       else setMsg(r.message);
     });
   return (
     <div className="card" id={`sub-${s.id}`} style={{ scrollMarginTop: 140 }}>
       <div className="spread">
-        <strong>{s.person} · {s.capsules.title}</strong>
+        <strong>{s.person} · {s.capsules.title}{s.attempt > 1 && <span className="badge warn" style={{ marginLeft: 8 }}>Reintento · intento {s.attempt}</span>}</strong>
         <small className="muted">{layerName(s.capsules.layer)} · intento {s.attempt}{s.capsules.max_attempts ? ` de ${s.capsules.max_attempts}` : ""} · {fmtDate(s.submitted_at)}</small>
       </div>
       {s.text_answer && <p style={{ whiteSpace: "pre-wrap" }}>{s.text_answer}</p>}
@@ -61,6 +63,10 @@ function SubmissionCard({ s, onDone }: { s: Sub; onDone: (m: string) => void }) 
       </div>
       <div className="field"><label htmlFor={`fb-${s.id}`}>Feedback para la persona</label><textarea id={`fb-${s.id}`} rows={3} value={fb} onChange={(e) => setFb(e.target.value)} /></div>
       <p className="muted"><small>AI First Mindset: aprobación con ≥75/100 + hard gates. “Revisión humana” no consume intento.</small></p>
+      <label className="check" style={{ margin: "0 0 10px" }}>
+        <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+        <span>Enviarle el resultado por correo (puntaje y feedback, con copia a su Delivery). Si no aprueba, el correo le pide los ajustes y le explica cómo hacer su reintento.</span>
+      </label>
       <div className="row">
         <button className="btn small" disabled={pending} onClick={() => act("APPROVED")}>Aprobar</button>
         <button className="btn ghost small" disabled={pending} onClick={() => act("NOT_APPROVED")}>No aprobada</button>

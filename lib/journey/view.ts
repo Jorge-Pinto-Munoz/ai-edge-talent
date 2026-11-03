@@ -175,9 +175,9 @@ function moduleView(c: Journey["capsules"][number], j: Journey): ModuleView {
   const status: ModuleView["status"] = last?.status === "APPROVED"
     ? { tone: "ok", label: "Aprobada" }
     : last?.status === "SUBMITTED" || last?.status === "HUMAN_REVIEW"
-      ? { tone: "wait", label: "Entregada · en revisión" }
+      ? { tone: "wait", label: last.attempt > 1 ? "Reintento entregado · en revisión" : "Entregada · en revisión" }
       : last?.status === "NOT_APPROVED"
-        ? { tone: "bad", label: "No aprobada · vuelve a entregar" }
+        ? gate.allowed ? { tone: "bad", label: "Segunda oportunidad · ajusta y vuelve a entregar" } : { tone: "bad", label: "No aprobada · sin intentos" }
         : c.task_prompt
           ? seen ? { tone: "now", label: "Falta tu entrega" } : { tone: "todo", label: "Por comenzar" }
           : seen ? { tone: "ok", label: "Vista" } : { tone: "todo", label: "Por ver" };

@@ -9,12 +9,12 @@ import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admi
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
 import { CLOSING_PULSE } from "./closure";
 import { markRequirementsByException, syncMany, syncStageClosure } from "./closure-sync";
-import { audit } from "@/lib/identity/service";
+import { audit, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { provisionParticipant } from "@/lib/identity/provision";
 import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 import { errorText } from "@/lib/text/errors";
 import { chileToIso } from "@/lib/time/chile";
-import { FORMAT_GROUPS, SUBMISSION_MAX_MB, effectiveFormats, fileAllowed, formatsLabel } from "./formats";
+import { FORMAT_GROUPS, SUBMISSION_MAX_MB, effectiveFormats, fileAllowed, fmtDue, formatsLabel } from "./formats";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
 const fail = (e: unknown): Result<never> => ({ ok: false, message: errorText(e) });
@@ -257,7 +257,7 @@ export async function saveCapsule(c: CapsuleInput): Promise<Result> {
 }
 
 /* ───────── Admin / Delivery: revisión ───────── */
-export async function reviewSubmission(id: string, status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW", score: number | null, feedback: string): Promise<Result> {
+export async function reviewSubmission(id: string, status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW", score: number | null, feedback: string, notify = true): Promise<Result> {
   try {
     const viewer = await requireRole(["admin", "delivery"]);
     const db = await supabaseUser();
@@ -270,11 +270,43 @@ export async function reviewSubmission(id: string, status: "APPROVED" | "NOT_APP
     if (error) throw error;
     // Aprobar el último desafío obligatorio habilita el pulso de cierre de la etapa.
     if (sub) await syncMany([sub.candidate_id], viewer.id);
+    // Aviso al profesional (copia a su Delivery) con puntaje y feedback. «Revisión humana» es interna: no avisa.
+    let mail = "";
+    if (sub && notify && status !== "HUMAN_REVIEW") {
+      const r = await notifySubmissionReview(id, status, score, feedback, viewer.id);
+      mail = r === "sent" ? " Correo enviado al profesional con copia a su Delivery." : r === "failed" ? " El correo no salió: reenvíalo desde Comunicaciones." : " (El correo de esta decisión ya se había enviado.)";
+    }
     revalidatePath("/admin/journey", "layout");
-    return { ok: true, message: "Revisión registrada." };
+    revalidatePath("/mi-journey");
+    return { ok: true, message: `Revisión registrada.${mail}` };
   } catch (e) {
     return fail(e);
   }
+}
+
+/** Correo de resultado de una entrega: una vez por decisión (si se cambia la decisión, se avisa la nueva). */
+async function notifySubmissionReview(id: string, status: "APPROVED" | "NOT_APPROVED", score: number | null, feedback: string, actor: string): Promise<"sent" | "failed" | "skipped"> {
+  const svc = supabaseService();
+  const { data: s } = await svc.from("submissions").select("id, candidate_id, capsule_id, attempt, capsules(title, max_attempts, due_at, due_date), candidates(full_name, corporate_email, wave_id, user_id), submission_ai_reviews(threshold)").eq("id", id).single();
+  if (!s) return "skipped";
+  const cap = s.capsules as unknown as { title: string; max_attempts: number | null; due_at: string | null; due_date: string | null };
+  const cand = s.candidates as unknown as { full_name: string; corporate_email: string; wave_id: string; user_id: string | null };
+  const first = await audit("journey.submission.notified", { actor, candidateId: s.candidate_id, waveId: cand.wave_id, targetEmail: cand.corporate_email, details: { submission: id, status, score }, eventKey: `submission-review:${id}:${status}` }, svc);
+  if (!first) return "skipped";
+  const { count: failed } = await svc.from("submissions").select("id", { count: "exact", head: true }).eq("candidate_id", s.candidate_id).eq("capsule_id", s.capsule_id).eq("status", "NOT_APPROVED");
+  const threshold = ([s.submission_ai_reviews].flat()[0] as { threshold: number | null } | undefined)?.threshold ?? 75;
+  const due = cap.due_at ?? (cap.due_date ? chileToIso(`${cap.due_date}T23:59`) : null);
+  const r = await sendIdentityEmail(status === "APPROVED" ? "SUBMISSION_APPROVED" : "SUBMISSION_RETRY", cand.corporate_email, {
+    name: cand.full_name,
+    stage: cap.title,
+    score,
+    minScore: threshold,
+    extra: feedback.trim() || undefined,
+    attempts: { used: failed ?? s.attempt, max: cap.max_attempts },
+    when: due && new Date(due) > new Date() ? fmtDue(due) : undefined,
+    link: portalLink("ingresar", cand.corporate_email, `/mi-journey?m=${s.capsule_id}`),
+  }, { userId: cand.user_id, candidateId: s.candidate_id, waveId: cand.wave_id, sentBy: actor }, svc);
+  return r.ok ? "sent" : "failed";
 }
 
 export async function reviewCertification(id: string, status: "VERIFIED" | "REJECTED", note: string): Promise<Result> {

@@ -70,6 +70,13 @@ export function ModuleItem({ id, m, open, locked, preview, onToggle, onPlay }: {
                 <h4>{m.challenge ? "Tu reto" : "Tu tarea"}{m.required && <small> · obligatorio</small>}</h4>
                 {m.maxAttempts && <small className="muted">Intentos usados: {m.usedAttempts} de {m.maxAttempts}</small>}
               </div>
+              {m.submissions[0]?.status === "NOT_APPROVED" && !m.blocked && (
+                <div className="mod-retry" role="status">
+                  <strong>Tienes una nueva oportunidad</strong>
+                  <p>Revisa el feedback de tu entrega anterior (más abajo), haz los ajustes y sube tu nueva versión. Quedará como intento {m.submissions[0].attempt + 1}{m.maxAttempts ? ` de ${m.maxAttempts}` : ""}.</p>
+                  {m.submissions[0].feedback && <p className="mod-fb"><strong>Lo que te pedimos ajustar:</strong> {m.submissions[0].feedback}</p>}
+                </div>
+              )}
               {due && (
                 <div className={`mod-due ${due.rel.tone}`}>
                   <Icon name="calendar" size={18} />

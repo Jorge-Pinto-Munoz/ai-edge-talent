@@ -5,7 +5,7 @@
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
   | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
-  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED";
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED" | "SUBMISSION_APPROVED" | "SUBMISSION_RETRY";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -31,6 +31,8 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   RESCUE_RECEIVED: "Video de rescate recibido",
   PROGRAM_REMOVED: "Baja del programa",
   STAGE_MOVED: "Cambio de etapa",
+  SUBMISSION_APPROVED: "Entrega aprobada",
+  SUBMISSION_RETRY: "Entrega con ajustes (reintento)",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -61,7 +63,7 @@ ${opts.foot ? `<p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#4
 /** Texto plano: los subtítulos ("# …") pierden la marca. */
 const plain = (p: string[]) => p.map((x) => (x.startsWith("# ") ? x.slice(2).toUpperCase() : x));
 
-export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string; wave?: string; questions?: string[]; decision?: "selected" | "rescue" | "not_selected" | "rescue_selected" | "rescue_not_selected" }): Rendered {
+export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: string; link?: string; minutes?: number; stage?: string; extra?: string; when?: string; wave?: string; questions?: string[]; decision?: "selected" | "rescue" | "not_selected" | "rescue_selected" | "rescue_not_selected"; score?: number | null; minScore?: number; attempts?: { used: number; max: number | null } }): Rendered {
   const hi = c.name ? `Hola ${c.name.split(" ")[0]}:` : "Hola:";
   switch (t) {
     case "SELECTED_WELCOME": {
@@ -126,6 +128,38 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
     case "PROGRAM_REMOVED": {
       const p = [hi, `Te informamos que tu participación en ${c.wave ?? "AI Edge Talent"} fue dada de baja por el equipo del programa.`, ...(c.extra ? [c.extra] : []), "Tu acceso al portal del programa quedó deshabilitado. Si crees que se trata de un error o tienes dudas, conversa con tu Delivery o responde este correo."];
       return { subject: "AI Edge Talent | Baja del programa", text: p.join("\n"), html: layout("Baja del programa", p, { foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "SUBMISSION_APPROVED": {
+      const p = [
+        hi,
+        `¡Felicitaciones! Tu entrega de «${c.stage ?? "tu reto"}» fue aprobada.`,
+        ...(c.score != null ? [`# Tu resultado: ${Math.round(c.score)}/100`] : ["# Tu resultado: aprobada"]),
+        "# Feedback de tu entrega",
+        ...(c.extra ? c.extra.split(/\n+/).filter((x) => x.trim()) : ["Buen trabajo."]),
+        "# Próximo paso",
+        "Sigue con tu journey: en tu portal verás qué viene. Tu Delivery va en copia de este correo.",
+      ];
+      return { subject: `AI Edge Talent | Aprobaste «${c.stage ?? "tu reto"}»`, text: [...plain(p), "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout("Tu entrega fue aprobada", p, { cta: { label: "IR A MI JOURNEY", href: c.link ?? "" } }) };
+    }
+    case "SUBMISSION_RETRY": {
+      const left = c.attempts?.max ? c.attempts.max - c.attempts.used : null;
+      const canRetry = left === null || left > 0;
+      const p = [
+        hi,
+        `Revisamos tu entrega de «${c.stage ?? "tu reto"}». Aún no alcanza el estándar para aprobar, pero vas por buen camino y ${canRetry ? "tienes una nueva oportunidad para ajustarla" : "conversaremos contigo los próximos pasos"}.`,
+        `# Tu resultado: ${c.score != null ? `${Math.round(c.score)}/100` : "por ajustar"}${c.minScore ? ` (para aprobar se necesitan ${c.minScore})` : ""}`,
+        "# Feedback y ajustes solicitados",
+        ...(c.extra ? c.extra.split(/\n+/).filter((x) => x.trim()) : ["Revisa los criterios del reto y completa lo que falta."]),
+        "# Cómo hacer tu reintento",
+        ...(canRetry
+          ? [
+              `Abre el módulo en tu portal, ajusta tu entrega según este feedback y súbela de nuevo. Quedará registrada como intento ${(c.attempts?.used ?? 1) + 1}${c.attempts?.max ? ` de ${c.attempts.max}` : ""}.`,
+              ...(c.when ? [`Plazo: ${c.when} (hora de Chile).`] : []),
+            ]
+          : ["Ya usaste los intentos disponibles de este reto. Tu Delivery se pondrá en contacto contigo para acordar cómo seguir."]),
+        "Tu Delivery va en copia de este correo por si necesitas apoyo.",
+      ];
+      return { subject: canRetry ? `AI Edge Talent | Ajusta tu entrega de «${c.stage ?? "tu reto"}» (segunda oportunidad)` : `AI Edge Talent | Resultado de tu entrega de «${c.stage ?? "tu reto"}»`, text: [...plain(p), "", `Ir al módulo: ${c.link}`].join("\n"), html: layout(canRetry ? "Tu entrega necesita ajustes" : "Resultado de tu entrega", p, canRetry ? { cta: { label: "SUBIR MI NUEVA ENTREGA", href: c.link ?? "" } } : { foot: "Equipo AI Edge Talent · Kibernum" }) };
     }
     case "STAGE_MOVED": {
       const p = [hi, `El equipo AI Edge Talent actualizó tu avance: desde hoy estás en la etapa ${c.stage ?? "siguiente"} de tu journey.`, ...(c.extra ? [c.extra] : []), "En tu portal verás lo que corresponde a esta etapa: actividades, materiales y próximos pasos. Ingresas con tu correo y un código de 6 dígitos de un solo uso.", "Si tienes dudas, conversa con tu Delivery o responde este correo."];

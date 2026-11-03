@@ -324,3 +324,5 @@
   .mod-steps > li { padding-left: 36px; }
 }
 .jr-preview-warn { display: block; margin-top: 6px; color: var(--warn-text); }
+.mod-retry { padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--warn-text); border-left: 4px solid #e5a823; }
+.mod-retry p { margin: 4px 0 0; color: var(--text); }
