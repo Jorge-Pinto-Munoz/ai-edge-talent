@@ -13,17 +13,8 @@ export function ParticipantsBoard({ waveId, people, isAdmin }: { waveId: string;
   const [exception, setException] = useState("");
   const [res, setRes] = useState<{ ok: boolean; message: string; data?: string[] } | null>(null);
   const [pending, start] = useTransition();
-  const columns: (Layer | null)[] = [null, "AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
   return (
     <div className="stack">
-      <div className="grid grid-3">
-        {columns.map((l) => (
-          <div key={l ?? "none"} className="card">
-            <div className="kpi">{people.filter((p) => p.journey_layer === l).length}</div>
-            <small className="muted">{l ? layerName(l) : "Inscritos sin iniciar"}</small>
-          </div>
-        ))}
-      </div>
       {isAdmin && sel.length > 0 && (
         <div className="card" style={{ borderColor: "var(--accent)" }}>
           <strong>{sel.length} seleccionado(s) · avanzar etapa</strong>

@@ -78,7 +78,7 @@ export async function journeyOverview(waveId: string): Promise<{ stages: StageSu
       : stage.layer === "AI_LAB_SHOWCASE" ? [{ label: "Proyectos listos para Showcase", count: ready, tab: "showcase" }]
       : []
     ).filter((a) => a.count > 0);
-    if (flagged) actions.unshift({ label: flagged === 1 ? "Persona con alerta" : "Personas con alerta", count: flagged, tab: stage.layer === "ROLE_ENABLEMENT" ? "aicert" : stage.layer === "AI_MINDSET" ? "clases" : "participantes" });
+    if (flagged) actions.unshift({ label: flagged === 1 ? "Persona con alerta" : "Personas con alerta", count: flagged, tab: stage.layer === "ROLE_ENABLEMENT" ? "aicert" : stage.layer === "AI_MINDSET" ? "entregas" : "participantes" });
     return summary(stage, here.length, after, flagged, people.length, actions);
   });
   return { stages, enrolled: people.length, candidates: cs.length };

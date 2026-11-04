@@ -30,10 +30,10 @@ export function ContentEditor({ waveId, guides, capsules, fixedLayer }: { waveId
       <div className="card">
         <div className="spread">
           <div>
-            <h2 className="h-card" style={{ margin: 0 }}>Módulos (cápsulas)</h2>
-            <small className="muted">Se muestran en este orden a los profesionales. Recomendado: hasta 5 por etapa. Puedes editar una cápsula publicada cuando quieras: el cambio se ve al instante.</small>
+            <h2 className="h-card" style={{ margin: 0 }}>Módulos de la etapa</h2>
+            <small className="muted">Se muestran en este orden a los profesionales. Recomendado: hasta 5 por etapa. Cada módulo (o clase) agrupa su video, material y tarea. Puedes editar un módulo publicado cuando quieras: el cambio se ve al instante.</small>
           </div>
-          <button className="btn small" onClick={() => setEditing("new")} disabled={editing === "new"}>Nueva cápsula</button>
+          <button className="btn small" onClick={() => setEditing("new")} disabled={editing === "new"}>Nuevo módulo</button>
         </div>
         <ul className="cap-admin-list">
           {list.map((c) => (
@@ -54,7 +54,7 @@ export function ContentEditor({ waveId, guides, capsules, fixedLayer }: { waveId
               )}
             </li>
           ))}
-          {list.length === 0 && <li className="muted">Sin cápsulas en esta etapa.</li>}
+          {list.length === 0 && <li className="muted">Aún no hay módulos en esta etapa. Crea el primero con «Nuevo módulo».</li>}
         </ul>
       </div>
       {editing === "new" && <CapsuleForm key="new" waveId={waveId} layer={layer} capsule={null} nextPosition={list.length + 1} onDone={() => setEditing(null)} />}
@@ -126,7 +126,7 @@ function CapsuleForm({ waveId, layer, capsule, nextPosition, onDone }: { waveId:
   const txt = (k: "title" | "description" | "videoUrl" | "taskPrompt" | "dueAt") => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setC({ ...c, [k]: e.target.value });
   return (
     <div className="card" style={{ borderColor: "var(--accent)" }}>
-      <h2 className="h-card" style={{ marginTop: 0 }}>{capsule ? "Editar cápsula" : "Nueva cápsula"}</h2>
+      <h2 className="h-card" style={{ marginTop: 0 }}>{capsule ? "Editar módulo" : "Nuevo módulo"}</h2>
       <div className="grid grid-3">
         <div className="field"><label htmlFor="ct">Título</label><input id="ct" type="text" value={c.title} onChange={txt("title")} /></div>
         <div className="field"><label htmlFor="cp">Orden</label><input id="cp" type="text" inputMode="numeric" value={c.position} onChange={(e) => setC({ ...c, position: Number(e.target.value) || 1 })} /></div>
@@ -197,7 +197,7 @@ function CapsuleForm({ waveId, layer, capsule, nextPosition, onDone }: { waveId:
       <label className="check"><input type="checkbox" checked={c.published} onChange={(e) => setC({ ...c, published: e.target.checked })} /><span>Publicada (visible para los participantes)</span></label>
       {msg && <Callout tone={msg.ok ? "ok" : "bad"} title={msg.message} />}
       <div className="row">
-        <button className="btn" disabled={pending} onClick={() => start(async () => { const r = await saveCapsule(c); setMsg(r); if (r.ok) { router.refresh(); onDone(); } })}>Guardar cápsula</button>
+        <button className="btn" disabled={pending} onClick={() => start(async () => { const r = await saveCapsule(c); setMsg(r); if (r.ok) { router.refresh(); onDone(); } })}>Guardar módulo</button>
         <button className="btn ghost" onClick={onDone}>Cancelar</button>
       </div>
     </div>

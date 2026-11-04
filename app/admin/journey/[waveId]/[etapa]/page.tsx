@@ -19,6 +19,7 @@ import { SubmissionsPanel } from "@/components/journey-admin/SubmissionsPanel";
 import { GroupProgress } from "@/components/journey-admin/GroupProgress";
 import { stageCoverage } from "@/lib/journey/coverage";
 import { EvaluateView } from "@/components/journey-admin/EvaluateView";
+import { MoveStage } from "@/components/journey-admin/MoveStage";
 import { AiBar } from "@/components/journey-admin/ReviewQueue";
 import { deliveryState } from "@/lib/journey/delivery-status";
 import { prettyName } from "@/lib/text/org";
@@ -40,18 +41,20 @@ export async function generateMetadata({ params }: { params: Promise<{ etapa: st
   return { title: `${stageBySlug((await params).etapa)?.name ?? "Etapa"} · Journey · Portal AET` };
 }
 
+const stageNameOf = (l: string) => ({ AI_MINDSET: "AI First Mindset", ROLE_ENABLEMENT: "Role Enablement", AI_LAB_SHOWCASE: "AI Lab & Showcase", CLOSURE: "Cierre" } as Record<string, string>)[l] ?? l;
 const TO_DECIDE = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED"];
 
 /** Detalle de una etapa (nivel 3): sus participantes, actividades, evaluaciones, entregables y acciones. */
-export default async function StageDetail({ params, searchParams }: { params: Promise<{ waveId: string; etapa: string }>; searchParams: Promise<{ tab?: string; clase?: string; sub?: string }> }) {
+export default async function StageDetail({ params, searchParams }: { params: Promise<{ waveId: string; etapa: string }>; searchParams: Promise<{ tab?: string; clase?: string; sub?: string; p?: string }> }) {
   const { waveId, etapa } = await params;
-  const { tab: rawTab, clase, sub: subParam } = await searchParams;
+  const { tab: rawTab, clase, sub: subParam, p: personParam } = await searchParams;
   const stage = stageBySlug(etapa);
   if (!stage) notFound();
   const viewer = await requireStaffPage(`/admin/journey/${waveId}/${etapa}`);
   const isAdmin = viewer.role === "admin";
   const tabs = stage.tabs.filter((t) => isAdmin || !t.adminOnly);
   const tab = tabs.find((t) => t.key === rawTab) ?? tabs[0];
+  const detailOpen = tab.key === "entregas" && Boolean(subParam || personParam);
   if (rawTab && rawTab !== tab.key) redirect(`/admin/journey/${waveId}/${etapa}`);
 
   const db = await supabaseUser();
@@ -67,7 +70,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
 
   // Participantes de la Wave inscritos; los de esta etapa (inscrito sin capa = empieza en AI First Mindset).
   const { data: enrolled } = stage.layer === "ASSESSMENT" ? { data: [] } : await db
-    .from("candidates").select("id, full_name, client_name, role_title, specialty, status, journey_layer, journey_layer_since")
+    .from("candidates").select("id, full_name, corporate_email, delivery_owner, user_id, client_name, role_title, specialty, status, journey_layer, journey_layer_since")
     .eq("wave_id", waveId).in("status", [...JOURNEY_STATUSES]).order("full_name");
   const here = (enrolled ?? []).filter((p) => (p.journey_layer ?? "AI_MINDSET") === stage.layer);
   const ids = (enrolled ?? []).map((p) => p.id);
@@ -95,7 +98,8 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         <div className="adm-kpi"><span className="ico"><Icon name="target" size={20} /></span><strong>{sum.pct === null ? "—" : `${sum.pct}%`}</strong><small>Avance de la Wave</small></div>
       </section>
 
-      {stage.layer !== "ASSESSMENT" && (await (async () => {
+      {/* Con una persona abierta, el detalle va arriba: sin el avance del grupo ni la apertura. */}
+      {stage.layer !== "ASSESSMENT" && !detailOpen && (await (async () => {
         // Grupo completo: todos los que pasaron el Assessment (seleccionados en adelante) en esta Wave.
         const { data: group } = await db.from("candidates").select("id, full_name, client_name, status, journey_layer, user_id").eq("wave_id", waveId).in("status", ["SELECTED", "CONDITIONS_PENDING", ...JOURNEY_STATUSES]).order("full_name");
         const gids = (group ?? []).map((g) => g.id);
@@ -137,20 +141,21 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         return <GroupProgress cov={cov} stageName={stage.name} doneLabel={DONE[stage.layer] ?? "completaron"} />;
       })())}
 
-      {stage.layer === "AI_MINDSET" && (await (async () => {
+      {stage.layer === "AI_MINDSET" && !detailOpen && (await (async () => {
         // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).
         await notifyStageOpen(waveId);
         const o = await mindsetOpening(waveId);
         return <StageOpeningPanel waveId={waveId} {...o} canEdit={isAdmin} />;
       })())}
 
+      {/* Pestañas con <a>: la navegación cliente que solo cambia ?tab= se pierde en esta página. */}
       <nav className="view-toggle jn-tabs" aria-label={`Secciones de ${stage.name}`}>
         {tabs.map((t) => {
           const action = sum.actions.find((a) => a.tab === t.key);
           return (
-            <Link key={t.key} href={t.key === tabs[0].key ? base : `${base}?tab=${t.key}`} aria-current={t.key === tab.key ? "true" : undefined}>
+            <a key={t.key} href={t.key === tabs[0].key ? base : `${base}?tab=${t.key}`} aria-current={t.key === tab.key ? "true" : undefined}>
               {t.label}{action && <span className="jn-tab-n" aria-label={`${action.count} pendientes`}>{action.count}</span>}
-            </Link>
+            </a>
           );
         })}
       </nav>
@@ -203,7 +208,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             <div className="jn-cta">
               <p className="muted">La evaluación con IA, las decisiones de selección y la inscripción se gestionan en Admisión.</p>
               <div className="row" style={{ gap: 8 }}>
-                {isAdmin && <Link className="btn ghost" href={`${base}?tab=criterios`}>Conoce los criterios de evaluación</Link>}
+                {isAdmin && <a className="btn ghost" href={`${base}?tab=criterios`}>Conoce los criterios de evaluación</a>}
                 <Link className="btn" href={`/admin/admision/${waveId}`}>Gestionar en Admisión <Icon name="arrowRight" size={16} /></Link>
               </div>
             </div>
@@ -239,20 +244,30 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             score: last?.score != null ? Number(last.score) : null, aiScore: ai?.status === "done" && ai.score != null ? Number(ai.score) : null, submittedAt: last?.submitted_at ?? null,
           };
         });
+        // Detalle de una persona: por su entrega (?sub=) o por la persona (?p=), tenga o no entrega.
         const selected = subParam ? mine.find((x) => x.id === subParam) : undefined;
-        if (selected) {
-          const p = (enrolled ?? []).find((x) => x.id === selected.candidate_id);
-          const history = mine.filter((x) => x.candidate_id === selected.candidate_id && x.capsule_id === selected.capsule_id && x.id !== selected.id).sort((a, b) => b.attempt - a.attempt);
-          const next = rows.find((r) => r.state === "pending" && r.subId && r.subId !== selected.id);
+        const personId = selected?.candidate_id ?? (personParam && (enrolled ?? []).some((x) => x.id === personParam) ? personParam : null);
+        if (personId) {
+          const p = (enrolled ?? []).find((x) => x.id === personId)!;
+          const own = mine.filter((x) => x.candidate_id === personId).sort((a, b) => b.attempt - a.attempt || String(b.submitted_at).localeCompare(String(a.submitted_at)));
+          const current = selected ?? own[0];
+          const history = own.filter((x) => x.id !== current?.id);
+          const next = rows.find((r) => r.state === "pending" && r.subId && r.subId !== current?.id);
+          const [{ data: prof }, { data: cred }] = p.user_id
+            ? await Promise.all([supabaseService().from("profiles").select("status").eq("id", p.user_id).maybeSingle(), supabaseService().from("user_credentials").select("last_login_at").eq("user_id", p.user_id).maybeSingle()])
+            : [{ data: null }, { data: null }];
           return (
             <EvaluateView
-              sub={asSub(selected) as never}
-              person={{ client: p?.client_name ? prettyName(p.client_name) : null, role: p?.role_title ? prettyName(p.role_title) : null }}
-              state={rows.find((r) => r.id === selected.candidate_id)?.state ?? "pending"}
+              sub={current ? (asSub(current) as never) : null}
+              name={p.full_name}
+              person={{ client: p.client_name ? prettyName(p.client_name) : null, role: p.role_title ? prettyName(p.role_title) : null }}
+              facts={{ email: p.corporate_email, delivery: p.delivery_owner, account: prof?.status === "ACTIVE" ? "Activa" : p.user_id ? "Creada, sin activar" : "Sin cuenta", lastLogin: (cred as { last_login_at?: string | null } | null)?.last_login_at ?? null, stage: p.journey_layer ? stageNameOf(p.journey_layer) : "AI First Mindset (por iniciar)", since: p.journey_layer_since }}
+              state={rows.find((r) => r.id === personId)?.state ?? "missing"}
               history={history as never}
               backHref={`${base}?tab=entregas`}
               nextHref={next ? `${base}?tab=entregas&sub=${next.subId}` : null}
               isAdmin={isAdmin}
+              move={isAdmin ? <MoveStage candidateId={p.id} name={p.full_name} current={p.journey_layer as Layer | null} enrolled /> : null}
             />
           );
         }

@@ -95,7 +95,7 @@ export function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: s
         <button className="btn small" disabled={pending} onClick={() => act("APPROVED")}>Aprobar</button>
         <button className="btn ghost small" disabled={pending} onClick={() => act("NOT_APPROVED")}>No aprobada</button>
         <button className="btn ghost small" disabled={pending} onClick={() => act("HUMAN_REVIEW")}>Revisión humana</button>
-        <span className="badge">{s.status}</span>
+        <span className="badge">{({ SUBMITTED: "En revisión", HUMAN_REVIEW: "Revisión humana", APPROVED: "Aprobada", NOT_APPROVED: "No aprobada" } as Record<string, string>)[s.status] ?? s.status}</span>
       </div>
       </>)}
       {msg && <div style={{ marginTop: 8 }}><Callout tone="bad" title={msg} /></div>}

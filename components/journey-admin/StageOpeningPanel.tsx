@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cancelSchedule, openStage, scheduleStage, type OpeningResult } from "@/lib/journey/opening-actions";
 import { OPENING_LABEL, type OpeningStatus } from "@/lib/journey/opening-labels";
 import { Callout } from "@/components/ui";
+import { Icon } from "@/components/site/Icon";
 
 const fmt = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
@@ -40,15 +41,15 @@ export function StageOpeningPanel(props: { waveId: string; status: OpeningStatus
           <h2 id="op-h" className="h-card" style={{ margin: 0 }}>Apertura de AI First Mindset</h2>
           <p className="muted" style={{ margin: "4px 0 0" }}>Las personas pueden ingresar al portal antes; el contenido de la etapa se habilita con la apertura.</p>
         </div>
-        <span className={`open-state st-${status}`}>{OPENING_LABEL[status]}</span>
+        <span className={`op-state st-${status}`}><i aria-hidden="true" /> {OPENING_LABEL[status]}</span>
       </div>
-      <dl className="open-stats">
-        <div><dt>Habilitados</dt><dd>{props.enabled}</dd></div>
-        <div><dt>Pendientes de confirmar</dt><dd>{props.pending}</dd></div>
-        <div><dt>{status === "scheduled" ? "Abre el" : status === "closed" ? "Fecha" : "Abierta desde"}</dt><dd>{opensAt ? fmt(opensAt) : "Sin fecha"}</dd></div>
-        <div><dt>Primer reto</dt><dd>{props.firstChallenge ?? <span className="muted">Aún no hay cápsulas publicadas</span>}</dd></div>
-      </dl>
-      {status !== "closed" && status !== "scheduled" && <p className="muted" style={{ margin: 0 }}><small>{props.notifiedAt ? `Aviso «primer reto disponible» enviado el ${fmt(props.notifiedAt)}.` : "El aviso de apertura está pendiente."}</small></p>}
+      <ul className="op-tiles">
+        <li><span className="op-ico ok"><Icon name="users" size={20} /></span><span><strong>{props.enabled}</strong><small>Habilitados</small></span></li>
+        <li><span className={`op-ico ${props.pending ? "warn" : ""}`}><Icon name="clock" size={20} /></span><span><strong>{props.pending}</strong><small>Pendientes de confirmar</small></span></li>
+        <li><span className="op-ico"><Icon name="calendar" size={20} /></span><span><strong className="op-date">{opensAt ? fmt(opensAt) : "Sin fecha"}</strong><small>{status === "scheduled" ? "Abre el" : status === "closed" ? "Fecha de apertura" : "Abierta desde"}</small></span></li>
+        <li><span className="op-ico"><Icon name="flag" size={20} /></span><span><strong className="op-date">{props.firstChallenge ?? "Sin módulos publicados"}</strong><small>Primer módulo</small></span></li>
+      </ul>
+      {status !== "closed" && status !== "scheduled" && <p className="op-note"><Icon name="send" size={14} /> {props.notifiedAt ? `Aviso «primer reto disponible» enviado el ${fmt(props.notifiedAt)}.` : "El aviso de apertura está pendiente."}</p>}
       {canEdit && (status === "closed" || status === "scheduled") && (
         <div className="stack" style={{ gap: 10 }}>
           <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>

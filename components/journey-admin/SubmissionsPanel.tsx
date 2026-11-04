@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { fmtDate } from "@/components/ui";
 import type { DeliveryState } from "@/lib/journey/delivery-status";
@@ -27,12 +26,22 @@ export type PanelRow = {
   submittedAt: string | null;
 };
 
-/** Desafío y entregas: indicadores, flujo de 4 pasos (filtros) y listado de personas con acceso a «Evaluar». */
+/** Enlaces <a> a propósito: en la página de etapa, la navegación cliente que solo cambia ?tab=/?sub= no se aplica.
+ *  Desafío y entregas: indicadores, flujo de 4 pasos (filtros) y listado de personas con acceso a «Evaluar». */
 export function SubmissionsPanel({ base, rows, isAdmin }: { base: string; rows: PanelRow[]; isAdmin: boolean }) {
-  const [filter, setFilter] = useState<DeliveryState | "all">(rows.some((r) => r.state === "pending") ? "pending" : "all");
+  const [filter, setFilter] = useState<DeliveryState | "all">("all");
+  const [sort, setSort] = useState<"flow" | "done" | "name" | "score">("flow");
+  const href = (r: PanelRow) => `${base}?tab=entregas&${r.subId ? `sub=${r.subId}` : `p=${r.id}`}`;
+  // Orden: por paso del flujo (lo que requiere tu acción primero), completados primero, nombre o puntaje.
+  const FLOW_ORDER: DeliveryState[] = ["pending", "not_approved", "missing", "approved"];
+  const sorter = (a: PanelRow, b: PanelRow) =>
+    sort === "name" ? a.name.localeCompare(b.name, "es")
+    : sort === "score" ? (b.score ?? b.aiScore ?? -1) - (a.score ?? a.aiScore ?? -1) || a.name.localeCompare(b.name, "es")
+    : sort === "done" ? Number(b.state === "approved") - Number(a.state === "approved") || a.name.localeCompare(b.name, "es")
+    : FLOW_ORDER.indexOf(a.state) - FLOW_ORDER.indexOf(b.state) || a.name.localeCompare(b.name, "es");
   const count = (k: DeliveryState) => rows.filter((r) => r.state === k).length;
   const pct = (n: number) => (rows.length ? Math.round((n / rows.length) * 100) : 0);
-  const shown = rows.filter((r) => filter === "all" || r.state === filter);
+  const shown = rows.filter((r) => filter === "all" || r.state === filter).sort(sorter);
   const kpis = [
     { label: "Participantes", value: rows.length, hint: "en la Wave", tone: "" },
     { label: "Completados", value: count("approved"), hint: `${pct(count("approved"))}% aprobó`, tone: "ok" },
@@ -66,6 +75,17 @@ export function SubmissionsPanel({ base, rows, isAdmin }: { base: string; rows: 
         ))}
       </nav>
 
+      <div className="sp-bar">
+        <strong>{shown.length} participante{shown.length === 1 ? "" : "s"}{filter !== "all" ? ` · ${FLOW.find((f) => f.key === filter)?.label}` : ""}</strong>
+        <label className="sp-sort">Ordenar
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+            <option value="flow">Por revisar primero</option>
+            <option value="done">Completados primero</option>
+            <option value="score">Mayor puntaje</option>
+            <option value="name">Nombre (A–Z)</option>
+          </select>
+        </label>
+      </div>
       <div className="table-wrap" tabIndex={0}>
         <table className="rtable sp-table">
           <thead>
@@ -75,10 +95,11 @@ export function SubmissionsPanel({ base, rows, isAdmin }: { base: string; rows: 
             {shown.map((r) => {
               const at = FLOW.findIndex((f) => f.key === r.state);
               return (
-                <tr key={r.id}>
+                <tr key={r.id} className="sp-row">
                   <td className="rt-title">
-                    <strong>{r.name}</strong>
+                    <a href={href(r)} className="sp-name"><strong>{r.name}</strong></a>
                     <small className="muted">{[r.client, r.role].filter(Boolean).join(" · ") || "—"}</small>
+                    {isAdmin && <a className="sp-move" href={`${base}?tab=entregas&p=${r.id}#etapa`}>Mover de etapa</a>}
                   </td>
                   <td data-label="Paso">
                     <span className="sp-dots" aria-hidden="true">{FLOW.map((f, i) => <i key={f.key} className={i < at ? "past" : i === at ? `now ${f.tone}` : ""} />)}</span>
@@ -92,11 +113,7 @@ export function SubmissionsPanel({ base, rows, isAdmin }: { base: string; rows: 
                   </td>
                   <td data-label="Enviado">{r.submittedAt ? <small>{fmtDate(r.submittedAt)}</small> : <span className="muted">—</span>}</td>
                   <td className="sp-act">
-                    {r.subId ? (
-                      <Link className={`btn small${isAdmin && r.state === "pending" ? "" : " ghost"}`} href={`${base}?tab=entregas&sub=${r.subId}`}>
-                        {isAdmin && r.state === "pending" ? "Evaluar" : "Ver"}
-                      </Link>
-                    ) : <span className="muted"><small>Sin entrega</small></span>}
+                    <a className={`btn small${isAdmin && r.state === "pending" ? "" : " ghost"}`} href={href(r)}>{isAdmin && r.state === "pending" ? "Evaluar" : "Detalles"}</a>
                   </td>
                 </tr>
               );
