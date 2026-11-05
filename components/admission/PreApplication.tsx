@@ -3,13 +3,14 @@
 import { useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/site/Icon";
 
-/** Lo que se espera de la persona en cada una de las 5 etapas. */
+/** Lo que se espera de la persona en cada una de las 6 etapas. */
 const STAGES: { n: number; name: string; icon: IconName; summary: string; expect: string[] }[] = [
   { n: 1, name: "Assessment", icon: "target", summary: "Nos cuentas cómo usas IA hoy.", expect: ["Responde con experiencias reales de tu trabajo.", "Envía tu postulación dentro del plazo.", "Una persona del equipo revisa y decide."] },
   { n: 2, name: "AI First Mindset", icon: "brain", summary: "Cambias la forma de abordar tu trabajo con IA.", expect: ["Es obligatoria: no se puede saltar.", "Completa el reto y sus entregables a tiempo.", "Responde el pulso de cierre de la etapa."] },
   { n: 3, name: "Role Enablement · AI CERT", icon: "badge", summary: "Te certificas en IA para tu rol.", expect: ["Asiste a las clases con tu AI Coach (obligatorio).", "Avanza en los contenidos AI CERT al ritmo acordado.", "Tienes 2 intentos para certificarte.", "Debes estar certificado/a antes de pasar al AI Lab."] },
-  { n: 4, name: "AI Lab & Showcase", icon: "flask", summary: "Aplicas IA a un caso real y lo presentas.", expect: ["Trabaja en equipo en un desafío real.", "Asiste a las clases del Lab.", "Presenta tu resultado en el Showcase."] },
-  { n: 5, name: "Cierre", icon: "flag", summary: "Cierras el ciclo y defines tus próximos pasos.", expect: ["Completa el pulso final.", "Acuerda con tu Delivery cómo seguir aplicando lo aprendido."] },
+  { n: 4, name: "AI Lab", icon: "flask", summary: "Construyes una solución con IA para un caso real.", expect: ["Trabaja en un desafío real de tu cliente.", "Asiste a las clases del Lab.", "Describe tu proyecto y sube tus avances."] },
+  { n: 5, name: "Showcase", icon: "presentation", summary: "Presentas tu caso al cliente.", expect: ["Prepara tu presentación con la plantilla oficial.", "Sube tu presentación final.", "Presenta tu resultado con demo en vivo."] },
+  { n: 6, name: "Cierre", icon: "flag", summary: "Cierras el ciclo y defines tus próximos pasos.", expect: ["Completa el pulso final.", "Acuerda con tu Delivery cómo seguir aplicando lo aprendido."] },
 ];
 
 /** Compromisos que aplican a todo el ciclo. */
@@ -39,7 +40,7 @@ export function StageSlider() {
       <div className="pa-sec-head">
         <div>
           <h2 id="pa-stages">Lo que se espera de ti en cada etapa</h2>
-          <p className="muted">5 etapas. Desliza para verlas.</p>
+          <p className="muted">{STAGES.length} etapas. Desliza para verlas.</p>
         </div>
         <div className="pa-nav">
           <button type="button" aria-label="Etapa anterior" disabled={at <= 0} onClick={() => go(Math.max(0, at - 1))}><Icon name="arrowLeft" size={18} /></button>
@@ -48,9 +49,9 @@ export function StageSlider() {
       </div>
       <ol className="pa-track" ref={track} onScroll={onScroll}>
         {STAGES.map((s) => (
-          <li key={s.n} className="pa-stage" aria-label={`Etapa ${s.n} de 5: ${s.name}`}>
+          <li key={s.n} className="pa-stage" aria-label={`Etapa ${s.n} de ${STAGES.length}: ${s.name}`}>
             <span className="pa-ico"><Icon name={s.icon} size={22} /></span>
-            <span className="pa-n">Etapa {s.n} de 5</span>
+            <span className="pa-n">Etapa {s.n} de {STAGES.length}</span>
             <h3>{s.name}</h3>
             <p className="muted">{s.summary}</p>
             <ul>{s.expect.map((e) => <li key={e}>{e}</li>)}</ul>

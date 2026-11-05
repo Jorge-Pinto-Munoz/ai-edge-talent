@@ -78,7 +78,7 @@ export async function passToLab(waveId: string, candidateIds: string[]): Promise
     }
     done(waveId);
     revalidatePath(`/admin/journey/${waveId}`, "layout");
-    return { ok: moved > 0 || candidateIds.length === 0, message: `${moved} persona(s) pasaron a AI Lab & Showcase.`, data: details };
+    return { ok: moved > 0 || candidateIds.length === 0, message: `${moved} persona(s) pasaron al AI Lab.`, data: details };
   } catch (e) {
     return fail(e);
   }
@@ -115,6 +115,7 @@ export async function saveLabProject(input: {
   waveId: string;
   title: string;
   problem: string;
+  solution?: string;
   clientName: string;
   mode: LabMode;
   status: LabStatus;
@@ -129,7 +130,7 @@ export async function saveLabProject(input: {
     if (input.mode === "INDIVIDUAL" && input.memberIds.length > 1) throw new Error("Un proyecto individual tiene una sola persona. Usa modo grupal.");
     const svc = supabaseService();
     const { data: members } = await svc.from("candidates").select("id, wave_id, journey_layer, full_name").in("id", input.memberIds);
-    const bad = (members ?? []).filter((m) => m.wave_id !== input.waveId || m.journey_layer !== "AI_LAB_SHOWCASE");
+    const bad = (members ?? []).filter((m) => m.wave_id !== input.waveId || !["AI_LAB_SHOWCASE", "SHOWCASE"].includes(m.journey_layer ?? ""));
     if (bad.length || (members ?? []).length !== input.memberIds.length) throw new Error(`Solo participantes que ya pasaron al Lab${bad.length ? `: revisa ${bad.map((b) => b.full_name).join(", ")}` : ""}.`);
     const { data: taken } = await svc.from("lab_project_members").select("candidate_id, project_id").in("candidate_id", input.memberIds);
     const clash = (taken ?? []).filter((t) => t.project_id !== input.id);
@@ -140,6 +141,7 @@ export async function saveLabProject(input: {
       wave_id: input.waveId,
       title: input.title.trim(),
       problem: input.problem.trim() || null,
+      solution: input.solution?.trim() || null,
       client_name: input.clientName.trim() || null,
       mode: input.mode,
       status: input.status,
@@ -219,16 +221,20 @@ export async function requestLabUpload(projectId: string, fileName: string, size
   }
 }
 
-export async function registerLabFile(projectId: string, file: { path: string; name: string; size: number }): Promise<Result> {
+/** `final`: presentación final del Showcase (no un avance del Lab). Solo PPT, PDF o Keynote. */
+export async function registerLabFile(projectId: string, file: { path: string; name: string; size: number }, final = false): Promise<Result> {
   try {
     const { viewer, waveId } = await canUpload(projectId);
     if (!file.path.startsWith(`${projectId}/`)) throw new Error("Archivo no válido.");
     const ext = file.name.toLowerCase().split(".").pop() ?? "";
-    const kind = ["ppt", "pptx", "key", "pdf", "odp"].includes(ext) ? "PRESENTATION" : "OTHER";
+    const isDeck = ["ppt", "pptx", "key", "pdf", "odp"].includes(ext);
+    if (final && !isDeck) throw new Error("La presentación final debe ser PPT, PPTX, PDF, Keynote u ODP.");
+    const kind = final ? "FINAL" : isDeck ? "PRESENTATION" : "OTHER";
     const { error } = await supabaseService().from("lab_project_files").insert({ project_id: projectId, path: file.path, name: file.name.slice(0, 200), size_bytes: file.size, kind, uploaded_by: viewer.id });
     if (error) throw error;
+    if (final) await syncProject(projectId, viewer.id);
     done(waveId);
-    return { ok: true, message: "Archivo subido." };
+    return { ok: true, message: final ? "Presentación final subida." : "Archivo subido." };
   } catch (e) {
     return fail(e);
   }
@@ -258,6 +264,59 @@ export async function labFileUrl(fileId: string): Promise<Result<{ url: string }
     const { data, error } = await supabaseService().storage.from("lab").createSignedUrl(f.path, 600, { download: f.name });
     if (error || !data) throw new Error("Archivo no disponible.");
     return { ok: true, message: "ok", data: { url: data.signedUrl } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/* ───────── El profesional describe su proyecto del AI Lab ───────── */
+/**
+ * Integrante del proyecto: actualiza nombre, desafío y solución. Sin proyecto (y en el AI Lab): crea uno individual,
+ * que el Hub AI puede después agrupar o ajustar. El estado del proyecto lo sigue decidiendo el Hub.
+ */
+export async function describeMyProject(input: { title: string; problem: string; solution: string; clientName?: string }): Promise<Result<{ id: string }>> {
+  try {
+    const viewer = await getViewer();
+    if (!viewer) throw new Error(SESSION_EXPIRED);
+    if (viewer.role !== "kiber") throw new Error("Solo el profesional describe su proyecto desde su journey.");
+    const title = input.title.trim().slice(0, 160);
+    const problem = input.problem.trim().slice(0, 3000);
+    const solution = input.solution.trim().slice(0, 3000);
+    if (!title) throw new Error("Ponle un nombre a tu proyecto.");
+    if (problem.length < 20) throw new Error("Cuéntanos el desafío con un poco más de detalle (al menos 20 caracteres).");
+    if (solution.length < 20) throw new Error("Cuéntanos tu solución con un poco más de detalle (al menos 20 caracteres).");
+    const svc = supabaseService();
+    const { data: c } = await svc
+      .from("candidates")
+      .select("id, wave_id, journey_layer, client_name")
+      .eq("user_id", viewer.id)
+      .in("status", ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!c) throw new Error("No encontramos tu participación activa.");
+    if (!["AI_LAB_SHOWCASE", "SHOWCASE"].includes(c.journey_layer ?? "")) throw new Error("Describes tu proyecto cuando estás en el AI Lab.");
+    const now = new Date().toISOString();
+    const { data: m } = await svc.from("lab_project_members").select("project_id").eq("candidate_id", c.id).maybeSingle();
+    let id = m?.project_id ?? null;
+    if (id) {
+      const { error } = await svc.from("lab_projects").update({ title, problem, solution, described_at: now }).eq("id", id);
+      if (error) throw error;
+    } else {
+      if (c.journey_layer !== "AI_LAB_SHOWCASE") throw new Error("Tu proyecto lo registra el Hub AI.");
+      const { data: p, error } = await svc
+        .from("lab_projects")
+        .insert({ wave_id: c.wave_id, title, problem, solution, described_at: now, client_name: input.clientName?.trim() || c.client_name || null, mode: "INDIVIDUAL", status: "IDEA", created_by: viewer.id })
+        .select("id")
+        .single();
+      if (error) throw error;
+      id = p.id as string;
+      const { error: e2 } = await svc.from("lab_project_members").insert({ project_id: id, candidate_id: c.id });
+      if (e2) throw e2;
+    }
+    await syncMany([c.id], viewer.id);
+    done(c.wave_id);
+    return { ok: true, message: m ? "Proyecto actualizado." : "Proyecto registrado. El Hub AI lo verá en el tablero del Lab.", data: { id: id! } };
   } catch (e) {
     return fail(e);
   }

@@ -72,7 +72,8 @@ const STAGE_MAP: Record<string, LifecycleStageId[]> = {
   assessment: ["NOMINATION", "APPLICATION", "ASSESSMENT", "SELECTION", "CONDITIONS"],
   mindset: ["ENROLLMENT", "MINDSET"],
   "role-enablement": ["AI_CERTS"],
-  "ai-lab-showcase": ["AI_LAB", "SHOWCASE"],
+  "ai-lab": ["AI_LAB"],
+  showcase: ["SHOWCASE"],
   cierre: ["CLOSURE", "PILOT_ADOPTION"],
 };
 

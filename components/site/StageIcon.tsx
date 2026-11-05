@@ -9,7 +9,7 @@ const OFFICIAL: Partial<Record<StageSlug, string>> = {
   // assessment: "/icons/etapas/assessment.svg",
 };
 
-export type StageSlug = "assessment" | "mindset" | "role-enablement" | "ai-lab-showcase" | "cierre";
+export type StageSlug = "assessment" | "mindset" | "role-enablement" | "ai-lab" | "showcase" | "cierre";
 
 export function StageIcon({ slug, fallback, size = 22, label }: { slug: string; fallback: IconName; size?: number; label?: string }) {
   const src = OFFICIAL[slug as StageSlug];

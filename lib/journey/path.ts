@@ -5,7 +5,7 @@
  */
 import type { Layer } from "./rules";
 
-export type NodeKind = "milestone" | "capsule" | "cert" | "lab-class" | "presentation" | "showcase";
+export type NodeKind = "milestone" | "capsule" | "cert" | "session" | "lab-class" | "project" | "presentation" | "showcase";
 /** done: logrado · current: lo que toca ahora · available: se puede abrir · review: esperando revisión · locked: etapa futura. */
 export type NodeState = "done" | "current" | "available" | "review" | "locked";
 export type StageState = "done" | "current" | "locked";
@@ -18,6 +18,7 @@ export interface PathNode {
   state: NodeState;
   capsuleId?: string;
   labClass?: 1 | 2;
+  session?: number; // sesión semanal de Role Enablement (1 a 4)
   cta?: string; // texto del botón cuando es el siguiente paso
 }
 export interface PathStage {
@@ -45,15 +46,18 @@ export interface PathInput {
   completed: Set<string>;
   submissions: { capsule_id: string; status: string; attempt: number }[];
   certifications: { result: string; status: string }[];
-  lab: { status: string; files: number } | null;
+  lab: { status: string; files: number; described?: boolean; final?: boolean } | null;
+  /** Sesiones de Role Enablement: realizada (fecha pasada) y si hizo check-in. */
+  sessions?: { n: number; held: boolean; checkedIn: boolean }[];
 }
 
 export const STAGE_META: { layer: Layer; n: number; slug: string; name: string; short: string }[] = [
   { layer: "ASSESSMENT", n: 1, slug: "assessment", name: "Postulación y Assessment", short: "Assessment" },
   { layer: "AI_MINDSET", n: 2, slug: "mindset", name: "AI First Mindset", short: "Mindset" },
   { layer: "ROLE_ENABLEMENT", n: 3, slug: "role-enablement", name: "Role Enablement", short: "Certificación" },
-  { layer: "AI_LAB_SHOWCASE", n: 4, slug: "ai-lab-showcase", name: "AI Lab & Showcase", short: "AI Lab" },
-  { layer: "CLOSURE", n: 5, slug: "cierre", name: "Cierre", short: "Cierre" },
+  { layer: "AI_LAB_SHOWCASE", n: 4, slug: "ai-lab", name: "AI Lab", short: "AI Lab" },
+  { layer: "SHOWCASE", n: 5, slug: "showcase", name: "Showcase", short: "Showcase" },
+  { layer: "CLOSURE", n: 6, slug: "cierre", name: "Cierre", short: "Cierre" },
 ];
 
 const lastSub = (subs: PathInput["submissions"], capsuleId: string) =>
@@ -94,15 +98,28 @@ function stageNodes(layer: Layer, input: PathInput): PathNode[] {
         : pending
           ? { id: "re-cert", kind: "cert", title: "Certificación AI CERT", hint: "Estamos verificando tu certificado", state: "review" }
           : { id: "re-cert", kind: "cert", title: "Certificación AI CERT", hint: failed ? "Tienes otro intento financiado" : "Rinde el examen y sube tu certificado", state: "available", cta: "Registrar mi certificación" };
-      return [...caps, cert];
+      // Cuatro sesiones semanales con el profesor: check-in del profesional (no es la asistencia oficial).
+      const sessions: PathNode[] = [1, 2, 3, 4].map((n) => {
+        const x = input.sessions?.find((y) => y.n === n);
+        return x?.checkedIn
+          ? { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: "Hiciste check-in", state: "done" }
+          : { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: x?.held ? "Haz tu check-in y revisa el material" : "Material y notas del profesor", state: "available", cta: "Hacer check-in" };
+      });
+      return [...sessions, ...caps, cert];
     }
     case "AI_LAB_SHOWCASE": {
       const s = input.lab?.status;
       const built = s === "READY" || s === "PRESENTED";
       return [
         { id: "lab-1", kind: "lab-class", labClass: 1, title: "Clase 1 · El desafío", hint: input.lab ? "Tu desafío quedó registrado" : "Llega con un problema real de tu cliente", state: input.lab ? "done" : "available", cta: "Preparar mi desafío" },
-        { id: "lab-2", kind: "lab-class", labClass: 2, title: "Clase 2 · Lo construido", hint: built ? "Presentaste lo construido" : "Lleva tu prototipo funcionando", state: built ? "done" : "available", cta: "Preparar la Clase 2" },
-        { id: "lab-ppt", kind: "presentation", title: "Tu presentación", hint: input.lab?.files ? "Presentación subida" : "Sube tu PPT o PDF para el Showcase", state: input.lab?.files ? "done" : "available", cta: "Subir mi presentación" },
+        { id: "lab-proj", kind: "project", title: "Tu proyecto", hint: input.lab?.described ? `Descrito${input.lab.files ? ` · ${input.lab.files} archivo(s) de avance` : ""}` : "Describe el desafío y tu solución, y sube tus avances", state: input.lab?.described ? "done" : "available", cta: "Describir mi proyecto" },
+        { id: "lab-2", kind: "lab-class", labClass: 2, title: "Clase 2 · Lo construido", hint: built ? "Listo para el Showcase" : "Lleva tu prototipo funcionando", state: built ? "done" : "available", cta: "Preparar la Clase 2" },
+      ];
+    }
+    case "SHOWCASE": {
+      const s = input.lab?.status;
+      return [
+        { id: "show-ppt", kind: "presentation", title: "Tu presentación final", hint: input.lab?.final ? "Presentación final subida" : "Usa la plantilla y sube tu presentación final", state: input.lab?.final || s === "PRESENTED" ? "done" : "available", cta: "Subir mi presentación final" },
         { id: "lab-show", kind: "showcase", title: "Showcase", hint: s === "PRESENTED" ? "Presentaste tu caso" : "Presentas tu caso con evidencia de valor", state: s === "PRESENTED" ? "done" : "available", cta: "Ver mi Showcase" },
       ];
     }

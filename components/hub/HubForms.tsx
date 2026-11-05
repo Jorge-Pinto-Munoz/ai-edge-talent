@@ -103,7 +103,7 @@ export function LabSessionForm({ waveId, n, heldOn, notes, projects, entries, re
 }
 
 /* ───────── Proyecto ───────── */
-export type ProjectDraft = { id?: string; title: string; problem: string; clientName: string; mode: LabMode; status: LabStatus; hubNotes: string; memberIds: string[] };
+export type ProjectDraft = { id?: string; title: string; problem: string; solution: string; clientName: string; mode: LabMode; status: LabStatus; hubNotes: string; memberIds: string[] };
 
 export function ProjectForm({ waveId, initial, people, onDone }: { waveId: string; initial: ProjectDraft; people: { id: string; name: string; taken: boolean }[]; onDone?: () => void }) {
   const [p, setP] = useState<ProjectDraft>(initial);
@@ -118,6 +118,7 @@ export function ProjectForm({ waveId, initial, people, onDone }: { waveId: strin
         <div className="field"><label htmlFor={`pc-${p.id ?? "new"}`}>Cliente</label><input id={`pc-${p.id ?? "new"}`} type="text" value={p.clientName} onChange={(e) => set({ clientName: e.target.value })} /></div>
       </div>
       <div className="field"><label htmlFor={`pp-${p.id ?? "new"}`}>Desafío / problema real</label><textarea id={`pp-${p.id ?? "new"}`} rows={2} value={p.problem} onChange={(e) => set({ problem: e.target.value })} /></div>
+      <div className="field"><label htmlFor={`pso-${p.id ?? "new"}`}>Solución con IA</label><textarea id={`pso-${p.id ?? "new"}`} rows={2} value={p.solution} onChange={(e) => set({ solution: e.target.value })} placeholder="Qué construyen y cómo usa IA (también lo puede escribir el profesional desde su journey)" /></div>
       <div className="grid grid-2">
         <div className="field">
           <span className="label">Modalidad</span>

@@ -58,6 +58,7 @@ function Row({ p, waveId, isAdmin }: { p: AiCertPerson; waveId: string; isAdmin:
         <td data-label="Avance AI CERT">
           <strong>{p.overall}%</strong> <small className="muted">de la ruta</small><br />
           <small>{progressLabel(p.progress)}</small>
+          {(p.progress as { self_reported_at?: string | null } | null)?.self_reported_at && <><br /><small className="muted">Reportado por el profesional · {fmtYmd(String((p.progress as { self_reported_at?: string }).self_reported_at).slice(0, 10))}</small></>}
           {p.progress?.exam_date && <><br /><small className="muted">Examen: {fmtYmd(p.progress.exam_date)}</small></>}
         </td>
         <td data-label="Asistencia">{p.attendance === null ? "—" : `${Math.round(p.attendance * 100)}%`}</td>

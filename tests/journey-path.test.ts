@@ -11,7 +11,8 @@ const base: PathInput = { layer: "AI_MINDSET", capsules: caps, completed: new Se
 describe("camino del profesional", () => {
   it("las etapas anteriores quedan logradas y las siguientes bloqueadas", () => {
     const p = buildJourneyPath(base);
-    expect(p.stages.map((s) => s.state)).toEqual(["done", "current", "locked", "locked", "locked"]);
+    expect(p.stages.map((s) => s.state)).toEqual(["done", "current", "locked", "locked", "locked", "locked"]);
+    expect(p.stages.map((s) => s.layer)).toEqual(["ASSESSMENT", "AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"]);
     expect(p.stages[0].nodes.every((n) => n.state === "done")).toBe(true);
     expect(p.stages[2].nodes.every((n) => n.state === "locked" && !n.cta)).toBe(true);
   });
@@ -39,16 +40,34 @@ describe("camino del profesional", () => {
 
   it("Role Enablement: la certificación verificada cierra la etapa", () => {
     const p = buildJourneyPath({ ...base, layer: "ROLE_ENABLEMENT", completed: new Set(["r1"]), certifications: [{ result: "PASSED", status: "VERIFIED" }] });
-    expect(p.stages[2].nodes.every((n) => n.state === "done")).toBe(true);
+    expect(p.stages[2].nodes.at(-1)?.state).toBe("done");
     const pending = buildJourneyPath({ ...base, layer: "ROLE_ENABLEMENT", completed: new Set(["r1"]), certifications: [{ result: "PASSED", status: "PENDING_REVIEW" }] });
     expect(pending.stages[2].nodes.at(-1)?.state).toBe("review");
   });
 
-  it("AI Lab: proyecto, clase 2, presentación y Showcase", () => {
+  it("Role Enablement: 4 sesiones semanales con check-in", () => {
+    const p = buildJourneyPath({ ...base, layer: "ROLE_ENABLEMENT", sessions: [{ n: 1, held: true, checkedIn: true }, { n: 2, held: true, checkedIn: false }] });
+    const ses = p.stages[2].nodes.filter((n) => n.kind === "session");
+    expect(ses.map((n) => n.session)).toEqual([1, 2, 3, 4]);
+    expect(ses.map((n) => n.state)).toEqual(["done", "current", "available", "available"]);
+    expect(ses[1].hint).toMatch(/check-in/);
+  });
+
+  it("AI Lab: clase 1, proyecto descrito y clase 2 (sin Showcase)", () => {
     const p = buildJourneyPath({ ...base, layer: "AI_LAB_SHOWCASE", lab: { status: "BUILDING", files: 0 } });
-    expect(p.stages[3].nodes.map((n) => n.state)).toEqual(["done", "current", "available", "available"]);
-    const done = buildJourneyPath({ ...base, layer: "AI_LAB_SHOWCASE", lab: { status: "PRESENTED", files: 1 } });
-    expect(done.stages[3].nodes.every((n) => n.state === "done")).toBe(true);
+    expect(p.stages[3].nodes.map((n) => n.kind)).toEqual(["lab-class", "project", "lab-class"]);
+    expect(p.stages[3].nodes.map((n) => n.state)).toEqual(["done", "current", "available"]);
+    const ready = buildJourneyPath({ ...base, layer: "AI_LAB_SHOWCASE", lab: { status: "READY", files: 2, described: true } });
+    expect(ready.stages[3].nodes.every((n) => n.state === "done")).toBe(true);
+  });
+
+  it("Showcase: presentación final y presentación al cliente", () => {
+    const p = buildJourneyPath({ ...base, layer: "SHOWCASE", lab: { status: "READY", files: 2, described: true, final: false } });
+    expect(p.stages[3].state).toBe("done");
+    expect(p.stages[4].nodes.map((n) => n.kind)).toEqual(["presentation", "showcase"]);
+    expect(p.next).toMatchObject({ id: "show-ppt", stage: "SHOWCASE" });
+    const done = buildJourneyPath({ ...base, layer: "SHOWCASE", lab: { status: "PRESENTED", files: 2, final: true } });
+    expect(done.stages[4].nodes.every((n) => n.state === "done")).toBe(true);
   });
 
   it("inscrito sin etapa: AI Mindset es la etapa actual", () => {

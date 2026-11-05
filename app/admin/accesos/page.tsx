@@ -33,7 +33,7 @@ export default async function Accesos({ searchParams }: { searchParams: Promise<
         <Link href="?tab=registro" className={`btn small ${tab === "registro" ? "" : "ghost"}`}>Registro de ingresos del equipo</Link>
       </nav>
       {tab === "registro" ? await Registro() : (<>
-      <p className="muted">Asigna el rol antes de que la persona ingrese por primera vez (o cámbialo después). Quien ingresa sin rol asignado queda como Kiber. Profesor y Líder Hub AI se asignan a una Wave (también desde Cierre semanal y AI Lab & Showcase).</p>
+      <p className="muted">Asigna el rol antes de que la persona ingrese por primera vez (o cámbialo después). Quien ingresa sin rol asignado queda como Kiber. Profesor y Líder Hub AI se asignan a una Wave (también desde Cierre semanal y AI Lab y Showcase).</p>
       <AccessForm waves={waves ?? []} />
       <div className="table-wrap" tabIndex={0}>
         <table>

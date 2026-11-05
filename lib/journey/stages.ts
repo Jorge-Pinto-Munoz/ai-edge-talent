@@ -7,7 +7,7 @@ import type { Layer } from "./rules";
  * (lib/journey/rules.ts → LAYERS; "AI First Mindset" es el nombre público de la capa AI_MINDSET).
  * Propósito e hitos salen de la guía de Delivery: no se agregan reglas nuevas.
  */
-export type StageSlug = "assessment" | "mindset" | "role-enablement" | "ai-lab" | "cierre";
+export type StageSlug = "assessment" | "mindset" | "role-enablement" | "ai-lab" | "showcase" | "cierre";
 export interface StageTab { key: string; label: string; adminOnly?: boolean }
 export interface JourneyStage {
   slug: StageSlug;
@@ -43,24 +43,32 @@ export const JOURNEY_STAGES: JourneyStage[] = [
       { key: "aicert", label: "Avance AI CERT" },
       { key: "certificaciones", label: "Certificaciones" },
       { key: "entregas", label: "Entregas" },
-      { key: "clases", label: "Clases y asistencia" },
+      { key: "clases", label: "Sesiones (4 semanas)" },
       { key: "contenido", label: "Contenido (módulos)", adminOnly: true },
     ],
   },
   {
-    slug: "ai-lab", layer: "AI_LAB_SHOWCASE", n: 4, name: "AI Lab & Showcase", icon: "flask",
-    purpose: purposeOf("lab"), milestones: milestonesOf("lab", "showcase"),
+    slug: "ai-lab", layer: "AI_LAB_SHOWCASE", n: 4, name: "AI Lab", icon: "flask",
+    purpose: purposeOf("lab"), milestones: milestonesOf("lab"),
     tabs: [
       { key: "participantes", label: "Participantes" },
       { key: "pase", label: "Pase al Lab" },
       { key: "clases", label: "Clases del Lab" },
-      { key: "proyectos", label: "Proyectos" },
-      { key: "showcase", label: "Showcase" },
+      { key: "proyectos", label: "Proyectos y avances" },
       { key: "contenido", label: "Contenido (módulos)", adminOnly: true },
     ],
   },
   {
-    slug: "cierre", layer: "CLOSURE", n: 5, name: "Cierre", icon: "flag",
+    slug: "showcase", layer: "SHOWCASE", n: 5, name: "Showcase", icon: "presentation",
+    purpose: purposeOf("showcase"), milestones: milestonesOf("showcase"),
+    tabs: [
+      { key: "showcase", label: "Presentaciones y resultados" },
+      { key: "participantes", label: "Participantes" },
+      { key: "contenido", label: "Contenido (módulos)", adminOnly: true },
+    ],
+  },
+  {
+    slug: "cierre", layer: "CLOSURE", n: 6, name: "Cierre", icon: "flag",
     purpose: purposeOf("closure"), milestones: milestonesOf("closure"),
     tabs: [{ key: "participantes", label: "Participantes" }, { key: "resultados", label: "Resultados" }, { key: "contenido", label: "Contenido (módulos)", adminOnly: true }],
   },

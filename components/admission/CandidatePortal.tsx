@@ -109,7 +109,7 @@ function BeforeApplying({ data, first }: { data: PortalData; first: string }) {
       <header className="pa-head">
         <div className="eyebrow">{data.wave.name}</div>
         <h1>{first}, antes de postular</h1>
-        <p className="lead">AI Edge Talent no es solo un curso ni una certificación: es un journey de 5 etapas. Esto es lo que se espera de ti si quedas seleccionado/a.</p>
+        <p className="lead">AI Edge Talent no es solo un curso ni una certificación: es un journey de 6 etapas. Esto es lo que se espera de ti si quedas seleccionado/a.</p>
         <div className="pa-tags">
           <span className="pa-tag warn">Postular no significa estar seleccionado/a</span>
           {data.wave.application_deadline && <span className="pa-tag">Plazo: {fmtDeadline(data.wave.application_deadline)}</span>}

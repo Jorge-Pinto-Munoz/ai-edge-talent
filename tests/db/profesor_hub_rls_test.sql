@@ -61,3 +61,40 @@ select 'PROFESOR no ve el Lab', count(*) = 0 from lab_projects;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 select 'CLIENTE no ve el Lab', count(*) = 0 from lab_projects;
 reset role;
+
+-- ───── Role Enablement: 4 sesiones (se escriben desde el servidor; aquí se prueba quién lee qué) ─────
+insert into re_sessions (wave_id, n, held_on, title, student_notes) values ('wave-3', 1, date '2026-11-03', 'Prompting', 'Tarea: practicar') on conflict do nothing;
+insert into re_session_private (wave_id, n, admin_comments) values ('wave-3', 1, 'Grupo disperso') on conflict do nothing;
+insert into re_session_attendance (wave_id, n, candidate_id, attended, focus, note) select 'wave-3', 1, c.id, true, 'LOW', 'Poca concentración' from candidates c where c.full_name = 'Ana Kiber' and c.wave_id = 'wave-3' limit 1 on conflict do nothing;
+insert into re_session_checkins (wave_id, n, candidate_id) select 'wave-3', 1, c.id from candidates c where c.full_name = 'Ana Kiber' and c.wave_id = 'wave-3' limit 1 on conflict do nothing;
+do $$ begin
+  begin insert into re_sessions (wave_id, n) values ('wave-3', 5); raise notice 'MAL: sesión 5';
+  exception when others then raise notice 'solo 4 sesiones OK'; end; end $$;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000b1';
+select 'KIBER ve la sesión de su Wave', count(*) = 1 from re_sessions;
+select 'KIBER ve su check-in', count(*) = 1 from re_session_checkins;
+select 'KIBER no ve comentarios privados', count(*) = 0 from re_session_private;
+select 'KIBER no ve asistencia ni concentración', count(*) = 0 from re_session_attendance;
+do $$ begin
+  begin insert into re_session_checkins (wave_id, n, candidate_id) select 'wave-3', 2, c.id from candidates c where c.full_name = 'Ana Kiber'; raise notice 'MAL: KIBER escribió directo';
+  exception when others then raise notice 'check-in solo desde el servidor OK'; end; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f1';
+select 'PROFESOR ve comentarios y asistencia', (select count(*) from re_session_private) = 1 and (select count(*) from re_session_attendance) = 1;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f3';
+select 'OTRO PROFESOR no ve la sesión privada', count(*) = 0 from re_session_private;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+select 'DELIVERY ve la sesión pública y check-ins', (select count(*) from re_sessions) = 1 and (select count(*) from re_session_checkins) = 1;
+select 'DELIVERY no ve comentarios privados', count(*) = 0 from re_session_private;
+select 'DELIVERY no ve concentración', count(*) = 0 from re_session_attendance;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select 'CLIENTE no ve sesiones', count(*) = 0 from re_sessions;
+reset role;
+-- El avance reportado por el profesional queda marcado en el historial
+insert into aicert_progress (candidate_id, course, tramo, percent, self_reported_at) select c.id, 'INTRO', 2, 40, now() from candidates c where c.full_name = 'Ana Kiber'
+  on conflict (candidate_id) do update set percent = 40, self_reported_at = now();
+select 'AVANCE propio queda como SELF', count(*) >= 1 from aicert_progress_history h join candidates c on c.id = h.candidate_id where c.full_name = 'Ana Kiber' and h.source = 'SELF';
+-- Etapa Showcase disponible y archivo final permitido
+select 'ENUM tiene SHOWCASE después del Lab', array_position(enum_range(null::journey_layer), 'SHOWCASE'::journey_layer) = array_position(enum_range(null::journey_layer), 'AI_LAB_SHOWCASE'::journey_layer) + 1;
+insert into lab_project_files (project_id, path, name, kind) select id, id || '/final.pptx', 'final.pptx', 'FINAL' from lab_projects limit 1;
+select 'ARCHIVO FINAL registrado', count(*) = 1 from lab_project_files where kind = 'FINAL';

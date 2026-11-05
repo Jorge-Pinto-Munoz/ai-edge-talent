@@ -50,8 +50,8 @@ export async function TeamHome({ viewer, wave: wq, preview }: { viewer: TeamView
     const at = (id: string) => report.persons.filter((p) => {
       if (id === "mindset") return !p.layer || p.layer === "AI_MINDSET" || p.layer === "ASSESSMENT";
       if (id === "certs") return p.layer === "ROLE_ENABLEMENT";
-      if (id === "lab") return p.layer === "AI_LAB_SHOWCASE" && !ready.has(p.id);
-      if (id === "showcase") return p.layer === "AI_LAB_SHOWCASE" && ready.has(p.id);
+      if (id === "lab") return p.layer === "AI_LAB_SHOWCASE";
+      if (id === "showcase") return p.layer === "SHOWCASE";
       if (id === "closure") return p.layer === "CLOSURE";
       return false;
     });

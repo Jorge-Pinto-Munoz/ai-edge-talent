@@ -28,10 +28,19 @@ describe("cierre de etapa: requisitos", () => {
     expect(stageRequirements("ROLE_ENABLEMENT", { ...base, certifications: [{ result: "FAILED", status: "VERIFIED" }] }).met).toBe(false);
     expect(stageRequirements("ROLE_ENABLEMENT", { ...base, certifications: [{ result: "PASSED", status: "VERIFIED" }] }).met).toBe(true);
   });
-  it("AI Lab: presentado en el Showcase; Cierre: siempre", () => {
-    expect(stageRequirements("AI_LAB_SHOWCASE", { ...base, labStatus: "READY" }).met).toBe(false);
-    expect(stageRequirements("AI_LAB_SHOWCASE", { ...base, labStatus: "PRESENTED" }).met).toBe(true);
+  it("AI Lab: proyecto listo (lo confirma el Hub); Showcase: presentado; Cierre: siempre", () => {
+    expect(stageRequirements("AI_LAB_SHOWCASE", { ...base, labStatus: "BUILDING", labDescribed: true })).toMatchObject({ met: false });
+    expect(stageRequirements("AI_LAB_SHOWCASE", { ...base, labStatus: "BUILDING", labDescribed: true }).items[1].review).toBe(true);
+    expect(stageRequirements("AI_LAB_SHOWCASE", { ...base, labStatus: "READY" }).met).toBe(true);
+    expect(stageRequirements("SHOWCASE", { ...base, labStatus: "READY", labFinal: true }).met).toBe(false);
+    expect(stageRequirements("SHOWCASE", { ...base, labStatus: "READY", labFinal: true }).items[0].done).toBe(true);
+    expect(stageRequirements("SHOWCASE", { ...base, labStatus: "PRESENTED" }).met).toBe(true);
     expect(stageRequirements("CLOSURE", base).met).toBe(true);
+  });
+  it("el AI Lab se cierra sin pulso y pasa al Showcase; el pulso LAB cierra el Showcase", () => {
+    expect(closureDecision("AI_LAB_SHOWCASE", { ...base, labStatus: "READY", answered: [] })).toEqual({ close: true, next: "SHOWCASE", missing: null });
+    expect(closureDecision("SHOWCASE", { ...base, labStatus: "PRESENTED", answered: [] })).toMatchObject({ close: false, missing: "pulse" });
+    expect(closureDecision("SHOWCASE", { ...base, labStatus: "PRESENTED", answered: ["LAB"] })).toEqual({ close: true, next: "CLOSURE", missing: null });
   });
   it("una excepción da por cumplidos los requisitos, pero no el pulso", () => {
     expect(stageRequirements("AI_MINDSET", { ...base, byException: true })).toMatchObject({ met: true, byException: true });
@@ -47,7 +56,8 @@ describe("cierre de etapa: decisión", () => {
   it("requisitos + pulso cierran y desbloquean la siguiente", () => {
     expect(closureDecision("AI_MINDSET", { ...approved, answered: ["MINDSET"] })).toEqual({ close: true, next: "ROLE_ENABLEMENT", missing: null });
     expect(closureDecision("CLOSURE", { ...base, answered: ["FINAL"] })).toEqual({ close: true, next: null, missing: null });
-    expect(nextLayer("AI_LAB_SHOWCASE")).toBe("CLOSURE");
+    expect(nextLayer("AI_LAB_SHOWCASE")).toBe("SHOWCASE");
+    expect(nextLayer("SHOWCASE")).toBe("CLOSURE");
   });
 });
 

@@ -6,7 +6,7 @@ const PRE_SUBMIT = ["NOMINATED", "INVITED", "IDENTIFIED", "APPLICATION_STARTED"]
 const EVALUATED = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED", "NOT_SELECTED", "SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
 const SELECTED = ["SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
 const ENROLLED = ["ENROLLED", "MINDSET_READY"];
-const LAYERS = ["ASSESSMENT", "AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
+const LAYERS = ["ASSESSMENT", "AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
 
 export interface PendingItem {
   key: string;
@@ -74,7 +74,8 @@ export async function waveDashboard(waveId: string, isAdmin: boolean): Promise<W
       { label: "Inscritos", count: byStatus(ENROLLED) },
       { label: "AI First Mindset", count: reached("AI_MINDSET") },
       { label: "Role Enablement", count: reached("ROLE_ENABLEMENT") },
-      { label: "AI Lab & Showcase", count: reached("AI_LAB_SHOWCASE") },
+      { label: "AI Lab", count: reached("AI_LAB_SHOWCASE") },
+      { label: "Showcase", count: reached("SHOWCASE") },
       { label: "Cierre", count: reached("CLOSURE") },
     ],
     pending,

@@ -5,9 +5,10 @@ import { supabaseService } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/admission/auth";
 import { audit, ensureAccount, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { errorText } from "@/lib/text/errors";
-import { LAYERS, layerName, type Layer } from "./rules";
+import { LAYERS, layerIndex, layerName, type Layer } from "./rules";
+import { CLOSING_PULSE } from "./closure";
 
-const JOURNEY: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
+const JOURNEY: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
 const ADMITTED = ["SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
 
 export type MoveResult = { ok: boolean; message: string; email?: "sent" | "failed" | "skipped" };
@@ -47,7 +48,13 @@ export async function moveParticipant(candidateId: string, to: Layer, note: stri
     let email: MoveResult["email"] = "skipped";
     let detail = "";
     if (notify) {
-      const r = await sendIdentityEmail("STAGE_MOVED", c.corporate_email, { name: c.full_name, stage: LAYERS.find((l) => l.id === to)!.name, extra: note.trim() || undefined, link: portalLink("ingresar", c.corporate_email, "/mi-journey") }, { userId: (patch.user_id as string | undefined) ?? c.user_id, candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
+      // Si avanza sin haber respondido el pulso de las etapas que deja atrás, se le pide (no bloquea: queda en su portal).
+      const skipped = LAYERS.filter((l) => layerIndex(l.id) >= layerIndex((c.journey_layer as Layer | null) ?? "AI_MINDSET") && layerIndex(l.id) < layerIndex(to) && CLOSING_PULSE[l.id]);
+      const { data: answered } = skipped.length ? await svc.from("pulse_responses").select("pulse").eq("candidate_id", c.id) : { data: [] as { pulse: string }[] };
+      const owed = skipped.filter((l) => !(answered ?? []).some((a) => a.pulse === CLOSING_PULSE[l.id]));
+      const pulseLine = owed.length ? `En tu portal tienes pendiente el pulso de experiencia de ${owed.map((l) => l.name).join(" y ")}: son 2 minutos y nos ayuda a mejorar el programa.` : "";
+      const extra = [note.trim(), pulseLine].filter(Boolean).join(" ") || undefined;
+      const r = await sendIdentityEmail("STAGE_MOVED", c.corporate_email, { name: c.full_name, stage: LAYERS.find((l) => l.id === to)!.name, extra, link: portalLink("ingresar", c.corporate_email, "/mi-journey") }, { userId: (patch.user_id as string | undefined) ?? c.user_id, candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
       email = r.ok ? "sent" : "failed";
       detail = r.ok ? " Correo enviado con copia a su Delivery." : ` El correo no salió (${r.error}).`;
     }

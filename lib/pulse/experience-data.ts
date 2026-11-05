@@ -27,7 +27,7 @@ export async function loadWavePeople(waveId: string, opts: { onlyIds?: string[];
     svc.from("capsules").select("id, layer, task_prompt, task_required, max_attempts").eq("wave_id", waveId).eq("published", true),
     svc.from("submissions").select("candidate_id, capsule_id, status, attempt").in("candidate_id", ids),
     svc.from("certifications").select("candidate_id, result, status").in("candidate_id", ids),
-    svc.from("lab_project_members").select("candidate_id, lab_projects(status)").in("candidate_id", ids),
+    svc.from("lab_project_members").select("candidate_id, lab_projects(status, problem, solution, lab_project_files(kind))").in("candidate_id", ids),
     svc.from("pulse_responses").select("candidate_id, pulse, created_at, answers").in("candidate_id", ids),
     svc.from("stage_closures").select("candidate_id, layer, requirements_met_at, requirements_by_exception, closed_at").in("candidate_id", ids),
     svc.from("delivery_assignments").select("candidate_id, delivery_email").in("candidate_id", ids),
@@ -52,11 +52,11 @@ export async function loadWavePeople(waveId: string, opts: { onlyIds?: string[];
       capsules: (caps ?? []) as RequirementInput["capsules"],
       submissions: mine(subs),
       certifications: mine(certs),
-      labStatus: (mine(members)[0]?.lab_projects as unknown as { status: string } | null)?.status ?? null,
+      ...labInput(mine(members)[0]?.lab_projects),
       byException: Boolean(cur?.requirements_by_exception),
     };
     const started =
-      mine(progress).length > 0 || mine(subs).length > 0 || (layer === "ROLE_ENABLEMENT" && mine(certs).length > 0) || (layer === "AI_LAB_SHOWCASE" && mine(members).length > 0);
+      mine(progress).length > 0 || mine(subs).length > 0 || (layer === "ROLE_ENABLEMENT" && mine(certs).length > 0) || ((layer === "AI_LAB_SHOWCASE" || layer === "SHOWCASE") && mine(members).length > 0);
     const myPulses = mine(pulses);
     const status = stageStatus({
       ...input,
@@ -82,4 +82,10 @@ export async function loadWavePeople(waveId: string, opts: { onlyIds?: string[];
       pulses: opts.withAnswers === false ? myPulses.map((x) => ({ pulse: x.pulse, created_at: x.created_at, answers: {} })) : myPulses.map((x) => ({ pulse: x.pulse, created_at: x.created_at, answers: (x.answers ?? {}) as Record<string, unknown> })),
     };
   });
+}
+
+/** Datos del proyecto del AI Lab que usa el cierre de etapa. */
+function labInput(raw: unknown) {
+  const p = raw as { status: string; problem: string | null; solution: string | null; lab_project_files: { kind: string }[] | null } | null;
+  return { labStatus: p?.status ?? null, labDescribed: Boolean(p?.problem?.trim() && p?.solution?.trim()), labFinal: (p?.lab_project_files ?? []).some((f) => f.kind === "FINAL") };
 }

@@ -37,20 +37,27 @@ export async function waveReport(waveId: string, now = new Date(), reader?: Retu
     .order("full_name");
   const ids = (people ?? []).map((p) => p.id);
   const none = { data: [] as never[] };
-  const [{ data: progress }, { data: history }, { data: classes }, { data: pulses }, { data: certs }] = await Promise.all([
+  const [{ data: progress }, { data: history }, { data: classes }, { data: pulses }, { data: certs }, { data: reSessions }, { data: reAtt }] = await Promise.all([
     ids.length ? db.from("aicert_progress").select("*").in("candidate_id", ids) : none,
     ids.length ? db.from("aicert_progress_history").select("candidate_id, course, percent, at").in("candidate_id", ids).order("at") : none,
     db.from("teacher_classes").select("id, held_on, teacher_class_attendance(class_id, candidate_id, attended)").eq("wave_id", waveId),
     db.from("pulse_responses").select("pulse, candidate_id, client_name, created_at, answers").eq("wave_id", waveId).order("created_at"),
     ids.length ? db.from("certifications").select("candidate_id, result, status").in("candidate_id", ids) : none,
+    // Sesiones semanales de Role Enablement (RLS: la asistencia la leen admin y profesor).
+    db.from("re_sessions").select("n, held_on").eq("wave_id", waveId).not("held_on", "is", null),
+    db.from("re_session_attendance").select("n, candidate_id, attended").eq("wave_id", waveId),
   ]);
 
   const rows = (pulses ?? []) as PulseRow[];
   const points: ProgressPoint[] = (history ?? []).map((h: { candidate_id: string; course: "INTRO" | "SPECIALIST"; percent: number; at: string }) => ({ candidate_id: h.candidate_id, overall: overallProgress(h), at: h.at }));
   const certified = new Set((certs ?? []).filter((c: { result: string; status: string }) => c.result === "PASSED" && c.status === "VERIFIED").map((c: { candidate_id: string }) => c.candidate_id));
+  // Asistencia: clases registradas antes (teacher_classes) + las 4 sesiones semanales de Role Enablement.
   const att = attendanceByPerson(
-    (classes ?? []).map((c) => ({ id: c.id, held_on: c.held_on })),
-    (classes ?? []).flatMap((c) => c.teacher_class_attendance as { class_id: string; candidate_id: string; attended: boolean }[]),
+    [...(classes ?? []).map((c) => ({ id: c.id, held_on: c.held_on })), ...(reSessions ?? []).map((s: { n: number; held_on: string }) => ({ id: `re-${s.n}`, held_on: s.held_on }))],
+    [
+      ...(classes ?? []).flatMap((c) => c.teacher_class_attendance as { class_id: string; candidate_id: string; attended: boolean }[]),
+      ...(reAtt ?? []).map((a: { n: number; candidate_id: string; attended: boolean }) => ({ class_id: `re-${a.n}`, candidate_id: a.candidate_id, attended: a.attended })),
+    ],
     ids,
   );
   const tpvOf = (r: PulseRow) => verifiedProgress(points, r.candidate_id!, r.created_at, certified.has(r.candidate_id!));

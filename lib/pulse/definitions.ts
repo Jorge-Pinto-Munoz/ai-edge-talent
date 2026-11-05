@@ -25,7 +25,7 @@ export interface PulseDef {
   intro: string;
   questions: Question[];
   /** Pulso obligatorio que cierra esta etapa (ver lib/journey/closure.ts). */
-  closes?: "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "CLOSURE";
+  closes?: "AI_MINDSET" | "ROLE_ENABLEMENT" | "SHOWCASE" | "CLOSURE";
   /** Minutos estimados para responder. */
   minutes?: number;
 }
@@ -129,7 +129,7 @@ export const PULSES: PulseDef[] = [
     respondent: "KIBER",
     title: "Pulso de cierre · Role Enablement",
     when: "Con la certificación AI CERT verificada (cierra la etapa)",
-    intro: "Cerraste tu certificación. Primero tu experiencia; después, las mismas preguntas del pulso intermedio para ver cuánto avanzaste. Al enviarlo se desbloquea AI Lab & Showcase.",
+    intro: "Cerraste tu certificación. Primero tu experiencia; después, las mismas preguntas del pulso intermedio para ver cuánto avanzaste. Al enviarlo se desbloquea el AI Lab.",
     closes: "ROLE_ENABLEMENT",
     minutes: 6,
     questions: [...coreQuestions("Role Enablement y tu certificación AI CERT"), ...ENABLEMENT],
@@ -137,10 +137,10 @@ export const PULSES: PulseDef[] = [
   {
     key: "LAB",
     respondent: "KIBER",
-    title: "Pulso de cierre · AI Lab & Showcase",
+    title: "Pulso de cierre · AI Lab y Showcase",
     when: "Después de presentar en el Showcase (cierra la etapa)",
     intro: "¿Cómo te fue construyendo y presentando tu caso? Al enviarlo se desbloquea el Cierre.",
-    closes: "AI_LAB_SHOWCASE",
+    closes: "SHOWCASE",
     minutes: 4,
     questions: [
       ...coreQuestions("el AI Lab y el Showcase"),

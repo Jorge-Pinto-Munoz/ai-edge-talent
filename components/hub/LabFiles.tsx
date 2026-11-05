@@ -10,8 +10,12 @@ export type LabFile = { id: string; name: string; size_bytes: number | null; kin
 
 const size = (b: number | null) => (b === null ? "" : b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
-/** Presentaciones y archivos de un proyecto: descarga con URL firmada; subida si `canUpload`. */
-export function LabFiles({ projectId, files, canUpload, deleteAll, myId }: { projectId: string; files: LabFile[]; canUpload: boolean; deleteAll?: boolean; myId?: string }) {
+/**
+ * Archivos de un proyecto: descarga con URL firmada; subida si `canUpload`.
+ * `final`: muestra y sube solo la presentación final del Showcase; si no, los avances del AI Lab.
+ */
+export function LabFiles({ projectId, files: all, canUpload, deleteAll, myId, final = false, empty }: { projectId: string; files: LabFile[]; canUpload: boolean; deleteAll?: boolean; myId?: string; final?: boolean; empty?: string }) {
+  const files = all.filter((f) => (f.kind === "FINAL") === final);
   const canDelete = (f: LabFile) => Boolean(deleteAll || (myId && f.uploaded_by === myId));
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -27,12 +31,12 @@ export function LabFiles({ projectId, files, canUpload, deleteAll, myId }: { pro
   return (
     <div className="lab-files">
       {files.length === 0 ? (
-        <p className="muted" style={{ margin: 0 }}><small>Aún no hay presentación.</small></p>
+        <p className="muted" style={{ margin: 0 }}><small>{empty ?? (final ? "Aún no hay presentación final." : "Aún no hay archivos de avance.")}</small></p>
       ) : (
         <ul>
           {files.map((f) => (
             <li key={f.id}>
-              <Icon name={f.kind === "PRESENTATION" ? "presentation" : "book"} size={18} />
+              <Icon name={f.kind === "OTHER" ? "book" : "presentation"} size={18} />
               <button type="button" className="file-link" onClick={() => download(f)} title="Descargar">
                 {f.name}
               </button>
@@ -48,12 +52,12 @@ export function LabFiles({ projectId, files, canUpload, deleteAll, myId }: { pro
       )}
       {canUpload && (
         <label className="btn ghost small" style={{ display: "inline-flex", gap: 6, cursor: busy ? "wait" : "pointer", marginTop: 8 }}>
-          <Icon name="plus" size={16} /> {busy ? "Subiendo…" : "Subir presentación (PPT, PDF…)"}
+          <Icon name="plus" size={16} /> {busy ? "Subiendo…" : final ? "Subir presentación final (PPT o PDF)" : "Subir avance (PPT, PDF, imágenes, video…)"}
           <input
             type="file"
             hidden
             disabled={busy}
-            accept=".ppt,.pptx,.pdf,.key,.odp,.doc,.docx,.xlsx,.png,.jpg,.mp4,.zip"
+            accept={final ? ".ppt,.pptx,.pdf,.key,.odp" : ".ppt,.pptx,.pdf,.key,.odp,.doc,.docx,.xlsx,.png,.jpg,.mp4,.zip"}
             onChange={async (e) => {
               const list = Array.from(e.target.files ?? []);
               e.target.value = "";
@@ -64,7 +68,7 @@ export function LabFiles({ projectId, files, canUpload, deleteAll, myId }: { pro
                 if (!r.ok || !r.data) { setErr(r.message); continue; }
                 const { error } = await supabaseBrowser().storage.from("lab").uploadToSignedUrl(r.data.path, r.data.token, f, { contentType: f.type || undefined });
                 if (error) { setErr(`No se pudo subir ${f.name}.`); continue; }
-                const reg = await registerLabFile(projectId, { path: r.data.path, name: f.name, size: f.size });
+                const reg = await registerLabFile(projectId, { path: r.data.path, name: f.name, size: f.size }, final);
                 if (!reg.ok) setErr(reg.message);
               }
               setBusy(false);

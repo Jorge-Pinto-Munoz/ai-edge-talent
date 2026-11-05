@@ -10,7 +10,7 @@ import { FORMAT_GROUPS, FORMAT_KEYS, SUBMISSION_MAX_MB, effectiveFormats } from 
 import { isoToChileLocal } from "@/lib/time/chile";
 import { Callout } from "@/components/ui";
 
-const EDITABLE: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
+const EDITABLE: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
 
 /** `fixedLayer`: dentro de una etapa se edita solo su contenido (sin selector de etapa). */
 export function ContentEditor({ waveId, guides, capsules, fixedLayer }: { waveId: string; guides: StageGuide[]; capsules: Capsule[]; fixedLayer?: Layer }) {

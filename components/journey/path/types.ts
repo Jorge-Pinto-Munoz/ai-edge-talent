@@ -28,7 +28,7 @@ export interface JourneyView {
   /** Mostrar una vez la explicación del cierre de etapas. */
   showStageRules: boolean;
   /** Avance AI CERT por tramos (lo actualiza el líder del programa). */
-  aicert: { label: string; course: "INTRO" | "SPECIALIST"; tramo: number; percent: number; overall: number; introCourse: string | null; specialistCourse: string | null; examDate: string | null; updatedAt: string } | null;
+  aicert: { label: string; course: "INTRO" | "SPECIALIST"; tramo: number; percent: number; overall: number; introCourse: string | null; specialistCourse: string | null; examDate: string | null; updatedAt: string; selfReportedAt?: string | null } | null;
   /** Solo mientras la persona está en AI First Mindset: si la Wave ya abrió la etapa y cuándo abre. */
   mindsetGate: { open: boolean; opensAt: string | null; firstCapsuleId: string | null } | null;
   firstName: string;
@@ -46,10 +46,17 @@ export interface JourneyView {
   submissions: { id: string; capsuleId: string; capsuleTitle: string; attempt: number; status: string; feedback: string | null; files: { name: string; path: string; size: number }[]; submittedAt: string }[];
   /** Tareas de la etapa actual sin entrega o con la última no aprobada (se entregan dentro de su cápsula). */
   pendingTasks: { capsuleId: string; title: string; required: boolean; due: string | null }[];
+  /** Role Enablement: las 4 sesiones semanales (lo que publica el profesor + mi check-in y mi asistencia). */
+  sessions: { n: number; heldOn: string | null; title: string | null; studentNotes: string | null; materials: FileRef[]; checkedInAt: string | null; attended: boolean | null }[];
+  /** Hoy en Chile (YYYY-MM-DD). */
+  today: string;
+  /** Plantilla oficial de la presentación del Showcase. */
+  showcaseTemplate: { name: string; path: string; size: number; updatedAt: string } | null;
   lab: {
     id: string;
     title: string;
     problem: string | null;
+    solution: string | null;
     mode: "INDIVIDUAL" | "GROUP";
     teammates: number;
     status: string;

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { PUBLIC_STAGES, stageBySlug } from "@/lib/data/site";
 import { AiCertSection } from "@/components/site/AiCertSection";
@@ -23,7 +23,10 @@ export async function generateMetadata({ params }: { params: Promise<{ etapa: st
 }
 
 export default async function EtapaPage({ params, searchParams }: { params: Promise<{ etapa: string }>; searchParams: Promise<{ para?: string }> }) {
-  const stage = stageBySlug((await params).etapa);
+  const slug = (await params).etapa;
+  // AI Lab y Showcase eran una sola etapa: la URL antigua lleva al AI Lab.
+  if (slug === "ai-lab-showcase") permanentRedirect("/programa/ai-lab");
+  const stage = stageBySlug(slug);
   if (!stage) notFound();
   const para = (await searchParams).para;
   const saved = (await cookies()).get(AUDIENCE_COOKIE)?.value;
@@ -145,7 +148,7 @@ export default async function EtapaPage({ params, searchParams }: { params: Prom
         </div>
       </section>
 
-      {stage.slug === "ai-lab-showcase" && (
+      {stage.slug === "showcase" && (
         <section className="sec" id="guia-showcase" style={{ paddingTop: 0 }}>
           <div className="sec-inner" style={{ maxWidth: 860 }}>
             <div className="eyebrow">Guía del Showcase</div>

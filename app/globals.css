@@ -668,3 +668,20 @@ fieldset.preview-lock { border: 0; margin: 0; padding: 0; min-width: 0; display:
 .reg-alt { margin: 14px 0 0; text-align: center; font-size: 0.95rem; }
 .reg-alt a, .apply-sec a { font-weight: 700; }
 .auth-hint { margin: 4px 0 0; font-size: 0.85rem; text-align: center; }
+
+/* Botón de descarga de archivo (portal del profesional y portal interno). --stage: color de la etapa si existe. */
+.dl-list { display: grid; gap: 8px; }
+.dl-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease; }
+.dl-row:hover { border-color: var(--stage, var(--brand)); background: color-mix(in srgb, var(--stage, var(--brand)) 8%, var(--surface)); }
+.dl-row:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.dl-row.template { border-color: var(--stage, var(--brand)); }
+.dl-ext { min-width: 44px; padding: 4px 6px; border-radius: 6px; background: var(--obsidian); color: #fff; font-size: 0.7rem; font-weight: 800; text-align: center; letter-spacing: 0.04em; }
+.dl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.dl-row small { color: var(--muted); white-space: nowrap; }
+.dl-ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 800; }
+@media (max-width: 640px) {
+  .dl-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .dl-row small { grid-column: 2; grid-row: 2; }
+  .dl-row .dl-ico { grid-column: 3; grid-row: 1 / span 2; }
+  .dl-name { white-space: normal; overflow-wrap: anywhere; }
+}

@@ -10,8 +10,8 @@ export type CoveragePerson = { id: string; name: string; client: string | null; 
 /** Estado propio de la etapa (entregas, certificación, proyecto…), ya traducido a semáforo con su motivo. */
 export type StageSignal = { light: Light; reason: string };
 
-const ORDER: Layer[] = ["ASSESSMENT", "AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
-const NAME: Record<Layer, string> = { ASSESSMENT: "Assessment", AI_MINDSET: "AI First Mindset", ROLE_ENABLEMENT: "Role Enablement", AI_LAB_SHOWCASE: "AI Lab & Showcase", CLOSURE: "Cierre" };
+const ORDER: Layer[] = ["ASSESSMENT", "AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
+const NAME: Record<Layer, string> = { ASSESSMENT: "Assessment", AI_MINDSET: "AI First Mindset", ROLE_ENABLEMENT: "Role Enablement", AI_LAB_SHOWCASE: "AI Lab", SHOWCASE: "Showcase", CLOSURE: "Cierre" };
 
 export type CoverageRow = CoveragePerson & { light: Light; reason: string; ahead: boolean };
 export type Coverage = {

@@ -45,7 +45,7 @@ export interface HistoricalRow {
   specialty: string | null;
   completed: boolean;
   /** Etapa del journey en que quedó (columna Etapa); si falta y completó, Cierre. */
-  layer: "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "CLOSURE" | null;
+  layer: "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "SHOWCASE" | "CLOSURE" | null;
   /** Certificación AI CERT: true aprobada, false no aprobada, null sin dato. */
   certified: boolean | null;
   service_status: ServiceStatus;
@@ -100,7 +100,7 @@ export function parseHistoricalCsv(text: string): { rows: HistoricalRow[]; error
     const cert = norm(get("certified"));
     const stage = norm(get("stage"));
     const completed = /^(si|sí|completo|completó|completado|certificado|aprobado|termino|terminó)/.test(res);
-    const layer: HistoricalRow["layer"] = /(cierre|finaliz|termin)/.test(stage) ? "CLOSURE" : /(lab|showcase)/.test(stage) ? "AI_LAB_SHOWCASE" : /(role|enablement|certific|ai cert)/.test(stage) ? "ROLE_ENABLEMENT" : /(mindset)/.test(stage) ? "AI_MINDSET" : completed ? "CLOSURE" : null;
+    const layer: HistoricalRow["layer"] = /(cierre|finaliz|termin)/.test(stage) ? "CLOSURE" : /showcase/.test(stage) ? "SHOWCASE" : /lab/.test(stage) ? "AI_LAB_SHOWCASE" : /(role|enablement|certific|ai cert)/.test(stage) ? "ROLE_ENABLEMENT" : /(mindset)/.test(stage) ? "AI_MINDSET" : completed ? "CLOSURE" : null;
     rows.push({
       full_name: get("full_name"),
       corporate_email: email,

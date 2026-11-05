@@ -24,7 +24,8 @@ import { AiBar } from "@/components/journey-admin/ReviewQueue";
 import { deliveryState } from "@/lib/journey/delivery-status";
 import { prettyName } from "@/lib/text/org";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
-import { ClassesWorkspace } from "@/components/teacher/ClassesWorkspace";
+import { ReSessions } from "@/components/teacher/ReSessions";
+import { PulseStatus } from "@/components/journey-admin/PulseStatus";
 import { LabWorkspace } from "@/components/hub/LabWorkspace";
 import { EvaluationGuide } from "@/components/admin/EvaluationGuide";
 import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
@@ -41,13 +42,13 @@ export async function generateMetadata({ params }: { params: Promise<{ etapa: st
   return { title: `${stageBySlug((await params).etapa)?.name ?? "Etapa"} · Journey · Portal AET` };
 }
 
-const stageNameOf = (l: string) => ({ AI_MINDSET: "AI First Mindset", ROLE_ENABLEMENT: "Role Enablement", AI_LAB_SHOWCASE: "AI Lab & Showcase", CLOSURE: "Cierre" } as Record<string, string>)[l] ?? l;
+const stageNameOf = (l: string) => ({ AI_MINDSET: "AI First Mindset", ROLE_ENABLEMENT: "Role Enablement", AI_LAB_SHOWCASE: "AI Lab", SHOWCASE: "Showcase", CLOSURE: "Cierre" } as Record<string, string>)[l] ?? l;
 const TO_DECIDE = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED"];
 
 /** Detalle de una etapa (nivel 3): sus participantes, actividades, evaluaciones, entregables y acciones. */
 export default async function StageDetail({ params, searchParams }: { params: Promise<{ waveId: string; etapa: string }>; searchParams: Promise<{ tab?: string; clase?: string; sub?: string; p?: string }> }) {
   const { waveId, etapa } = await params;
-  const { tab: rawTab, clase, sub: subParam, p: personParam } = await searchParams;
+  const { tab: rawTab, sub: subParam, p: personParam } = await searchParams;
   const stage = stageBySlug(etapa);
   if (!stage) notFound();
   const viewer = await requireStaffPage(`/admin/journey/${waveId}/${etapa}`);
@@ -109,7 +110,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           uids.length ? svc.from("profiles").select("id, status").in("id", uids) : Promise.resolve({ data: [] as { id: string; status: string }[] }),
           stage.layer === "AI_MINDSET" && gids.length ? svc.from("submissions").select("candidate_id, capsule_id, attempt, status, capsules!inner(layer)").in("candidate_id", gids).eq("capsules.layer", "AI_MINDSET") : Promise.resolve({ data: [] as { candidate_id: string; capsule_id: string; attempt: number; status: string }[] }),
           stage.layer === "ROLE_ENABLEMENT" && gids.length ? svc.from("certifications").select("candidate_id, result, status, created_at").in("candidate_id", gids).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as { candidate_id: string; result: string; status: string }[] }),
-          stage.layer === "AI_LAB_SHOWCASE" && gids.length ? svc.from("lab_project_members").select("candidate_id, lab_projects(status)").in("candidate_id", gids) : Promise.resolve({ data: [] as { candidate_id: string; lab_projects: unknown }[] }),
+          (stage.layer === "AI_LAB_SHOWCASE" || stage.layer === "SHOWCASE") && gids.length ? svc.from("lab_project_members").select("candidate_id, lab_projects(status, problem, solution, lab_project_files(kind))").in("candidate_id", gids) : Promise.resolve({ data: [] as { candidate_id: string; lab_projects: unknown }[] }),
           stage.layer === "AI_MINDSET" ? svc.from("capsules").select("id").eq("wave_id", waveId).eq("layer", "AI_MINDSET").eq("published", true).eq("task_required", true) : Promise.resolve({ data: [] as { id: string }[] }),
         ]);
         const active = new Set((profs ?? []).filter((x) => x.status === "ACTIVE").map((x) => x.id));
@@ -125,10 +126,15 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             if (c.status === "VERIFIED" && c.result === "PASSED") return { light: "green", reason: "Certificación verificada" };
             return { light: "yellow", reason: c.status === "PENDING_REVIEW" ? "Certificado en verificación" : "Reintentando la certificación" };
           }
+          const proj = (glabs ?? []).find((x) => x.candidate_id === p.id)?.lab_projects as { status: string; problem: string | null; solution: string | null; lab_project_files: { kind: string }[] | null } | null;
           if (stage.layer === "AI_LAB_SHOWCASE") {
-            const st = ((glabs ?? []).find((x) => x.candidate_id === p.id)?.lab_projects as { status: string } | null)?.status;
-            if (!st) return { light: "red", reason: "Sin proyecto en el AI Lab" };
-            return st === "PRESENTED" ? { light: "green", reason: "Presentó en el Showcase" } : { light: "yellow", reason: LAB[st] ?? "Proyecto en curso" };
+            if (!proj) return { light: "red", reason: "Sin proyecto en el AI Lab" };
+            if (proj.status === "READY" || proj.status === "PRESENTED") return { light: "green", reason: "Proyecto listo para el Showcase" };
+            return { light: "yellow", reason: proj.problem?.trim() && proj.solution?.trim() ? LAB[proj.status] ?? "Proyecto en curso" : "Falta describir el proyecto" };
+          }
+          if (stage.layer === "SHOWCASE") {
+            if (proj?.status === "PRESENTED") return { light: "green", reason: "Presentó en el Showcase" };
+            return (proj?.lab_project_files ?? []).some((f) => f.kind === "FINAL") ? { light: "yellow", reason: "Presentación final subida · por presentar" } : { light: "red", reason: "Falta subir la presentación final" };
           }
           return { light: "green", reason: "En cierre" };
         };
@@ -137,9 +143,11 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           stage.layer as Layer,
           signal,
         );
-        const DONE: Record<string, string> = { AI_MINDSET: "aprobaron su reto", ROLE_ENABLEMENT: "certificaron", AI_LAB_SHOWCASE: "presentaron", CLOSURE: "llegaron al cierre" };
+        const DONE: Record<string, string> = { AI_MINDSET: "aprobaron su reto", ROLE_ENABLEMENT: "certificaron", AI_LAB_SHOWCASE: "tienen su proyecto listo", SHOWCASE: "presentaron", CLOSURE: "llegaron al cierre" };
         return <GroupProgress cov={cov} stageName={stage.name} doneLabel={DONE[stage.layer] ?? "completaron"} />;
       })())}
+
+      {stage.layer !== "ASSESSMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && <PulseStatus waveId={waveId} layer={stage.layer as Layer} />}
 
       {stage.layer === "AI_MINDSET" && !detailOpen && (await (async () => {
         // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).
@@ -166,7 +174,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           db.from("stage_guides").select("*").eq("wave_id", waveId).eq("layer", stage.layer),
           db.from("capsules").select("*").eq("wave_id", waveId).eq("layer", stage.layer).order("position"),
         ]);
-        const pub = PUBLIC_STAGES.find((p) => p.slug === ({ mindset: "mindset", "role-enablement": "role-enablement", "ai-lab": "ai-lab-showcase", cierre: "cierre" } as Record<string, string>)[stage.slug]);
+        const pub = PUBLIC_STAGES.find((p) => p.slug === ({ mindset: "mindset", "role-enablement": "role-enablement", "ai-lab": "ai-lab", showcase: "showcase", cierre: "cierre" } as Record<string, string>)[stage.slug]);
         return (
           <div className="stack">
             <ContentEditor waveId={waveId} guides={(guides ?? []) as StageGuide[]} capsules={(caps ?? []) as Capsule[]} fixedLayer={stage.layer as Layer} />
@@ -293,12 +301,11 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         return <ReviewQueue kind="certifications" isAdmin={isAdmin} items={(certs ?? []).map((c) => ({ ...c, person: nameOf(c.candidate_id) })) as never} />;
       })())}
 
-      {tab.key === "clases" && stage.layer !== "AI_LAB_SHOWCASE" && (
-        <ClassesWorkspace waveId={waveId} clase={clase} viewer={viewer} base={`${base}?tab=clases&`} embedded />
-      )}
+      {/* ───── Role Enablement: las 4 sesiones semanales del profesor ───── */}
+      {tab.key === "clases" && stage.layer === "ROLE_ENABLEMENT" && <ReSessions waveId={waveId} viewer={viewer} />}
 
-      {/* ───── AI Lab & Showcase: el espacio del Hub AI ───── */}
-      {stage.layer === "AI_LAB_SHOWCASE" && ["pase", "clases", "proyectos", "showcase"].includes(tab.key) && (
+      {/* ───── AI Lab (pase, clases y proyectos) y Showcase (presentaciones y resultados): el espacio del Hub AI ───── */}
+      {((stage.layer === "AI_LAB_SHOWCASE" && ["pase", "clases", "proyectos"].includes(tab.key)) || (stage.layer === "SHOWCASE" && tab.key === "showcase")) && (
         <LabWorkspace waveId={waveId} tab={tab.key} real={viewer} base={`${base}?`} embedded />
       )}
 

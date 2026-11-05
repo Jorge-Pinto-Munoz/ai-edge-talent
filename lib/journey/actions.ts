@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { aiConfigured } from "@/lib/ai/client";
 import { aiReviewSubmission } from "./ai-review";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
-import { getViewer, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
+import { getViewer, myStaffWaves, requireRole, type Viewer, SESSION_EXPIRED } from "@/lib/admission/auth";
 import { advanceGate, safeFileName, submissionGate, weekStart, type Layer, type SubmissionStatus } from "./rules";
 import { CLOSING_PULSE } from "./closure";
 import { markRequirementsByException, syncMany, syncStageClosure } from "./closure-sync";
@@ -73,11 +73,16 @@ export async function signedFileUrl(bucket: Bucket, path: string, download: bool
     const db = await supabaseUser();
     let allowed = false;
     if (viewer.role === "admin" || viewer.role === "delivery") allowed = true;
+    // Material del programa (p. ej. la plantilla del Showcase): cualquier persona con sesión.
+    else if (bucket === "content" && owner === "programa") allowed = true;
+    // Profesor y Hub AI: material de las Waves en que trabajan.
+    else if (bucket === "content" && (viewer.role === "profesor" || viewer.role === "hub")) allowed = (await myStaffWaves(viewer)).includes(owner);
     else if (bucket === "content") {
       // RLS: si puede leer una guía o cápsula de esa Wave, puede ver su contenido.
       const { count } = await db.from("capsules").select("id", { count: "exact", head: true }).eq("wave_id", owner);
       const { count: g } = await db.from("stage_guides").select("layer", { count: "exact", head: true }).eq("wave_id", owner);
-      allowed = (count ?? 0) + (g ?? 0) > 0;
+      const { count: rs } = await db.from("re_sessions").select("n", { count: "exact", head: true }).eq("wave_id", owner);
+      allowed = (count ?? 0) + (g ?? 0) + (rs ?? 0) > 0;
     } else {
       // RLS: el propio Kiber y los AI Coaches de su grupo pueden leer al candidato.
       const { data } = await db.from("candidates").select("id").eq("id", owner).maybeSingle();

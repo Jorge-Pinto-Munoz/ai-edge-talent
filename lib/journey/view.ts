@@ -12,6 +12,9 @@ import { duePulses } from "@/lib/pulse/rules";
 import { CLOSING_PULSE, STAGE_STATUS, stageRequirements, stageStatus, type StageStatus } from "./closure";
 import { LAYERS } from "./rules";
 import { supabaseService } from "@/lib/supabase/server";
+import { mySessions } from "@/lib/teacher/sessions";
+import { showcaseTemplate } from "@/lib/hub/template";
+import { todayChile } from "@/lib/teacher/rules";
 
 type Journey = NonNullable<Awaited<ReturnType<typeof myJourney>>>;
 
@@ -24,13 +27,21 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     j = { ...j, capsules: j.capsules.filter((c) => c.layer !== "AI_MINDSET") };
     if (hidden) preview = { ...preview, hiddenNote: `${hidden} cápsula(s) de AI First Mindset no se le muestran: la etapa aún no está abierta para su Wave. Ábrela en Journey → AI First Mindset.` };
   }
+  // Role Enablement: las 4 sesiones del profesor (material, notas, check-in). AI Lab / Showcase: la plantilla oficial.
+  const layerNow = j.candidate.journey_layer as Layer | null;
+  const sessions = layerNow && ["ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"].includes(layerNow) ? await mySessions(j.candidate.wave_id, j.candidate.id) : [];
+  const template = layerNow && ["AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"].includes(layerNow) ? await showcaseTemplate() : null;
+  const today = todayChile();
+  const labFinal = Boolean(j.lab?.lab_project_files.some((f) => f.kind === "FINAL"));
+  const labDescribed = Boolean(j.lab?.problem?.trim() && j.lab?.solution?.trim());
   const path = buildJourneyPath({
     layer: j.candidate.journey_layer,
     capsules: j.capsules,
     completed: j.completed,
     submissions: j.submissions,
     certifications: j.certifications,
-    lab: j.lab ? { status: j.lab.status, files: j.lab.lab_project_files.length } : null,
+    lab: j.lab ? { status: j.lab.status, files: j.lab.lab_project_files.filter((f) => f.kind !== "FINAL").length, described: labDescribed, final: labFinal } : null,
+    sessions: sessions.map((s) => ({ n: s.n, held: Boolean(s.heldOn && s.heldOn <= today), checkedIn: Boolean(s.checkedInAt) })),
   });
 
   // Cierre de etapa: requisitos académicos (o excepción) → pulso de cierre → etapa cerrada.
@@ -40,6 +51,8 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     submissions: j.submissions,
     certifications: j.certifications,
     labStatus: j.lab?.status ?? null,
+    labDescribed,
+    labFinal,
     byException: j.closures.some((c) => c.layer === layer && c.requirements_by_exception),
   };
   const req = stageRequirements(layer, reqInput);
@@ -51,7 +64,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
   const started = (l: Layer) =>
     j.capsules.some((c) => c.layer === l && (j.completed.has(c.id) || j.submissions.some((s) => s.capsule_id === c.id))) ||
     (l === "ROLE_ENABLEMENT" && (j.certifications.length > 0 || Boolean(j.aicert))) ||
-    (l === "AI_LAB_SHOWCASE" && Boolean(j.lab));
+    ((l === "AI_LAB_SHOWCASE" || l === "SHOWCASE") && Boolean(j.lab));
   const statusOf = (l: Layer): StageStatus => {
     const met = closureOf(l)?.requirements_met_at;
     return stageStatus({
@@ -95,6 +108,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
           specialistCourse: j.aicert.specialist_course,
           examDate: j.aicert.exam_date,
           updatedAt: j.aicert.updated_at,
+          selfReportedAt: j.aicert.self_reported_at ?? null,
         }
       : null,
     preview,
@@ -137,6 +151,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
           id: j.lab.id,
           title: j.lab.title,
           problem: j.lab.problem,
+          solution: j.lab.solution,
           mode: j.lab.mode,
           teammates: j.lab.teammates,
           status: j.lab.status,
@@ -146,6 +161,9 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
           files: j.lab.lab_project_files,
         }
       : null,
+    sessions,
+    today,
+    showcaseTemplate: template,
   };
 
   return view;

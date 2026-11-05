@@ -10,8 +10,8 @@ import { CLOSING_PULSE, type StageStatus } from "@/lib/journey/closure";
 import { NOTHING_YET } from "./definitions";
 
 /** Días de referencia por etapa para marcar "retrasado" (referencia operativa, no regla académica). */
-export const STAGE_REFERENCE_DAYS: Partial<Record<Layer, number>> = { AI_MINDSET: 45, ROLE_ENABLEMENT: 60, AI_LAB_SHOWCASE: 45, CLOSURE: 21 };
-export const CLOSING_LAYERS: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"];
+export const STAGE_REFERENCE_DAYS: Partial<Record<Layer, number>> = { AI_MINDSET: 45, ROLE_ENABLEMENT: 60, AI_LAB_SHOWCASE: 30, SHOWCASE: 21, CLOSURE: 21 };
+export const CLOSING_LAYERS: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
 export const TEXT_FIELDS = [
   ["aprendizaje", "Aprendizajes"],
   ["valioso", "Lo más valorado"],

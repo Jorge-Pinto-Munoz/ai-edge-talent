@@ -277,15 +277,6 @@
 .mod-fb { margin: 6px 0 0; font-size: 0.9rem; }
 
 /* Descargas: filas claras, sin abrir pestañas */
-.dl-list { display: grid; gap: 8px; }
-.dl-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease; }
-.dl-row:hover { border-color: var(--stage); background: color-mix(in srgb, var(--stage) 8%, var(--surface)); }
-.dl-row:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
-.dl-row.template { border-color: var(--stage); }
-.dl-ext { min-width: 44px; padding: 4px 6px; border-radius: 6px; background: var(--obsidian); color: #fff; font-size: 0.7rem; font-weight: 800; text-align: center; letter-spacing: 0.04em; }
-.dl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.dl-row small { color: var(--muted); white-space: nowrap; }
-.dl-ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 800; }
 
 /* Recursos complementarios */
 .mod-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -317,12 +308,15 @@
 @media (max-width: 640px) {
   .mod-due { grid-template-columns: auto minmax(0, 1fr); }
   .mod-due em { grid-column: 2; }
-  .dl-row { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .dl-row small { grid-column: 2; grid-row: 2; }
-  .dl-row .dl-ico { grid-column: 3; grid-row: 1 / span 2; }
-  .dl-name { white-space: normal; overflow-wrap: anywhere; }
   .mod-steps > li { padding-left: 36px; }
 }
 .jr-preview-warn { display: block; margin-top: 6px; color: var(--warn-text); }
 .mod-retry { padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--warn-text); border-left: 4px solid #e5a823; }
 .mod-retry p { margin: 4px 0 0; color: var(--text); }
+
+/* Reporte de avance AI CERT y formularios dentro de la hoja del camino */
+.self-report { gap: 10px; }
+.sr-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .sr-grid { grid-template-columns: 1fr; } }
+.jr-project .field { display: grid; gap: 4px; font-weight: 600; font-size: 0.9rem; margin: 0; }
+.jr-project .field input, .jr-project .field select, .jr-project .field textarea { font: inherit; font-weight: 400; width: 100%; min-width: 0; }

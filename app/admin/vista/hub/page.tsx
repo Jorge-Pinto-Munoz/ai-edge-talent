@@ -4,7 +4,7 @@ import { supabaseService } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-/** Abre el AI Lab & Showcase como lo ve ese Líder Hub AI: su primera Wave asignada, en solo lectura. */
+/** Abre el AI Lab y Showcase como lo ve ese Líder Hub AI: su primera Wave asignada, en solo lectura. */
 export default async function VerHub({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   await requireAdminPage("/admin/vista");
   const { id } = await searchParams;

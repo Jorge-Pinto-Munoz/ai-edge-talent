@@ -27,7 +27,7 @@ export function ExperienceSummary({ ops, exp, showExperience = true }: { ops: Op
           <table className="rtable">
             <thead><tr><th>Etapa</th><th>Personas hoy</th><th>Etapa cerrada</th><th>Referencia</th></tr></thead>
             <tbody>
-              {(["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"] as Layer[]).map((l) => (
+              {(["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"] as Layer[]).map((l) => (
                 <tr key={l}>
                   <td className="rt-title">{layerName(l)}</td>
                   <td data-label="Personas hoy">{ops.byStage[l]}</td>
@@ -111,7 +111,7 @@ function StageBlock({ s, showNames, extra }: { s: StageExperience; showNames: bo
   );
 }
 
-const SHORT: Partial<Record<Layer, string>> = { AI_MINDSET: "Mindset", ROLE_ENABLEMENT: "Certificación", AI_LAB_SHOWCASE: "AI Lab", CLOSURE: "Cierre" };
+const SHORT: Partial<Record<Layer, string>> = { AI_MINDSET: "Mindset", ROLE_ENABLEMENT: "Certificación", AI_LAB_SHOWCASE: "AI Lab", SHOWCASE: "Showcase", CLOSURE: "Cierre" };
 const tone = (s: StageStatus) => STAGE_STATUS[s].tone;
 
 /** Nivel 3 · Detalle: cada persona con su etapa, estado y satisfacción por etapa. */

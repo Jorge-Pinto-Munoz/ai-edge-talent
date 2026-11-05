@@ -11,7 +11,9 @@ export const CLOSING_PULSE: Record<Layer, string | null> = {
   ASSESSMENT: null,
   AI_MINDSET: "MINDSET",
   ROLE_ENABLEMENT: "HAB_CIERRE",
-  AI_LAB_SHOWCASE: "LAB",
+  // El AI Lab se cierra cuando el proyecto está listo (sin pulso) y pasa solo al Showcase; el pulso «LAB» cierra el Showcase.
+  AI_LAB_SHOWCASE: null,
+  SHOWCASE: "LAB",
   CLOSURE: "FINAL",
 };
 export const closingLayerOf = (pulse: string): Layer | null => (Object.entries(CLOSING_PULSE).find(([, p]) => p === pulse)?.[0] as Layer) ?? null;
@@ -22,6 +24,10 @@ export interface RequirementInput {
   submissions: { capsule_id: string; status: string; attempt: number }[];
   certifications: { result: string; status: string }[];
   labStatus: string | null;
+  /** El proyecto tiene desafío y solución descritos. */
+  labDescribed?: boolean;
+  /** Hay presentación final subida para el Showcase. */
+  labFinal?: boolean;
   /** El admin dio los requisitos por cumplidos con una excepción registrada. */
   byException?: boolean;
 }
@@ -50,8 +56,19 @@ export function stageRequirements(layer: Layer, x: RequirementInput): { met: boo
         review: x.certifications.some((c) => c.status === "PENDING_REVIEW"),
       }];
       break;
-    case "AI_LAB_SHOWCASE":
-      items = [{ id: "showcase", label: "Caso presentado en el Showcase", done: x.labStatus === "PRESENTED" }];
+    case "AI_LAB_SHOWCASE": {
+      const ready = x.labStatus === "READY" || x.labStatus === "PRESENTED";
+      items = [
+        { id: "lab-desc", label: "Proyecto descrito (desafío y solución)", done: Boolean(x.labDescribed) || ready },
+        { id: "lab-ready", label: "Proyecto listo para el Showcase (lo confirma el Hub AI)", done: ready, review: Boolean(x.labDescribed) && !ready },
+      ];
+      break;
+    }
+    case "SHOWCASE":
+      items = [
+        { id: "show-final", label: "Presentación final subida", done: Boolean(x.labFinal) || x.labStatus === "PRESENTED" },
+        { id: "showcase", label: "Caso presentado en el Showcase", done: x.labStatus === "PRESENTED" },
+      ];
       break;
     case "CLOSURE":
     case "ASSESSMENT":

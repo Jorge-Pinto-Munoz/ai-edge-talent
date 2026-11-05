@@ -21,10 +21,11 @@ describe("pulsos: cuándo aparecen", () => {
     expect(duePulses({ layer: "ROLE_ENABLEMENT", layerSince: daysAgo(3), labStatus: null, answered: ["INICIO"], now: NOW })).toEqual(["MINDSET"]);
     expect(duePulses({ layer: "ROLE_ENABLEMENT", layerSince: daysAgo(15), labStatus: null, answered: ["INICIO", "MINDSET"], now: NOW })).toEqual(["HAB_INTERMEDIO"]);
   });
-  it("en AI Lab pide el cierre de habilitación y, tras el Showcase, el del Lab", () => {
+  it("en AI Lab pide el cierre de habilitación; el pulso LAB llega en el Showcase, tras presentar", () => {
     expect(duePulses({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "BUILDING", answered: ["INICIO", "MINDSET"], now: NOW })).toEqual(["HAB_CIERRE"]);
-    expect(duePulse({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE"], now: NOW })).toBeNull();
-    expect(duePulse({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE"], requirementsMet: true, now: NOW })).toBe("LAB");
+    expect(duePulse({ layer: "AI_LAB_SHOWCASE", layerSince: daysAgo(1), labStatus: "READY", answered: ["MINDSET", "HAB_CIERRE"], requirementsMet: true, now: NOW })).toBeNull();
+    expect(duePulse({ layer: "SHOWCASE", layerSince: daysAgo(1), labStatus: "READY", answered: ["MINDSET", "HAB_CIERRE"], now: NOW })).toBeNull();
+    expect(duePulse({ layer: "SHOWCASE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE"], requirementsMet: true, now: NOW })).toBe("LAB");
   });
   it("en Cierre pide el final; el de inicio ya no se ofrece", () => {
     expect(duePulses({ layer: "CLOSURE", layerSince: daysAgo(1), labStatus: "PRESENTED", answered: ["MINDSET", "HAB_CIERRE", "LAB"], now: NOW })).toEqual(["FINAL"]);

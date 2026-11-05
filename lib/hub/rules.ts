@@ -1,4 +1,4 @@
-/** AI Lab & Showcase: vocabulario compartido entre el Hub, el portal del profesional y el admin. */
+/** AI Lab y Showcase: vocabulario compartido entre el Hub, el portal del profesional y el admin. */
 export type LabMode = "INDIVIDUAL" | "GROUP";
 export type LabStatus = "IDEA" | "BUILDING" | "READY" | "PRESENTED";
 export type LabDecision = "CONTINUA" | "PILOTO" | "AJUSTAR" | "NO_CONTINUA";

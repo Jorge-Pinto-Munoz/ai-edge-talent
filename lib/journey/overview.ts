@@ -75,7 +75,7 @@ export async function journeyOverview(waveId: string): Promise<{ stages: StageSu
     const actions: StageAction[] = (
       stage.layer === "AI_MINDSET" ? [{ label: "Entregas por revisar", count: subsIn("AI_MINDSET"), tab: "entregas" }]
       : stage.layer === "ROLE_ENABLEMENT" ? [{ label: "Certificaciones por verificar", count: (certs ?? []).length, tab: "certificaciones" }, { label: "Entregas por revisar", count: subsIn("ROLE_ENABLEMENT"), tab: "entregas" }]
-      : stage.layer === "AI_LAB_SHOWCASE" ? [{ label: "Proyectos listos para Showcase", count: ready, tab: "showcase" }]
+      : stage.layer === "SHOWCASE" ? [{ label: "Proyectos por presentar", count: ready, tab: "showcase" }]
       : []
     ).filter((a) => a.count > 0);
     if (flagged) actions.unshift({ label: flagged === 1 ? "Persona con alerta" : "Personas con alerta", count: flagged, tab: stage.layer === "ROLE_ENABLEMENT" ? "aicert" : stage.layer === "AI_MINDSET" ? "entregas" : "participantes" });

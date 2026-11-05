@@ -45,6 +45,7 @@ export interface LabProjectView {
   id: string;
   title: string;
   problem: string | null;
+  solution: string | null;
   client_name: string | null;
   mode: "INDIVIDUAL" | "GROUP";
   status: "IDEA" | "BUILDING" | "READY" | "PRESENTED";
@@ -84,19 +85,19 @@ async function loadJourney(db: Db, cand: Cand) {
     db.from("submissions").select("id, capsule_id, attempt, status, score, feedback, submitted_at, reviewed_at, text_answer, files").eq("candidate_id", cand.id).order("attempt"),
     db.from("certifications").select("*").eq("candidate_id", cand.id).order("created_at"),
     db.from("journey_events").select("from_layer, to_layer, at").eq("candidate_id", cand.id).order("at"),
-    db.from("aicert_progress").select("course, tramo, percent, intro_course, specialist_course, exam_date, note, updated_at").eq("candidate_id", cand.id).maybeSingle(),
+    db.from("aicert_progress").select("course, tramo, percent, intro_course, specialist_course, exam_date, note, updated_at, self_reported_at").eq("candidate_id", cand.id).maybeSingle(),
     db.from("pulse_responses").select("pulse").eq("candidate_id", cand.id),
     db.from("stage_closures").select("layer, requirements_met_at, requirements_by_exception, pulse_submitted_at, closed_at").eq("candidate_id", cand.id),
     db.from("consents").select("version, accepted_at").eq("candidate_id", cand.id).eq("kind", "STAGE_RULES").is("revoked_at", null).limit(1),
   ]);
   // Proyecto del AI Lab (RLS: el integrante ve su proyecto, sus compañeros y sus archivos).
   let lab: LabProjectView | null = null;
-  if (cand.journey_layer === "AI_LAB_SHOWCASE" || cand.journey_layer === "CLOSURE") {
+  if (cand.journey_layer === "AI_LAB_SHOWCASE" || cand.journey_layer === "SHOWCASE" || cand.journey_layer === "CLOSURE") {
     const { data: m } = await db.from("lab_project_members").select("project_id").eq("candidate_id", cand.id).maybeSingle();
     if (m) {
       const { data: p } = await db
         .from("lab_projects")
-        .select("id, title, problem, client_name, mode, status, showcase_date, showcase_decision, showcase_notes, lab_project_files(id, name, size_bytes, kind, created_at, uploaded_by)")
+        .select("id, title, problem, solution, client_name, mode, status, showcase_date, showcase_decision, showcase_notes, lab_project_files(id, name, size_bytes, kind, created_at, uploaded_by)")
         .eq("id", m.project_id)
         .maybeSingle();
       const { data: mates } = await db.from("lab_project_members").select("candidate_id").eq("project_id", m.project_id);
@@ -113,7 +114,7 @@ async function loadJourney(db: Db, cand: Cand) {
     submissions: subs.data ?? [],
     certifications: certs.data ?? [],
     events: events.data ?? [],
-    aicert: (aicert.data ?? null) as AiCertProgress | null,
+    aicert: (aicert.data ?? null) as (AiCertProgress & { self_reported_at?: string | null }) | null,
     answeredPulses: (pulses.data ?? []).map((p) => p.pulse as string),
     closures: (closures.data ?? []) as { layer: Layer; requirements_met_at: string | null; requirements_by_exception: boolean; pulse_submitted_at: string | null; closed_at: string | null }[],
     stageRulesAccepted: Boolean(rules.data?.length),

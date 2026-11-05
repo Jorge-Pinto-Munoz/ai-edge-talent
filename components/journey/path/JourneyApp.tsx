@@ -19,6 +19,7 @@ import { AiCertSection } from "@/components/site/AiCertSection";
 import { ShowcaseGuide } from "@/components/site/ShowcaseGuide";
 import { PulseForm } from "@/components/pulse/PulseForm";
 import { AiCertProgressView } from "@/components/journey/AiCertProgressView";
+import { AiCertSelfReport, FinalSheet, ProjectSheet, SessionSheet } from "./StageWork";
 import type { JourneyView } from "./types";
 import { STAGE_STATUS } from "@/lib/journey/closure";
 import { STAGE_RULES } from "@/lib/data/consents";
@@ -30,11 +31,13 @@ const STAGE_COLOR: Record<Layer, { c: string; d: string; icon: IconName }> = {
   AI_MINDSET: { c: "#d98ad3", d: "#a2549c", icon: "brain" },
   ROLE_ENABLEMENT: { c: "#b9aad4", d: "#7f6aa8", icon: "badge" },
   AI_LAB_SHOWCASE: { c: "#9fd39a", d: "#5c9a57", icon: "flask" },
+  SHOWCASE: { c: "#f29b85", d: "#b8604b", icon: "presentation" },
   CLOSURE: { c: "#f7c46c", d: "#c08a2c", icon: "flag" },
 };
 const UNLOCK: Partial<Record<Layer, string>> = {
   ROLE_ENABLEMENT: "Se desbloquea al aprobar tu desafío de AI Mindset y responder su pulso de cierre.",
   AI_LAB_SHOWCASE: "Se desbloquea con tu AI CERT aprobada y verificada, y el pulso de cierre de Role Enablement.",
+  SHOWCASE: "Se desbloquea cuando el Hub AI confirma que tu proyecto del AI Lab está listo para presentarse.",
   CLOSURE: "Llega después de tu Showcase y su pulso de cierre.",
 };
 /** Zigzag del camino (px), como una ruta que serpentea. */
@@ -43,7 +46,7 @@ const nodeIcon = (n: PathNode): IconName => {
   if (n.state === "done") return "check";
   if (n.state === "locked") return "lock";
   if (n.state === "review") return "clock";
-  return { milestone: "flag", capsule: "play", cert: "badge", "lab-class": n.labClass === 2 ? "flask" : "users", presentation: "presentation", showcase: "star" }[n.kind] as IconName;
+  return { milestone: "flag", capsule: "play", cert: "badge", session: "calendar", "lab-class": n.labClass === 2 ? "flask" : "users", project: "pen", presentation: "presentation", showcase: "star" }[n.kind] as IconName;
 };
 const stageVars = (l: Layer) => ({ "--stage": STAGE_COLOR[l].c, "--stage-d": STAGE_COLOR[l].d }) as CSSProperties;
 
@@ -52,6 +55,7 @@ const REMIND: Partial<Record<Layer, string>> = {
   AI_MINDSET: "tienes dos intentos para aprobar tu desafío (75/100 o más). Una revisión humana no consume intento.",
   ROLE_ENABLEMENT: "Kibernum financia hasta dos intentos de examen AI CERT. Prepáralo con tu profesor y tu AI Coach.",
   AI_LAB_SHOWCASE: "no hay un máximo de intentos: ajustas tu solución con el Hub AI hasta que esté lista para mostrar su impacto.",
+  SHOWCASE: "presentas tu caso al cliente con la plantilla oficial, en 15 a 20 minutos y con demo en vivo.",
 };
 
 type Tab = "camino" | "materiales" | "entregas";
@@ -486,6 +490,7 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
           </ul>
         )}
         <AiCertProgressView p={v.aicert} />
+        <AiCertSelfReport v={v} />
         {canSubmit && !v.preview && (
           <div className="jr-project">
             <span className="jr-k">Registrar tu resultado</span>
@@ -498,6 +503,14 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
     );
   }
 
+  if (node.kind === "session" && node.session) {
+    return <div className="jr-sheet-stack">{status}<SessionSheet v={v} n={node.session} /></div>;
+  }
+
+  if (node.kind === "project") {
+    return <div className="jr-sheet-stack">{status}<ProjectSheet v={v} /></div>;
+  }
+
   if (node.kind === "lab-class") {
     const c = LAB_CLASSES.find((x) => x.n === node.labClass)!;
     return (
@@ -507,20 +520,13 @@ function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage
           <div><span className="jr-k">Llegas con</span><p>{c.brings}</p></div>
           <div><span className="jr-k">Qué pasa</span><p>{c.does}</p></div>
         </div>
-        {v.lab ? <LabSummary lab={v.lab} /> : <p className="muted">El Hub AI registrará tu proyecto después de la Clase 1. Ahí verás aquí tu desafío y podrás subir tu presentación.</p>}
+        {v.lab ? <LabSummary lab={v.lab} /> : <p className="muted">Después de la Clase 1 registra tu proyecto en «Tu proyecto» (o lo registra el Hub AI). Ahí describes tu desafío y subes tus avances.</p>}
       </div>
     );
   }
 
   if (node.kind === "presentation") {
-    return (
-      <div className="jr-sheet-stack">
-        {status}
-        <p>Sube la presentación con la que mostrarás tu caso en el Showcase (PPT, PDF o Keynote). Puedes reemplazarla cuando quieras antes de presentar.</p>
-        {v.lab ? <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={!v.preview} myId={v.preview ? undefined : v.myId} /> : <p className="muted">Podrás subirla cuando el Hub AI registre tu proyecto.</p>}
-        <ShowcaseGuide compact />
-      </div>
-    );
+    return <div className="jr-sheet-stack">{status}<FinalSheet v={v} /><ShowcaseGuide compact /></div>;
   }
 
   if (node.kind === "showcase") {
@@ -678,8 +684,14 @@ function Deliverables({ v, onModule }: { v: JourneyView; onModule: (id: string) 
 
       {v.lab && (
         <div className="jr-group">
-          <h3>Presentación del Showcase</h3>
+          <h3>AI Lab · avances del proyecto</h3>
           <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={!v.preview && v.path.currentLayer === "AI_LAB_SHOWCASE"} myId={v.preview ? undefined : v.myId} />
+        </div>
+      )}
+      {v.lab && ["SHOWCASE", "CLOSURE"].includes(v.path.currentLayer) && (
+        <div className="jr-group">
+          <h3>Showcase · presentación final</h3>
+          <LabFiles projectId={v.lab.id} files={v.lab.files} canUpload={!v.preview && v.path.currentLayer === "SHOWCASE"} myId={v.preview ? undefined : v.myId} final />
         </div>
       )}
     </section>

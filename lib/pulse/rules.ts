@@ -65,7 +65,7 @@ export function duePulses(ctx: { layer: Layer | null; layerSince: string | null;
     MINDSET: closing("AI_MINDSET"),
     HAB_INTERMEDIO: ctx.layer === "ROLE_ENABLEMENT" && days >= MID_DAYS && !ctx.requirementsMet,
     HAB_CIERRE: closing("ROLE_ENABLEMENT"),
-    LAB: closing("AI_LAB_SHOWCASE"),
+    LAB: closing("SHOWCASE"),
     FINAL: ctx.layer === "CLOSURE",
   };
   return KIBER_ORDER.filter((k) => due[k] && !ctx.answered.includes(k));

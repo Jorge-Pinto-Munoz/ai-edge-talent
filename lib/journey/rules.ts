@@ -1,14 +1,16 @@
 /**
- * Reglas del journey (framework AET): Assessment → AI Mindset → Role Enablement → AI Lab & Showcase → Cierre.
+ * Reglas del journey (framework AET): Assessment → AI Mindset → Role Enablement → AI Lab → Showcase → Cierre.
+ * AI_LAB_SHOWCASE es el nombre histórico de la capa del AI Lab (se conserva para no reescribir datos); el Showcase es SHOWCASE.
  * Los gates académicos bloquean el avance; los atrasos operacionales NO (generan alerta, no expulsión).
  */
-export type Layer = "ASSESSMENT" | "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "CLOSURE";
+export type Layer = "ASSESSMENT" | "AI_MINDSET" | "ROLE_ENABLEMENT" | "AI_LAB_SHOWCASE" | "SHOWCASE" | "CLOSURE";
 
 export const LAYERS: { id: Layer; name: string; description: string }[] = [
   { id: "ASSESSMENT", name: "Assessment", description: "Diagnóstico inicial de madurez IA, capacidades técnicas y potencial de evolución profesional." },
   { id: "AI_MINDSET", name: "AI Mindset", description: "Transformación de la forma de trabajar mediante adopción AI-First aplicada al trabajo real." },
   { id: "ROLE_ENABLEMENT", name: "Role Enablement", description: "Especialización técnica por rol mediante rutas formativas y certificaciones internacionales (AI CERTs)." },
-  { id: "AI_LAB_SHOWCASE", name: "AI Lab & Showcase", description: "Aplicación práctica sobre desafíos reales del negocio para generar evidencia e impacto operacional." },
+  { id: "AI_LAB_SHOWCASE", name: "AI Lab", description: "Construcción práctica, con el Hub AI, de una solución con IA para un desafío real del negocio." },
+  { id: "SHOWCASE", name: "Showcase", description: "Presentación del caso al cliente con evidencia de valor e impacto operacional." },
   { id: "CLOSURE", name: "Cierre", description: "Resultado, evidencia, próximos pasos y casos con continuidad." },
 ];
 export const layerName = (l: Layer | null) => (l ? LAYERS.find((x) => x.id === l)!.name : "Admisión");
@@ -38,6 +40,8 @@ export interface GateContext {
   requiredMindsetCapsules: string[];
   approvedCapsules: string[];
   certification: { result: "PASSED" | "FAILED"; status: "PENDING_REVIEW" | "VERIFIED" | "REJECTED" } | null;
+  /** Estado del proyecto del AI Lab (gate del Showcase). */
+  labStatus?: string | null;
 }
 
 /** Gate para pasar a la siguiente capa. Saltos o retrocesos solo por excepción registrada. */
@@ -58,6 +62,10 @@ export function advanceGate(from: Layer | null, to: Layer, ctx: GateContext): { 
       return ctx.certification?.result === "PASSED" && ctx.certification.status === "VERIFIED"
         ? { ok: true }
         : { ok: false, reason: "La certificación AI CERT aprobada y verificada es gate de AI Lab." };
+    case "SHOWCASE":
+      return ctx.labStatus === "READY" || ctx.labStatus === "PRESENTED"
+        ? { ok: true }
+        : { ok: false, reason: "El proyecto del AI Lab debe estar listo para el Showcase (lo confirma el Hub AI)." };
     default:
       return { ok: true };
   }

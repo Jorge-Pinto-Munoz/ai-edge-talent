@@ -7,7 +7,7 @@ export function AiCertProgressView({ p, compact = false }: { p: JourneyView["aic
     return compact ? <span className="muted">Sin avance registrado</span> : (
       <div className="jr-project">
         <span className="jr-k">Tu avance en AI CERTs</span>
-        <p className="muted" style={{ margin: 0 }}>Aún no hay avance registrado. El líder del programa lo actualiza desde la plataforma AI CERTs.</p>
+        <p className="muted" style={{ margin: 0 }}>Aún no hay avance registrado. Repórtalo tú mismo desde aquí cada semana (lo ven tu Delivery y el equipo).</p>
       </div>
     );
   }

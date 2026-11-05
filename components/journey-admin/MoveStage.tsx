@@ -9,7 +9,8 @@ import { Callout } from "@/components/ui";
 const STAGES: { id: Layer; name: string }[] = [
   { id: "AI_MINDSET", name: "AI First Mindset" },
   { id: "ROLE_ENABLEMENT", name: "Role Enablement" },
-  { id: "AI_LAB_SHOWCASE", name: "AI Lab & Showcase" },
+  { id: "AI_LAB_SHOWCASE", name: "AI Lab" },
+  { id: "SHOWCASE", name: "Showcase" },
   { id: "CLOSURE", name: "Cierre" },
 ];
 

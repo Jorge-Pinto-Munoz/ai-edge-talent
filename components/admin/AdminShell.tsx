@@ -35,10 +35,13 @@ const SECTIONS: Section[] = [
   { key: "st-assessment", label: "Assessment", icon: "target", href: (w) => `/admin/admision/${w}`, match: /^\/admin\/admision|^\/admin\/journey\/[^/]+\/assessment/, roles: STAFF, perWave: true, group: "stages" },
   { key: "st-mindset", label: "AI First Mindset", icon: "brain", href: (w) => `/admin/journey/${w}/mindset`, match: /^\/admin\/journey\/[^/]+\/mindset/, roles: STAFF, perWave: true, group: "stages" },
   { key: "st-role", label: "Role Enablement", icon: "badge", href: (w) => `/admin/journey/${w}/role-enablement`, match: /^\/admin\/journey\/[^/]+\/role-enablement/, roles: STAFF, perWave: true, group: "stages" },
-  { key: "st-lab", label: "AI Lab & Showcase", icon: "flask", href: (w) => `/admin/journey/${w}/ai-lab`, match: /^\/admin\/journey\/[^/]+\/ai-lab|^\/admin\/lab/, roles: STAFF, perWave: true, group: "stages" },
+  { key: "st-lab", label: "AI Lab", icon: "flask", href: (w) => `/admin/journey/${w}/ai-lab`, match: /^\/admin\/journey\/[^/]+\/ai-lab|^\/admin\/lab/, roles: STAFF, perWave: true, group: "stages" },
+  { key: "st-showcase", label: "Showcase", icon: "presentation", href: (w) => `/admin/journey/${w}/showcase`, match: /^\/admin\/journey\/[^/]+\/showcase/, roles: STAFF, perWave: true, group: "stages" },
   { key: "st-cierre", label: "Cierre", icon: "flag", href: (w) => `/admin/journey/${w}/cierre`, match: /^\/admin\/journey\/[^/]+\/cierre/, roles: STAFF, perWave: true, group: "stages" },
-  // El Líder Hub AI trabaja solo en el AI Lab & Showcase de sus Waves.
-  { key: "lab", label: "AI Lab & Showcase", icon: "flask", href: (w) => `/admin/lab/${w}`, match: /^\/admin\/lab/, roles: ["hub"], perWave: true, group: "wave" },
+  // El profesor registra las 4 sesiones semanales de Role Enablement de sus Waves.
+  { key: "profesor", label: "Sesiones · Role Enablement", icon: "calendar", href: (w) => `/admin/profesor/${w}`, match: /^\/admin\/profesor/, roles: ["profesor"], perWave: true, group: "wave" },
+  // El Líder Hub AI trabaja solo en el AI Lab y el Showcase de sus Waves.
+  { key: "lab", label: "AI Lab y Showcase", icon: "flask", href: (w) => `/admin/lab/${w}`, match: /^\/admin\/lab/, roles: ["hub"], perWave: true, group: "wave" },
   { key: "asignaciones", label: "Equipo de la Wave", icon: "user", href: (w) => `/admin/asignaciones/${w}`, match: /^\/admin\/asignaciones/, roles: ADMIN, perWave: true, group: "admin" },
   { key: "usuarios", label: "Usuarios y accesos", icon: "key", href: () => "/admin/usuarios", match: /^\/admin\/usuarios/, roles: ADMIN, group: "admin" },
   { key: "comunicaciones", label: "Comunicaciones", icon: "send", href: () => "/admin/comunicaciones", match: /^\/admin\/comunicaciones/, roles: ADMIN, group: "admin" },

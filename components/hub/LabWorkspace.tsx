@@ -6,6 +6,8 @@ import { LAB_CLASSES, LAB_STATUS, labDecisionLabel, labStatusLabel, labStatusTon
 import { LabSessionForm, PassToLab, ProjectForm, ShowcaseForm } from "@/components/hub/HubForms";
 import { LabFiles, type LabFile } from "@/components/hub/LabFiles";
 import { WaveStaffManager } from "@/components/admin/WaveStaffManager";
+import { ShowcaseTemplateCard } from "@/components/hub/ShowcaseTemplateCard";
+import { showcaseTemplate } from "@/lib/hub/template";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { Badge } from "@/components/ui";
 
@@ -18,14 +20,15 @@ export const LAB_TABS: { key: string; label: string; icon: IconName }[] = [
 ];
 
 type Project = {
-  id: string; title: string; problem: string | null; client_name: string | null; mode: LabMode; status: LabStatus; hub_notes: string | null;
+  id: string; title: string; problem: string | null; solution: string | null; client_name: string | null; mode: LabMode; status: LabStatus; hub_notes: string | null;
   showcase_date: string | null; showcase_decision: LabDecision | null; showcase_notes: string | null;
   lab_project_members: { candidate_id: string }[];
   lab_project_files: (LabFile & { project_id: string })[];
 };
 
 /**
- * AI Lab & Showcase de una Wave: pase al Lab, clases, proyectos y Showcase. Se usa en Journey (etapa AI Lab & Showcase)
+ * AI Lab y Showcase de una Wave: pase al Lab, clases y proyectos (etapa AI Lab) y presentaciones y resultados (etapa Showcase).
+ * Se usa en Journey (cada etapa muestra sus pestañas)
  * y en la ruta propia del Líder Hub AI. `como`: el admin la ve como ese Líder Hub AI (solo lectura).
  * `base`: URL de la vista con sus parámetros, terminada en "?" o "&". `embedded` oculta encabezado y pestañas propias.
  */
@@ -42,7 +45,7 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
     : viewer.role === "hub" ? await myStaffWaves(viewer) : [];
   const allowed = viewer.role === "hub" ? hubWaves.includes(waveId) : true;
   const banner = asHub && (
-    <div className="jr-preview" role="note"><span><strong>Vista de admin</strong> · así ve el AI Lab &amp; Showcase {asHub.full_name ?? asHub.email} (Líder Hub AI). Solo lectura.</span></div>
+    <div className="jr-preview" role="note"><span><strong>Vista de admin</strong> · así ve el AI Lab y el Showcase {asHub.full_name ?? asHub.email} (Líder Hub AI). Solo lectura.</span></div>
   );
   const q = asHub ? `&como=${asHub.id}` : "";
   const { data: wave } = allowed ? await db.from("waves").select("id, name").eq("id", waveId).maybeSingle() : { data: null };
@@ -50,7 +53,7 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
     return (
       <div className="adm">
         {banner}
-        <header className="adm-head"><div><div className="eyebrow">Líder Hub AI</div><h1>AI Lab & Showcase</h1></div></header>
+        <header className="adm-head"><div><div className="eyebrow">Líder Hub AI</div><h1>AI Lab y Showcase</h1></div></header>
         <section className="adm-card"><div className="empty"><Icon name="layers" size={28} /><strong>Aún no tienes una Wave asignada.</strong><span>El equipo AI Edge Talent te asignará como líder del Hub AI de una Wave.</span></div></section>
       </div>
     );
@@ -61,15 +64,15 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
     .from("candidates")
     .select("id, full_name, role_title, client_name, journey_layer")
     .eq("wave_id", waveId)
-    .in("journey_layer", ["ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "CLOSURE"])
+    .in("journey_layer", ["ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"])
     .order("full_name");
   const enablement = (people ?? []).filter((p) => p.journey_layer === "ROLE_ENABLEMENT");
-  const inLab = (people ?? []).filter((p) => p.journey_layer === "AI_LAB_SHOWCASE" || p.journey_layer === "CLOSURE");
+  const inLab = (people ?? []).filter((p) => ["AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"].includes(p.journey_layer ?? ""));
   const nameOf = (id: string) => people?.find((p) => p.id === id)?.full_name ?? "—";
 
   const [{ data: certs }, { data: projData }, { data: sessions }] = await Promise.all([
     enablement.length ? db.from("certifications").select("candidate_id, result, status, created_at").in("candidate_id", enablement.map((p) => p.id)).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as { candidate_id: string; result: string; status: string }[] }),
-    db.from("lab_projects").select("id, title, problem, client_name, mode, status, hub_notes, showcase_date, showcase_decision, showcase_notes, lab_project_members(candidate_id), lab_project_files(id, project_id, name, size_bytes, kind, created_at, uploaded_by)").eq("wave_id", waveId).order("created_at"),
+    db.from("lab_projects").select("id, title, problem, solution, client_name, mode, status, hub_notes, showcase_date, showcase_decision, showcase_notes, lab_project_members(candidate_id), lab_project_files(id, project_id, name, size_bytes, kind, created_at, uploaded_by)").eq("wave_id", waveId).order("created_at"),
     db.from("lab_sessions").select("id, n, held_on, notes, lab_session_entries(project_id, attended, note)").eq("wave_id", waveId),
   ]);
   const projects = (projData ?? []) as unknown as Project[];
@@ -86,12 +89,23 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
     return { id: p.id, name: p.full_name, role: p.role_title, client: p.client_name, cert, ready };
   });
 
-  const kpis: [string, number, IconName][] = [
-    ["Listos para pasar", gatePeople.filter((p) => p.ready).length, "flag"],
-    ["En el Lab", inLab.length, "users"],
-    ["Proyectos", projects.length, "flask"],
-    ["Listos para Showcase", projects.filter((p) => p.status === "READY").length, "presentation"],
-  ];
+  const hasFinal = (p: Project) => p.lab_project_files.some((f) => f.kind === "FINAL");
+  // Showcase: proyectos listos o ya presentados (los que siguen en construcción están en el AI Lab).
+  const inShowcase = projects.filter((p) => p.status === "READY" || p.status === "PRESENTED");
+  const kpis: [string, number, IconName][] = tab === "showcase"
+    ? [
+        ["Proyectos en Showcase", inShowcase.length, "presentation"],
+        ["Con presentación final", inShowcase.filter(hasFinal).length, "upload"],
+        ["Por presentar", inShowcase.filter((p) => p.status === "READY").length, "clock"],
+        ["Presentados", inShowcase.filter((p) => p.status === "PRESENTED").length, "star"],
+      ]
+    : [
+        ["Listos para pasar", gatePeople.filter((p) => p.ready).length, "flag"],
+        ["En el Lab", inLab.length, "users"],
+        ["Proyectos", projects.length, "flask"],
+        ["Descritos", projects.filter((p) => p.problem?.trim() && p.solution?.trim()).length, "pen"],
+      ];
+  const template = tab === "proyectos" || tab === "showcase" ? await showcaseTemplate() : null;
 
   const { data: staff } = viewer.role === "admin" ? await db.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "hub") : { data: [] };
   const staffEmails = (staff ?? []).map((s) => s.email);
@@ -104,7 +118,7 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
       {!embedded && <header className="adm-head">
         <div>
           <div className="eyebrow">{wave.name} · {viewer.role === "hub" ? "Líder Hub AI" : "Hub AI"}</div>
-          <h1>AI Lab & Showcase</h1>
+          <h1>AI Lab y Showcase</h1>
           <p className="muted" style={{ maxWidth: 760 }}>
             El Hub AI decide quién pasa al Lab, acompaña las dos clases —la Clase 1 con la idea del desafío y la Clase 2 con lo construido—, consolida los proyectos individuales o grupales y lleva el Showcase.
           </p>
@@ -174,6 +188,7 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
 
       {tab === "proyectos" && (
         <>
+          <ShowcaseTemplateCard template={template} canEdit={viewer.role === "admin" && !asHub} />
           {withoutProject.length > 0 && (
             <section className="adm-card">
               <div className="adm-card-head"><h2>En el Lab sin proyecto</h2><span className="muted">{withoutProject.length}</span></div>
@@ -195,13 +210,14 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
                       </div>
                       <strong>{p.title}</strong>
                       <small>{members(p)}</small>
-                      {p.problem && <small className="muted">{p.problem}</small>}
+                      {p.problem && <small className="muted"><strong>Desafío:</strong> {p.problem}</small>}
+                      {p.solution ? <small className="muted"><strong>Solución:</strong> {p.solution}</small> : <small className="lab-missing">Falta describir la solución</small>}
                       {p.hub_notes && <small><em>Hub: {p.hub_notes}</em></small>}
                       <LabFiles projectId={p.id} files={p.lab_project_files} canUpload={canEdit} deleteAll={canEdit} />
                       {canEdit && (
                         <details className="lab-edit">
                           <summary>Editar</summary>
-                          <ProjectForm waveId={waveId} people={pickPeople(p)} initial={{ id: p.id, title: p.title, problem: p.problem ?? "", clientName: p.client_name ?? "", mode: p.mode, status: p.status, hubNotes: p.hub_notes ?? "", memberIds: p.lab_project_members.map((m) => m.candidate_id) }} />
+                          <ProjectForm waveId={waveId} people={pickPeople(p)} initial={{ id: p.id, title: p.title, problem: p.problem ?? "", solution: p.solution ?? "", clientName: p.client_name ?? "", mode: p.mode, status: p.status, hubNotes: p.hub_notes ?? "", memberIds: p.lab_project_members.map((m) => m.candidate_id) }} />
                         </details>
                       )}
                     </article>
@@ -213,38 +229,50 @@ export async function LabWorkspace({ waveId, tab: rawTab, real, como, base, embe
           {canEdit && (
             <section className="adm-card">
               <div className="adm-card-head"><h2>Nuevo proyecto</h2><span className="muted">Individual o grupal: una persona participa en un solo proyecto</span></div>
-              <ProjectForm waveId={waveId} people={pickPeople()} initial={{ title: "", problem: "", clientName: "", mode: "INDIVIDUAL", status: "IDEA", hubNotes: "", memberIds: [] }} />
+              <ProjectForm waveId={waveId} people={pickPeople()} initial={{ title: "", problem: "", solution: "", clientName: "", mode: "INDIVIDUAL", status: "IDEA", hubNotes: "", memberIds: [] }} />
             </section>
           )}
         </>
       )}
 
       {tab === "showcase" && (
-        <section className="adm-card">
-          <div className="adm-card-head"><h2>Showcase</h2><span className="muted">Presentaciones descargables y resultado por proyecto</span></div>
-          {projects.length === 0 ? <div className="empty"><span>Aún no hay proyectos.</span></div> : (
-            <div className="showcase-list">
-              {projects.map((p) => (
-                <article key={p.id} className="showcase-item">
-                  <div className="spread" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <div>
-                      <strong>{p.title}</strong><br />
-                      <small className="muted">{members(p)}{p.client_name ? ` · ${p.client_name}` : ""}</small>
+        <>
+          <ShowcaseTemplateCard template={template} canEdit={viewer.role === "admin" && !asHub} />
+          <section className="adm-card">
+            <div className="adm-card-head"><h2>Presentaciones y resultados</h2><span className="muted">Presentación final descargable y resultado por proyecto</span></div>
+            {projects.length > inShowcase.length && <p className="muted" style={{ marginTop: 0 }}><small>{projects.length - inShowcase.length} proyecto(s) siguen en construcción en el AI Lab: llegan aquí cuando el Hub AI los marca «Listo para Showcase».</small></p>}
+            {inShowcase.length === 0 ? <div className="empty"><span>Aún no hay proyectos listos para el Showcase.</span></div> : (
+              <div className="showcase-list">
+                {inShowcase.map((p) => (
+                  <article key={p.id} className="showcase-item">
+                    <div className="spread" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <div>
+                        <strong>{p.title}</strong><br />
+                        <small className="muted">{members(p)}{p.client_name ? ` · ${p.client_name}` : ""}</small>
+                      </div>
+                      <div className="row" style={{ gap: 6 }}>
+                        <Badge tone={labStatusTone(p.status)}>{labStatusLabel(p.status)}</Badge>
+                        {hasFinal(p) ? <Badge tone="ok">Presentación final</Badge> : <Badge tone="warn">Sin presentación final</Badge>}
+                        {p.showcase_decision && <Badge tone="brand">{labDecisionLabel(p.showcase_decision)}</Badge>}
+                      </div>
                     </div>
-                    <div className="row" style={{ gap: 6 }}>
-                      <Badge tone={labStatusTone(p.status)}>{labStatusLabel(p.status)}</Badge>
-                      {p.showcase_decision && <Badge tone="brand">{labDecisionLabel(p.showcase_decision)}</Badge>}
+                    <div className="showcase-grid">
+                      <div className="stack" style={{ gap: 8 }}>
+                        <span className="label">Presentación final</span>
+                        <LabFiles projectId={p.id} files={p.lab_project_files} canUpload={canEdit} deleteAll={canEdit} final />
+                        <details>
+                          <summary className="muted">Avances del AI Lab ({p.lab_project_files.filter((f) => f.kind !== "FINAL").length})</summary>
+                          <LabFiles projectId={p.id} files={p.lab_project_files} canUpload={false} />
+                        </details>
+                      </div>
+                      <ShowcaseForm projectId={p.id} date={p.showcase_date} decision={p.showcase_decision} notes={p.showcase_notes} readOnly={!canEdit} />
                     </div>
-                  </div>
-                  <div className="showcase-grid">
-                    <LabFiles projectId={p.id} files={p.lab_project_files} canUpload={canEdit} deleteAll={canEdit} />
-                    <ShowcaseForm projectId={p.id} date={p.showcase_date} decision={p.showcase_decision} notes={p.showcase_notes} readOnly={!canEdit} />
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {viewer.role === "admin" && <WaveStaffManager waveId={waveId} role="hub" people={staffEmails.map((email) => ({ email, name: staffProfiles?.find((p) => p.email === email)?.full_name ?? null }))} />}
