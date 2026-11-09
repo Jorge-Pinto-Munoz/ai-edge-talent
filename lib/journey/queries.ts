@@ -1,4 +1,5 @@
 import "server-only";
+import { applyGrants, type Grant } from "./attempts";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import type { Layer } from "./rules";
 import type { AiCertProgress } from "@/lib/aicert/progress";
@@ -77,7 +78,7 @@ export async function journeyForCandidate(candidateId: string) {
 type Cand = { id: string; wave_id: string; full_name: string; client_name: string | null; role_title: string | null; delivery_owner: string | null; status: string; journey_layer: string | null; journey_layer_since: string | null };
 
 async function loadJourney(db: Db, cand: Cand) {
-  const [wave, guides, capsules, progress, subs, certs, events, aicert, pulses, closures, rules] = await Promise.all([
+  const [wave, guides, capsules, progress, subs, certs, events, aicert, pulses, closures, rules, grants] = await Promise.all([
     db.from("waves").select("id, name, start_date, estimated_close_date").eq("id", cand.wave_id).single(),
     db.from("stage_guides").select("*").eq("wave_id", cand.wave_id),
     db.from("capsules").select("*").eq("wave_id", cand.wave_id).eq("published", true).order("position"),
@@ -89,6 +90,8 @@ async function loadJourney(db: Db, cand: Cand) {
     db.from("pulse_responses").select("pulse").eq("candidate_id", cand.id),
     db.from("stage_closures").select("layer, requirements_met_at, requirements_by_exception, pulse_submitted_at, closed_at").eq("candidate_id", cand.id),
     db.from("consents").select("version, accepted_at").eq("candidate_id", cand.id).eq("kind", "STAGE_RULES").is("revoked_at", null).limit(1),
+    // Intentos extra concedidos por el admin: se suman al máximo de intentos de ese módulo (solo para esta persona).
+    db.from("attempt_grants").select("capsule_id, extra").eq("candidate_id", cand.id),
   ]);
   // Proyecto del AI Lab (RLS: el integrante ve su proyecto, sus compañeros y sus archivos).
   let lab: LabProjectView | null = null;
@@ -109,7 +112,7 @@ async function loadJourney(db: Db, cand: Cand) {
     candidate: cand as typeof cand & { journey_layer: Layer | null },
     wave: wave.data,
     guides: (guides.data ?? []) as StageGuide[],
-    capsules: (capsules.data ?? []) as Capsule[],
+    capsules: applyGrants((capsules.data ?? []) as Capsule[], (grants.data ?? []) as Grant[]),
     completed: new Set((progress.data ?? []).map((p) => p.capsule_id)),
     submissions: subs.data ?? [],
     certifications: certs.data ?? [],

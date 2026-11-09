@@ -12,7 +12,7 @@ const PAST: Record<string, string> = { APPROVED: "Aprobada", NOT_APPROVED: "No a
 type Facts = { email: string; delivery: string | null; account: string; lastLogin: string | null; stage: string; since: string | null };
 
 /** Detalle de un participante: datos, paso del flujo, entrega actual con revisión (IA + decisión), intentos y mover de etapa. */
-export function EvaluateView({ sub, name, person, facts, state, history, backHref, nextHref, isAdmin, move }: { sub: Sub | null; name: string; person: { client: string | null; role: string | null }; facts: Facts; state: DeliveryState; history: Past[]; backHref: string; nextHref: string | null; isAdmin: boolean; move: ReactNode }) {
+export function EvaluateView({ sub, name, person, facts, state, history, backHref, nextHref, isAdmin, move, attempts }: { sub: Sub | null; name: string; person: { client: string | null; role: string | null }; facts: Facts; state: DeliveryState; history: Past[]; backHref: string; nextHref: string | null; isAdmin: boolean; move: ReactNode; attempts?: ReactNode }) {
   const [done, setDone] = useState<string | null>(null);
   const at = FLOW.findIndex((f) => f.key === state);
   return (
@@ -53,6 +53,8 @@ export function EvaluateView({ sub, name, person, facts, state, history, backHre
           <SubmissionCard s={sub} onDone={setDone} canReview={isAdmin} />
         </>
       )}
+
+      {attempts}
 
       {history.length > 0 && (
         <details className="card ev-history">

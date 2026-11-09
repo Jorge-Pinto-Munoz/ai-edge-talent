@@ -102,7 +102,7 @@ export const PROGRAM_QA: { section: string; items: QA[] }[] = [
       },
       {
         q: "¿Qué decisiones toma Product Lead?",
-        a: "Declara WAVE READY, valida los documentos de condiciones y compromiso, y es quien puede otorgar excepciones explícitas (p.ej. tras un segundo intento no aprobado en Mindset o AI CERTs).",
+        a: "Declara WAVE READY, valida los documentos de condiciones y compromiso, y es quien puede otorgar excepciones explícitas (p.ej. un intento extra tras agotar los intentos de Mindset, o tras un segundo intento no aprobado en AI CERTs).",
       },
       {
         q: "¿Dónde pedir ayuda?",
@@ -118,8 +118,8 @@ export const FAQ_BY_ROLE: Record<FaqRole, QA[]> = {
   KIBER: [
     { q: "¿Cuánto dura?", a: "De 30 a 45 días según tu ritmo." },
     { q: "¿Cuánto tiempo debo dedicar?", a: "Los espacios coordinados dentro de jornada (normalmente 2–3 h/semana según etapa) más tu tiempo personal de estudio y práctica. AI CERTs contempla ~40 horas en 3–4 semanas." },
-    { q: "¿Qué pasa si no apruebo?", a: "Mindset: segundo intento no aprobado impide avanzar a AI CERTs salvo excepción de Product Lead. AI CERTs: segundo intento no aprobado cierra el journey salvo excepción. AI Lab: se ajusta hasta readiness. Un atraso activa alerta y recovery, no expulsión automática." },
-    { q: "¿Cuántos intentos tengo?", a: "Mindset: dos (REVISIÓN HUMANA no consume intento). AI CERTs: dos intentos financiados por Kibernum. AI Lab: sin máximo fijo vigente." },
+    { q: "¿Qué pasa si no apruebo?", a: "Mindset: el tercer intento no aprobado impide avanzar a AI CERTs salvo excepción de Product Lead (puede dar un intento extra). AI CERTs: segundo intento no aprobado cierra el journey salvo excepción. AI Lab: se ajusta hasta readiness. Un atraso activa alerta y recovery, no expulsión automática." },
+    { q: "¿Cuántos intentos tengo?", a: "Mindset: tres (REVISIÓN HUMANA no consume intento). AI CERTs: dos intentos financiados por Kibernum. AI Lab: sin máximo fijo vigente." },
     { q: "¿Qué es un hard gate?", a: "Un criterio que debe cumplirse sí o sí, independiente del puntaje total. En Mindset necesitas ≥75/100 y además cumplir los hard gates. Los hard gates específicos se comunican antes de la evaluación." },
     { q: "¿Quién me ayuda?", a: "Tu Delivery primero. Profesor y canal de cohorte en AI CERTs. Hub AI en Mindset y AI Lab." },
     { q: "¿Qué ocurre después de certificarme?", a: "Sigues a AI Lab. La certificación no es el final del programa." },
@@ -260,7 +260,7 @@ export const KIBER_COMMITMENTS: { title: string; body: string; bullets?: string[
     body: "AI CERTs contempla aproximadamente 40 horas de dedicación y normalmente ocurre durante 3–4 semanas. Kibernum financia hasta dos intentos de examen. Si el segundo intento no es aprobado, Kibernum no financia un nuevo intento y el journey AET se cierra para ese participante, salvo una excepción explícita. Un eventual intento adicional no se presenta como automáticamente financiado ni automáticamente cobrado al profesional.",
   },
   { title: "Participes activamente de los acompañamientos", body: "Debes asistir y participar en las actividades, sesiones y acompañamientos obligatorios definidos para tu etapa. Para AI CERTs debes mantener vínculo con el profesor y el canal/grupo definido para la cohorte. Una semana completa sin acompañamiento es una señal de riesgo." },
-  { title: "Cumplas AI First Mindset", body: "Mindset no es una formalidad previa a la certificación. Debes demostrar que puedes rediseñar una actividad real integrando IA con criterio. La aprobación exige ≥75/100 + hard gates. Existen dos intentos. REVISIÓN HUMANA no consume intento. Un segundo intento no aprobado impide avanzar a AI CERTs salvo excepción explícita de Product Lead." },
+  { title: "Cumplas AI First Mindset", body: "Mindset no es una formalidad previa a la certificación. Debes demostrar que puedes rediseñar una actividad real integrando IA con criterio. La aprobación exige ≥75/100 + hard gates. Existen tres intentos. REVISIÓN HUMANA no consume intento. Un tercer intento no aprobado impide avanzar a AI CERTs salvo excepción explícita de Product Lead." },
   { title: "Completes AI Lab", body: "Después de certificarte todavía continúa el programa. Debes aplicar el aprendizaje sobre una necesidad real. AI Lab contempla dos sesiones obligatorias de 90 minutos y trabajo autónomo entre ellas. La meta es producir una solución/prototipo demostrable y con suficiente evidencia para optar a Showcase." },
   { title: "Participes en Showcase", body: "AI Edge Talent busca conectar aprendizaje con trabajo real. Si alcanzas READY FOR SHOWCASE, deberás presentar al cliente:", bullets: ["problema", "usuario", "fricción", "solución", "demo", "evidencia", "valor", "aprendizajes", "siguiente experimento"] },
   { title: "Seas responsable con tu cliente", body: "Participas mientras prestas servicios a un cliente. Debes:", bullets: ["coordinar adecuadamente tiempos", "cuidar confidencialidad", "utilizar información y herramientas de manera responsable", "mantener los controles humanos necesarios", "comunicar oportunamente impedimentos", "respetar las condiciones y políticas aplicables del cliente"] },

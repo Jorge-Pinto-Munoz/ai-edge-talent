@@ -2,6 +2,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { supabaseService } from "@/lib/supabase/server";
 import { audit, portalLink, sendIdentityEmail } from "@/lib/identity/service";
+import { applyGrants, type Grant } from "./attempts";
 import { CLOSING_PULSE, closureDecision, stageRequirements, type RequirementInput } from "./closure";
 import { layerName, type Layer } from "./rules";
 
@@ -12,19 +13,20 @@ const ACTIVE = ["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
 export async function closureContext(candidateId: string, svc: Svc = supabaseService()) {
   const { data: c } = await svc.from("candidates").select("id, wave_id, status, journey_layer, user_id, corporate_email, full_name").eq("id", candidateId).maybeSingle();
   if (!c) return null;
-  const [{ data: caps }, { data: subs }, { data: certs }, { data: member }, { data: pulses }, { data: closures }] = await Promise.all([
+  const [{ data: caps }, { data: subs }, { data: certs }, { data: member }, { data: pulses }, { data: closures }, { data: grants }] = await Promise.all([
     svc.from("capsules").select("id, layer, task_prompt, task_required, max_attempts").eq("wave_id", c.wave_id).eq("published", true),
     svc.from("submissions").select("capsule_id, status, attempt").eq("candidate_id", c.id),
     svc.from("certifications").select("result, status").eq("candidate_id", c.id),
     svc.from("lab_project_members").select("lab_projects(status, problem, solution, lab_project_files(kind))").eq("candidate_id", c.id).maybeSingle(),
     svc.from("pulse_responses").select("pulse, created_at").eq("candidate_id", c.id),
     svc.from("stage_closures").select("*").eq("candidate_id", c.id),
+    svc.from("attempt_grants").select("capsule_id, extra").eq("candidate_id", c.id),
   ]);
   const layer = c.journey_layer as Layer | null;
   const lab = member?.lab_projects as unknown as { status: string; problem: string | null; solution: string | null; lab_project_files: { kind: string }[] | null } | null;
   const closure = (closures ?? []).find((x) => x.layer === layer) ?? null;
   const input: RequirementInput = {
-    capsules: (caps ?? []) as RequirementInput["capsules"],
+    capsules: applyGrants((caps ?? []) as RequirementInput["capsules"], (grants ?? []) as Grant[]),
     submissions: subs ?? [],
     certifications: certs ?? [],
     labStatus: lab?.status ?? null,

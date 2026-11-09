@@ -114,7 +114,7 @@ function CapsuleForm({ waveId, layer, capsule, nextPosition, onDone }: { waveId:
     links: capsule?.links ?? [],
     taskPrompt: capsule?.task_prompt ?? "",
     taskRequired: capsule?.task_required ?? false,
-    maxAttempts: capsule?.max_attempts ?? (layer === "AI_MINDSET" ? 2 : null),
+    maxAttempts: capsule?.max_attempts ?? (layer === "AI_MINDSET" ? 3 : null),
     dueAt: capsule?.due_at ? isoToChileLocal(capsule.due_at) : capsule?.due_date ? `${capsule.due_date}T23:59` : "",
     formats: capsule?.submission_formats ?? [],
     published: capsule?.published ?? false,

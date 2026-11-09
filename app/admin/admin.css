@@ -781,3 +781,14 @@
 .res-dot.warn { background: #e0a530; border-color: #e0a530; }
 .res-dot.bad { background: #d5483f; border-color: #d5483f; }
 .res-legend { margin: 8px 0 0; }
+
+/* ───────── Intentos del desafío (intento extra) ───────── */
+.ga-card { display: grid; gap: 12px; }
+.ga-card.blocked { border-color: var(--warn-text); background: var(--warn-soft); }
+.ga-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ga-head > div { flex: 1; min-width: 220px; }
+.ga-head p { margin: 2px 0 0; }
+.ga-ico { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); }
+.ga-form { display: grid; gap: 10px; }
+.ga-form .field { display: grid; gap: 4px; font-weight: 600; margin: 0; }
+.ga-check { display: flex; gap: 8px; align-items: center; }

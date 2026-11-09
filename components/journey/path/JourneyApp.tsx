@@ -52,7 +52,7 @@ const stageVars = (l: Layer) => ({ "--stage": STAGE_COLOR[l].c, "--stage-d": STA
 
 /** Reglas de cada etapa que el profesional aceptó en su compromiso: se recuerdan al estar en ella, no en el sitio público. */
 const REMIND: Partial<Record<Layer, string>> = {
-  AI_MINDSET: "tienes dos intentos para aprobar tu desafío (75/100 o más). Una revisión humana no consume intento.",
+  AI_MINDSET: "tienes tres intentos para aprobar tu desafío (75/100 o más). Una revisión humana no consume intento.",
   ROLE_ENABLEMENT: "Kibernum financia hasta dos intentos de examen AI CERT. Prepáralo con tu profesor y tu AI Coach.",
   AI_LAB_SHOWCASE: "no hay un máximo de intentos: ajustas tu solución con el Hub AI hasta que esté lista para mostrar su impacto.",
   SHOWCASE: "presentas tu caso al cliente con la plantilla oficial, en 15 a 20 minutos y con demo en vivo.",

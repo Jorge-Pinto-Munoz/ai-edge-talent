@@ -5,7 +5,7 @@
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
   | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
-  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED" | "SUBMISSION_APPROVED" | "SUBMISSION_RETRY";
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED" | "SUBMISSION_APPROVED" | "SUBMISSION_RETRY" | "ATTEMPT_GRANTED";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -33,6 +33,7 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   STAGE_MOVED: "Cambio de etapa",
   SUBMISSION_APPROVED: "Entrega aprobada",
   SUBMISSION_RETRY: "Entrega con ajustes (reintento)",
+  ATTEMPT_GRANTED: "Intento extra habilitado",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -159,7 +160,18 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
           : ["Ya usaste los intentos disponibles de este reto. Tu Delivery se pondrá en contacto contigo para acordar cómo seguir."]),
         "Tu Delivery va en copia de este correo por si necesitas apoyo.",
       ];
-      return { subject: canRetry ? `AI Edge Talent | Ajusta tu entrega de «${c.stage ?? "tu reto"}» (segunda oportunidad)` : `AI Edge Talent | Resultado de tu entrega de «${c.stage ?? "tu reto"}»`, text: [...plain(p), "", `Ir al módulo: ${c.link}`].join("\n"), html: layout(canRetry ? "Tu entrega necesita ajustes" : "Resultado de tu entrega", p, canRetry ? { cta: { label: "SUBIR MI NUEVA ENTREGA", href: c.link ?? "" } } : { foot: "Equipo AI Edge Talent · Kibernum" }) };
+      return { subject: canRetry ? `AI Edge Talent | Ajusta tu entrega de «${c.stage ?? "tu reto"}» (nueva oportunidad)` : `AI Edge Talent | Resultado de tu entrega de «${c.stage ?? "tu reto"}»`, text: [...plain(p), "", `Ir al módulo: ${c.link}`].join("\n"), html: layout(canRetry ? "Tu entrega necesita ajustes" : "Resultado de tu entrega", p, canRetry ? { cta: { label: "SUBIR MI NUEVA ENTREGA", href: c.link ?? "" } } : { foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "ATTEMPT_GRANTED": {
+      const p = [
+        hi,
+        `Te habilitamos un intento extra para tu entrega de «${c.stage ?? "tu reto"}».`,
+        "Revisa el feedback de tu última entrega en el módulo, haz los ajustes y súbela de nuevo desde tu portal.",
+        ...(c.attempts ? [`Quedará registrada como intento ${c.attempts.used + 1}${c.attempts.max ? ` de ${c.attempts.max}` : ""}.`] : []),
+        ...(c.extra ? [c.extra] : []),
+        "Tu Delivery va en copia de este correo por si necesitas apoyo.",
+      ];
+      return { subject: `AI Edge Talent | Tienes un intento extra en «${c.stage ?? "tu reto"}»`, text: [...p, "", `Ir al módulo: ${c.link}`].join("\n"), html: layout("Tienes un intento extra", p, { cta: { label: "IR A MI ENTREGA", href: c.link ?? "" } }) };
     }
     case "STAGE_MOVED": {
       const p = [hi, `El equipo AI Edge Talent actualizó tu avance: desde hoy estás en la etapa ${c.stage ?? "siguiente"} de tu journey.`, ...(c.extra ? [c.extra] : []), "En tu portal verás lo que corresponde a esta etapa: actividades, materiales y próximos pasos. Ingresas con tu correo y un código de 6 dígitos de un solo uso.", "Si tienes dudas, conversa con tu Delivery o responde este correo."];

@@ -15,6 +15,7 @@ import { provisionParticipant } from "@/lib/identity/provision";
 import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 import { errorText } from "@/lib/text/errors";
 import { chileToIso } from "@/lib/time/chile";
+import { maxWithGrant } from "./attempts";
 import { FORMAT_GROUPS, SUBMISSION_MAX_MB, effectiveFormats, fileAllowed, fmtDue, formatsLabel } from "./formats";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
@@ -22,6 +23,12 @@ const fail = (e: unknown): Result<never> => ({ ok: false, message: errorText(e) 
 
 type Bucket = "content" | "submissions" | "certificates";
 const MAX_UPLOAD_MB: Record<Bucket, number> = { content: 500, submissions: SUBMISSION_MAX_MB, certificates: 20 };
+
+/** Intentos extra que el admin le dio a una persona en un módulo (0 si no hay). */
+async function extraAttempts(candidateId: string, capsuleId: string, svc = supabaseService()): Promise<number> {
+  const { data } = await svc.from("attempt_grants").select("extra").eq("candidate_id", candidateId).eq("capsule_id", capsuleId).maybeSingle();
+  return data?.extra ?? 0;
+}
 
 /* ───────── Participante actual ───────── */
 async function requireParticipant(): Promise<{ viewer: Viewer; candidate: { id: string; wave_id: string; journey_layer: Layer | null; status: string } }> {
@@ -128,7 +135,7 @@ export async function submitTask(capsuleId: string, textAnswer: string, files: {
     const wrong = files.find((f) => !fileAllowed(f.name, formats));
     if (wrong) throw new Error(`«${wrong.name}» no tiene un formato aceptado. Sube: ${formatsLabel(formats)}.`);
     const { data: prev } = await db.from("submissions").select("status").eq("candidate_id", candidate.id).eq("capsule_id", capsuleId).order("attempt");
-    const gate = submissionGate((prev ?? []).map((p) => p.status as SubmissionStatus), cap.max_attempts);
+    const gate = submissionGate((prev ?? []).map((p) => p.status as SubmissionStatus), maxWithGrant(cap.max_attempts, await extraAttempts(candidate.id, capsuleId)));
     if (!gate.allowed) throw new Error(gate.reason);
     const { data: created, error } = await supabaseService().from("submissions").insert({
       candidate_id: candidate.id,
@@ -308,7 +315,7 @@ async function submissionEmail(svc: ReturnType<typeof supabaseService>, id: stri
     score,
     minScore: threshold,
     extra: feedback.trim() || undefined,
-    attempts: { used, max: cap.max_attempts },
+    attempts: { used, max: maxWithGrant(cap.max_attempts, await extraAttempts(s.candidate_id as string, s.capsule_id as string, svc)) },
     when: due && new Date(due) > new Date() ? fmtDue(due) : undefined,
     link: portalLink("ingresar", cand.corporate_email, `/mi-journey?m=${s.capsule_id}`),
   };

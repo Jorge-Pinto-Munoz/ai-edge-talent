@@ -26,6 +26,8 @@ import { prettyName } from "@/lib/text/org";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ReSessions } from "@/components/teacher/ReSessions";
 import { PulseStatus } from "@/components/journey-admin/PulseStatus";
+import { GrantAttempt } from "@/components/journey-admin/GrantAttempt";
+import { maxWithGrant } from "@/lib/journey/attempts";
 import { LabWorkspace } from "@/components/hub/LabWorkspace";
 import { EvaluationGuide } from "@/components/admin/EvaluationGuide";
 import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
@@ -236,7 +238,15 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         const { data: subs } = ids.length
           ? await db.from("submissions").select("id, candidate_id, capsule_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts), submission_ai_reviews(status, score, threshold, verdict, criteria, strengths, improvements, feedback, internal_note, error, updated_at)").in("candidate_id", ids).order("submitted_at", { ascending: false })
           : { data: [] };
-        const mine = (subs ?? []).filter((s) => (s.capsules as unknown as { layer: string } | null)?.layer === stage.layer);
+        // Intentos extra por persona: el máximo que se muestra (y que decide si puede reintentar) los incluye.
+        const { data: grants } = ids.length ? await supabaseService().from("attempt_grants").select("candidate_id, capsule_id, extra").in("candidate_id", ids) : { data: [] as { candidate_id: string; capsule_id: string; extra: number }[] };
+        const extraOf = (cid: string, capId: string) => (grants ?? []).find((g) => g.candidate_id === cid && g.capsule_id === capId)?.extra ?? 0;
+        const mine = (subs ?? [])
+          .filter((s) => (s.capsules as unknown as { layer: string } | null)?.layer === stage.layer)
+          .map((s) => {
+            const cap = s.capsules as unknown as { title: string; layer: string; max_attempts: number | null };
+            return { ...s, capsules: { ...cap, max_attempts: maxWithGrant(cap.max_attempts, extraOf(s.candidate_id, s.capsule_id)) } as never };
+          });
         const { data: tasks } = await db.from("capsules").select("id, task_required").eq("wave_id", waveId).eq("layer", stage.layer).eq("published", true).not("task_prompt", "is", null);
         const required = (tasks ?? []).filter((t) => t.task_required).map((t) => t.id);
         const maxOf = (x: (typeof mine)[number]) => (x.capsules as unknown as { max_attempts: number | null } | null)?.max_attempts ?? null;
@@ -276,6 +286,14 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
               nextHref={next ? `${base}?tab=entregas&sub=${next.subId}` : null}
               isAdmin={isAdmin}
               move={isAdmin ? <MoveStage candidateId={p.id} name={p.full_name} current={p.journey_layer as Layer | null} enrolled /> : null}
+              attempts={(() => {
+                // Intentos del desafío: cuántos usó y, si se le acabaron, el admin puede darle uno extra.
+                if (!current || !isAdmin) return null;
+                const max = (current.capsules as unknown as { max_attempts: number | null }).max_attempts;
+                const used = own.filter((x) => x.capsule_id === current.capsule_id && x.status === "NOT_APPROVED").length;
+                const pending = own.some((x) => x.capsule_id === current.capsule_id && ["SUBMITTED", "HUMAN_REVIEW", "APPROVED"].includes(x.status));
+                return <GrantAttempt candidateId={p.id} capsuleId={current.capsule_id} name={p.full_name} used={used} max={max} extra={extraOf(p.id, current.capsule_id)} blocked={!pending && max !== null && used >= max} />;
+              })()}
             />
           );
         }

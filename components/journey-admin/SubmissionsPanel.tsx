@@ -46,7 +46,7 @@ export function SubmissionsPanel({ base, rows, isAdmin }: { base: string; rows: 
     { label: "Participantes", value: rows.length, hint: "en la Wave", tone: "" },
     { label: "Completados", value: count("approved"), hint: `${pct(count("approved"))}% aprobó`, tone: "ok" },
     { label: "Por revisar", value: count("pending"), hint: count("pending") ? "esperan tu evaluación" : "nada pendiente", tone: "info" },
-    { label: "Corrigiendo", value: count("not_approved"), hint: "en segundo intento", tone: "warn" },
+    { label: "Corrigiendo", value: count("not_approved"), hint: "preparando su reintento", tone: "warn" },
     { label: "Sin enviar", value: count("missing"), hint: `${pct(count("missing"))}% aún no envía`, tone: "bad" },
   ];
   return (
