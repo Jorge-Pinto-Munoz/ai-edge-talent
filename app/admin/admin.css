@@ -680,7 +680,7 @@
 .gp-col h3 { margin: 0; font-size: 0.98rem; display: flex; align-items: center; gap: 6px; }
 .gp-col h3 small { margin-left: auto; color: var(--muted); font-weight: 700; }
 .gp-col p { margin: 2px 0 8px; }
-.gp-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
+.gp-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .gp-col li { display: grid; padding: 8px 10px; border-radius: 10px; background: var(--surface); }
 .gp-col li small { color: var(--muted); }
 /* Apertura de la etapa */
@@ -792,3 +792,17 @@
 .ga-form { display: grid; gap: 10px; }
 .ga-form .field { display: grid; gap: 4px; font-weight: 600; margin: 0; }
 .ga-check { display: flex; gap: 8px; align-items: center; }
+
+/* ───────── Entrega ya decidida (resultado en vez del formulario) ───────── */
+.decided { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); margin-top: 8px; }
+.decided.ok { background: var(--ok-soft); border-color: transparent; }
+.decided.warn { background: var(--warn-soft); border-color: transparent; }
+.decided-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.decided .link-btn { justify-self: start; }
+.decided-note { padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); margin: 8px 0; }
+
+.gp-more { margin-top: 8px; width: 100%; padding: 8px; border-radius: 10px; border: 1px dashed var(--border); background: transparent; font: inherit; font-weight: 700; color: var(--brand); cursor: pointer; }
+.gp-more:hover { background: var(--surface); }
+.gp-more:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.gp-alert { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bad-soft); border-left: 4px solid #d64545; }
+.gp-alert ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }

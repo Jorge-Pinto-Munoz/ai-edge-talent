@@ -113,13 +113,27 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           stage.layer === "AI_MINDSET" && gids.length ? svc.from("submissions").select("candidate_id, capsule_id, attempt, status, capsules!inner(layer)").in("candidate_id", gids).eq("capsules.layer", "AI_MINDSET") : Promise.resolve({ data: [] as { candidate_id: string; capsule_id: string; attempt: number; status: string }[] }),
           stage.layer === "ROLE_ENABLEMENT" && gids.length ? svc.from("certifications").select("candidate_id, result, status, created_at").in("candidate_id", gids).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as { candidate_id: string; result: string; status: string }[] }),
           (stage.layer === "AI_LAB_SHOWCASE" || stage.layer === "SHOWCASE") && gids.length ? svc.from("lab_project_members").select("candidate_id, lab_projects(status, problem, solution, lab_project_files(kind))").in("candidate_id", gids) : Promise.resolve({ data: [] as { candidate_id: string; lab_projects: unknown }[] }),
-          stage.layer === "AI_MINDSET" ? svc.from("capsules").select("id").eq("wave_id", waveId).eq("layer", "AI_MINDSET").eq("published", true).eq("task_required", true) : Promise.resolve({ data: [] as { id: string }[] }),
+          stage.layer === "AI_MINDSET" ? svc.from("capsules").select("id, max_attempts").eq("wave_id", waveId).eq("layer", "AI_MINDSET").eq("published", true).eq("task_required", true) : Promise.resolve({ data: [] as { id: string; max_attempts: number | null }[] }),
         ]);
+        // Intentos extra por persona (para saber quién agotó sus intentos) y personas dadas de baja del programa en esta Wave.
+        const [{ data: ggrants }, { data: drops }] = await Promise.all([
+          stage.layer === "AI_MINDSET" && gids.length ? svc.from("attempt_grants").select("candidate_id, capsule_id, extra").in("candidate_id", gids) : Promise.resolve({ data: [] as { candidate_id: string; capsule_id: string; extra: number }[] }),
+          svc.from("audit_log").select("details").eq("action", "candidate.deleted").eq("wave_id", waveId),
+        ]);
+        const dropped = (drops ?? []).map((d) => d.details as { name?: string; enrolled?: boolean } | null).filter((d) => d?.enrolled && d.name).map((d) => d!.name!);
         const active = new Set((profs ?? []).filter((x) => x.status === "ACTIVE").map((x) => x.id));
         const LAB: Record<string, string> = { IDEA: "Proyecto: idea", BUILDING: "Proyecto en construcción", READY: "Proyecto listo para el Showcase" };
         const signal = (p: { id: string }): { light: "green" | "yellow" | "red"; reason: string } | null => {
           if (stage.layer === "AI_MINDSET") {
-            const st = deliveryState((gsubs ?? []).filter((x) => x.candidate_id === p.id), (gtasks ?? []).map((t) => t.id));
+            const own = (gsubs ?? []).filter((x) => x.candidate_id === p.id);
+            const st = deliveryState(own, (gtasks ?? []).map((t) => t.id));
+            // Agotó sus intentos (con los extra que se le hayan dado): queda bloqueada hasta que alguien decida.
+            const exhausted = st === "not_approved" && (gtasks ?? []).some((t) => {
+              const max = maxWithGrant(t.max_attempts, (ggrants ?? []).find((g) => g.candidate_id === p.id && g.capsule_id === t.id)?.extra ?? 0);
+              const mine = own.filter((x) => x.capsule_id === t.id);
+              return max !== null && !mine.some((x) => x.status === "APPROVED") && mine.filter((x) => x.status === "NOT_APPROVED").length >= max;
+            });
+            if (exhausted) return { light: "red", reason: "Usó todos sus intentos" };
             return st === "approved" ? { light: "green", reason: "Reto aprobado" } : st === "pending" ? { light: "yellow", reason: "Entregado · por revisar" } : st === "not_approved" ? { light: "yellow", reason: "Corrigiendo para su reintento" } : { light: "red", reason: "No ha entregado su reto" };
           }
           if (stage.layer === "ROLE_ENABLEMENT") {
@@ -146,7 +160,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           signal,
         );
         const DONE: Record<string, string> = { AI_MINDSET: "aprobaron su reto", ROLE_ENABLEMENT: "certificaron", AI_LAB_SHOWCASE: "tienen su proyecto listo", SHOWCASE: "presentaron", CLOSURE: "llegaron al cierre" };
-        return <GroupProgress cov={cov} stageName={stage.name} doneLabel={DONE[stage.layer] ?? "completaron"} />;
+        return <GroupProgress cov={cov} stageName={stage.name} doneLabel={DONE[stage.layer] ?? "completaron"} dropped={dropped} />;
       })())}
 
       {stage.layer !== "ASSESSMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && <PulseStatus waveId={waveId} layer={stage.layer as Layer} />}
@@ -236,7 +250,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
 
       {tab.key === "entregas" && (await (async () => {
         const { data: subs } = ids.length
-          ? await db.from("submissions").select("id, candidate_id, capsule_id, attempt, status, score, feedback, text_answer, files, submitted_at, capsules(title, layer, max_attempts), submission_ai_reviews(status, score, threshold, verdict, criteria, strengths, improvements, feedback, internal_note, error, updated_at)").in("candidate_id", ids).order("submitted_at", { ascending: false })
+          ? await db.from("submissions").select("id, candidate_id, capsule_id, attempt, status, score, feedback, text_answer, files, submitted_at, reviewed_at, capsules(title, layer, max_attempts), submission_ai_reviews(status, score, threshold, verdict, criteria, strengths, improvements, feedback, internal_note, error, updated_at)").in("candidate_id", ids).order("submitted_at", { ascending: false })
           : { data: [] };
         // Intentos extra por persona: el máximo que se muestra (y que decide si puede reintentar) los incluye.
         const { data: grants } = ids.length ? await supabaseService().from("attempt_grants").select("candidate_id, capsule_id, extra").in("candidate_id", ids) : { data: [] as { candidate_id: string; capsule_id: string; extra: number }[] };

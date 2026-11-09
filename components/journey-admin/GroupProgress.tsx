@@ -1,3 +1,4 @@
+import { GpList } from "./GpList";
 import type { Coverage, Light } from "@/lib/journey/coverage";
 
 const LIGHT: Record<Light, { label: string; hint: string }> = {
@@ -7,7 +8,12 @@ const LIGHT: Record<Light, { label: string; hint: string }> = {
 };
 
 /** Avance del grupo completo en la etapa: barra de semáforo + quiénes están en cada color. */
-export function GroupProgress({ cov, stageName, doneLabel }: { cov: Coverage; stageName: string; doneLabel: string }) {
+export function GroupProgress({ cov, stageName, doneLabel, dropped = [] }: { cov: Coverage; stageName: string; doneLabel: string; dropped?: string[] }) {
+  // Alerta de la etapa: quién no ha rendido, quién quedó bloqueado y quién no continuó en el programa.
+  const red = cov.rows.filter((r) => r.light === "red");
+  const blocked = red.filter((r) => /intentos/i.test(r.reason));
+  const missing = red.filter((r) => !/intentos/i.test(r.reason));
+  const names = (xs: { name: string }[]) => xs.slice(0, 4).map((x) => x.name.split(" ").slice(0, 2).join(" ")).join(", ") + (xs.length > 4 ? ` y ${xs.length - 4} más` : "");
   const order: Light[] = ["green", "yellow", "red"];
   return (
     <section className="card gp" aria-labelledby="gp-t">
@@ -30,6 +36,16 @@ export function GroupProgress({ cov, stageName, doneLabel }: { cov: Coverage; st
       {cov.ahead.n > 0 && (
         <p className="gp-note">Incluye {cov.ahead.n} persona{cov.ahead.n === 1 ? "" : "s"} que ya {cov.ahead.n === 1 ? "está" : "están"} en {cov.ahead.where.join(" y ")}: cuenta{cov.ahead.n === 1 ? "" : "n"} como completada{cov.ahead.n === 1 ? "" : "s"} en esta etapa.</p>
       )}
+      {(red.length > 0 || dropped.length > 0) && (
+        <div className="gp-alert" role="alert">
+          <strong>Atención en {stageName}</strong>
+          <ul>
+            {missing.length > 0 && <li><b>{missing.length}</b> sin completar: {names(missing)}.</li>}
+            {blocked.length > 0 && <li><b>{blocked.length}</b> usó todos sus intentos (decide si darle uno extra o moverla): {names(blocked)}.</li>}
+            {dropped.length > 0 && <li><b>{dropped.length}</b> no continuó (dado/a de baja del programa): {names(dropped.map((name) => ({ name })))}.</li>}
+          </ul>
+        </div>
+      )}
       <div className="gp-cols">
         {(["red", "yellow", "green"] as Light[]).map((k) => {
           const people = cov.rows.filter((r) => r.light === k);
@@ -37,12 +53,7 @@ export function GroupProgress({ cov, stageName, doneLabel }: { cov: Coverage; st
             <div key={k} className={`gp-col ${k}`}>
               <h3><i aria-hidden="true" /> {LIGHT[k].label} <small>{people.length} · {cov.pct[k]}%</small></h3>
               <p className="muted"><small>{LIGHT[k].hint}</small></p>
-              <ul>
-                {people.map((r) => (
-                  <li key={r.id}><strong>{r.name}</strong><small>{r.reason}{r.client ? ` · ${r.client}` : ""}</small></li>
-                ))}
-                {people.length === 0 && <li className="muted"><small>Nadie</small></li>}
-              </ul>
+              <GpList people={people.map((r) => ({ id: r.id, name: r.name, detail: `${r.reason}${r.client ? ` · ${r.client}` : ""}` }))} />
             </div>
           );
         })}

@@ -12,7 +12,7 @@ type AiReview = { status: "pending" | "done" | "error"; score: number | null; th
 const VERDICT: Record<string, string> = { APPROVED: "Aprobar", NOT_APPROVED: "No aprobada", HUMAN_REVIEW: "Revisión humana" };
 const SUB_LABEL: Record<string, [string, string]> = { SUBMITTED: ["Por revisar", ""], HUMAN_REVIEW: ["Revisión humana", ""], APPROVED: ["Aprobada", "ok"], NOT_APPROVED: ["No aprobada · reintento", "warn"] };
 const MET: Record<string, [string, string]> = { si: ["ok", "Cumple"], parcial: ["warn", "Parcial"], no: ["bad", "No cumple"] };
-export type Sub = { ai: AiReview | null; id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; capsules: { title: string; layer: Layer; max_attempts: number | null } };
+export type Sub = { ai: AiReview | null; id: string; person: string; attempt: number; status: string; score: number | null; feedback: string | null; text_answer: string | null; files: { name: string; path: string }[]; submitted_at: string; reviewed_at?: string | null; capsules: { title: string; layer: Layer; max_attempts: number | null } };
 type Cert = { id: string; person: string; attempt: number; result: string; status: string; file_path: string | null; credential_url: string | null; issued_on: string | null; review_note: string | null; created_at: string };
 
 export function ReviewQueue({ kind, items, waveId, isAdmin = false }: { kind: "submissions" | "certifications"; items: (Sub | Cert)[]; waveId?: string; isAdmin?: boolean }) {
@@ -42,6 +42,9 @@ export function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: s
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [notify, setNotify] = useState(true);
+  // Entrega ya decidida (aprobada o no aprobada): se muestra el resultado; el formulario solo si se quiere cambiar.
+  const decided = s.status === "APPROVED" || s.status === "NOT_APPROVED";
+  const [editing, setEditing] = useState(false);
   // Antes de aprobar o no aprobar con aviso: vista previa del correo (para, copia, asunto y contenido).
   const [preview, setPreview] = useState<{ status: "APPROVED" | "NOT_APPROVED"; to: string; cc: string[]; subject: string; html: string } | null>(null);
   const send = (status: "APPROVED" | "NOT_APPROVED" | "HUMAN_REVIEW", withMail: boolean) =>
@@ -79,7 +82,19 @@ export function SubmissionCard({ s, onDone, canReview }: { s: Sub; onDone: (m: s
           {s.feedback && <><br /><small><strong>Feedback enviado:</strong> {s.feedback}</small></>}
           <br /><small>La revisión la hace el equipo AI Edge Talent (admin).</small>
         </p>
+      ) : decided && !editing ? (
+        <div className={`decided ${s.status === "APPROVED" ? "ok" : "warn"}`} role="status">
+          <div className="decided-head">
+            <span className={`badge ${SUB_LABEL[s.status]?.[1] ?? ""}`}>{s.status === "APPROVED" ? "Aprobada" : "No aprobada · pidió ajustes"}</span>
+            {s.score !== null && <strong>{Math.round(Number(s.score))}/100</strong>}
+            {s.reviewed_at && <small className="muted">Revisada {fmtDate(s.reviewed_at)}</small>}
+          </div>
+          <p className="muted" style={{ margin: 0 }}>{s.status === "APPROVED" ? "Ya está aprobada: no necesitas hacer nada más con esta entrega." : "Ya se le pidieron ajustes: su próxima entrega llegará como un nuevo intento."}</p>
+          {s.feedback && <details><summary>Feedback enviado</summary><p style={{ whiteSpace: "pre-wrap", margin: "6px 0 0" }}>{s.feedback}</p></details>}
+          <button type="button" className="link-btn" onClick={() => setEditing(true)}>Cambiar la decisión</button>
+        </div>
       ) : (<>
+      {decided && <p className="decided-note">Estás cambiando una decisión ya registrada{s.status === "APPROVED" ? " (aprobada)" : " (no aprobada)"}. Si envías el correo, le llegará un nuevo aviso. <button type="button" className="link-btn" onClick={() => setEditing(false)}>Cancelar</button></p>}
       <AiPanel s={s} onUse={(text, sc) => { setFb(text); if (sc != null) setScore(String(Math.round(sc))); }} />
       {draft && <p className="ai-draft-note">Puntaje y feedback precargados con la propuesta de la IA: revísalos, edítalos si quieres y elige la decisión. Nada se envía hasta que tú lo decides.</p>}
       <div className="grid grid-3">
