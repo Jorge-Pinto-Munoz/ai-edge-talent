@@ -32,6 +32,8 @@ export type PanelRow = {
   ahead: boolean;
   /** Archivos de su entrega final (la aprobada o la última). */
   files: { name: string; path: string }[];
+  /** Certificación AI CERT asignada. */
+  cert?: string | null;
 };
 
 /**
@@ -118,6 +120,7 @@ export function SubmissionsPanel({ base, rows, isAdmin, next = null }: { base: s
                   <td className="rt-title">
                     <a href={href(r)} className="sp-name"><strong>{r.name}</strong></a>
                     <small className="muted">{[r.client, r.role].filter(Boolean).join(" · ") || "—"}</small>
+                    {r.cert && <small className="cert-name">{r.cert}</small>}
                     {isAdmin && <a className="sp-move" href={`${base}?tab=entregas&p=${r.id}#etapa`}>Mover de etapa</a>}
                   </td>
                   <td data-label="Etapa actual"><span className={`badge ${r.ahead ? "brand" : ""}`}>{r.stageName}</span></td>

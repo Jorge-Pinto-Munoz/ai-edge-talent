@@ -26,6 +26,7 @@ import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ReSessions } from "@/components/teacher/ReSessions";
 import { LAYERS } from "@/lib/journey/rules";
 import { overallProgress } from "@/lib/aicert/progress";
+import { assignedCerts } from "@/lib/aicert/assigned";
 import { ReWelcomeCard } from "@/components/journey-admin/ReWelcomeCard";
 import { pendingReWelcome } from "@/lib/journey/welcome";
 import { GrantAttempt } from "@/components/journey-admin/GrantAttempt";
@@ -180,8 +181,9 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
           }
           return { light: "green", reason: "En cierre" };
         };
+        const certMap = await assignedCerts(gids, svc);
         const cov = stageCoverage(
-          (group ?? []).map((g) => ({ id: g.id, name: g.full_name, client: g.client_name ? prettyName(g.client_name) : null, layer: g.journey_layer as Layer | null, enrolled: (JOURNEY_STATUSES as readonly string[]).includes(g.status), activated: Boolean(g.user_id && active.has(g.user_id)) })),
+          (group ?? []).map((g) => ({ id: g.id, name: g.full_name, client: [g.client_name ? prettyName(g.client_name) : null, certMap.get(g.id) ?? null].filter(Boolean).join(" · ") || null, layer: g.journey_layer as Layer | null, enrolled: (JOURNEY_STATUSES as readonly string[]).includes(g.status), activated: Boolean(g.user_id && active.has(g.user_id)) })),
           stage.layer as Layer,
           signal,
         );
@@ -275,7 +277,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
               const hids = here.map((p) => p.id);
               const uids = here.map((p) => p.user_id).filter(Boolean) as string[];
               const [{ data: prog }, { data: att }, { data: creds }] = await Promise.all([
-                hids.length ? svc.from("aicert_progress").select("candidate_id, course, percent").in("candidate_id", hids) : Promise.resolve({ data: [] as { candidate_id: string; course: "INTRO" | "SPECIALIST"; percent: number }[] }),
+                hids.length ? svc.from("aicert_progress").select("candidate_id, course, percent, specialist_course").in("candidate_id", hids) : Promise.resolve({ data: [] as { candidate_id: string; course: "INTRO" | "SPECIALIST"; percent: number; specialist_course: string | null }[] }),
                 stage.layer === "ROLE_ENABLEMENT" && hids.length ? svc.from("re_session_attendance").select("candidate_id, attended").eq("wave_id", waveId).in("candidate_id", hids) : Promise.resolve({ data: [] as { candidate_id: string; attended: boolean }[] }),
                 uids.length ? svc.from("user_credentials").select("user_id, last_login_at").in("user_id", uids) : Promise.resolve({ data: [] as { user_id: string; last_login_at: string | null }[] }),
               ]);
@@ -287,6 +289,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
                   aicert: pr ? overallProgress(pr as never) : null,
                   attendance: stage.layer === "ROLE_ENABLEMENT" ? { attended: mine.filter((x) => x.attended).length, recorded: mine.length } : null,
                   lastLogin: (creds ?? []).find((x) => x.user_id === p.user_id)?.last_login_at ?? null,
+                  cert: pr?.specialist_course ?? null,
                 };
               });
               return <ParticipantsBoard waveId={waveId} people={people as never} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} showAicert={stage.layer === "ROLE_ENABLEMENT"} />;
@@ -311,6 +314,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         const maxOf = (x: (typeof mine)[number]) => (x.capsules as unknown as { max_attempts: number | null } | null)?.max_attempts ?? null;
         const aiOf = (x: (typeof mine)[number]) => [x.submission_ai_reviews].flat()[0] as { status: string; score: number | null } | undefined;
         const asSub = (x: (typeof mine)[number]) => ({ ...x, person: nameOf(x.candidate_id), ai: [x.submission_ai_reviews].flat()[0] ?? null });
+        const certs = await assignedCerts((enrolled ?? []).map((p) => p.id));
         const rows = (enrolled ?? []).map((p) => {
           const own = mine.filter((x) => x.candidate_id === p.id);
           const last = [...own].sort((a, b) => b.attempt - a.attempt || String(b.submitted_at).localeCompare(String(a.submitted_at)))[0];
@@ -323,6 +327,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             ahead: LAYERS.findIndex((l) => l.id === (p.journey_layer ?? "AI_MINDSET")) > LAYERS.findIndex((l) => l.id === stage.layer),
             // Entrega final: la aprobada; si no hay, la última.
             files: ((own.find((x) => x.status === "APPROVED") ?? last)?.files ?? []) as { name: string; path: string }[],
+            cert: certs.get(p.id) ?? null,
           };
         });
         // Detalle de una persona: por su entrega (?sub=) o por la persona (?p=), tenga o no entrega.
@@ -341,7 +346,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             <EvaluateView
               sub={current ? (asSub(current) as never) : null}
               name={p.full_name}
-              person={{ client: p.client_name ? prettyName(p.client_name) : null, role: p.role_title ? prettyName(p.role_title) : null }}
+              person={{ client: p.client_name ? prettyName(p.client_name) : null, role: p.role_title ? prettyName(p.role_title) : null, cert: certs.get(p.id) ?? null }}
               facts={{ email: p.corporate_email, delivery: p.delivery_owner, account: prof?.status === "ACTIVE" ? "Activa" : p.user_id ? "Creada, sin activar" : "Sin cuenta", lastLogin: (cred as { last_login_at?: string | null } | null)?.last_login_at ?? null, stage: p.journey_layer ? stageNameOf(p.journey_layer) : "AI First Mindset (por iniciar)", since: p.journey_layer_since }}
               state={rows.find((r) => r.id === personId)?.state ?? "missing"}
               history={history as never}

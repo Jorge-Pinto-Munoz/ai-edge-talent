@@ -8,7 +8,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { DownloadButton } from "@/components/journey/SignedLink";
 import { Icon } from "@/components/site/Icon";
 
-export type FormPerson = { id: string; name: string; client: string | null; attended: boolean | null; focus: Focus; rating: number | null; note: string; checkedIn: boolean };
+export type FormPerson = { id: string; name: string; client: string | null; cert?: string | null; attended: boolean | null; focus: Focus; rating: number | null; note: string; checkedIn: boolean };
 type Init = { heldOn: string; startsAt: string; endsAt: string; title: string; studentNotes: string; nextClass: string; adminComments: string; interventions: string; materials: SessionFile[] };
 
 /** 1 a 3 estrellas (clic en la misma estrella la quita). */
@@ -129,6 +129,7 @@ export function ReSessionForm({ waveId, n, init, people, today }: { waveId: stri
                   <div className="res-who">
                     <strong>{p.name}</strong>
                     <small className="muted">{p.client ?? "—"}{p.checkedIn ? " · hizo check-in" : ""}</small>
+                    {p.cert && <small className="cert-name">{p.cert}</small>}
                     {(a.attended !== null || p.checkedIn) && <span className={`badge ${m.tone === "muted" ? "" : m.tone}`}>{m.label}</span>}
                   </div>
                   <div className="seg" role="radiogroup" aria-label={`Asistencia de ${p.name}`}>

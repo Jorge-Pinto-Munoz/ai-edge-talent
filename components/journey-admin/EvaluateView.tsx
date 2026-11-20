@@ -12,7 +12,7 @@ const PAST: Record<string, string> = { APPROVED: "Aprobada", NOT_APPROVED: "No a
 type Facts = { email: string; delivery: string | null; account: string; lastLogin: string | null; stage: string; since: string | null };
 
 /** Detalle de un participante: datos, paso del flujo, entrega actual con revisión (IA + decisión), intentos y mover de etapa. */
-export function EvaluateView({ sub, name, person, facts, state, history, backHref, nextHref, isAdmin, move, attempts }: { sub: Sub | null; name: string; person: { client: string | null; role: string | null }; facts: Facts; state: DeliveryState; history: Past[]; backHref: string; nextHref: string | null; isAdmin: boolean; move: ReactNode; attempts?: ReactNode }) {
+export function EvaluateView({ sub, name, person, facts, state, history, backHref, nextHref, isAdmin, move, attempts }: { sub: Sub | null; name: string; person: { client: string | null; role: string | null; cert?: string | null }; facts: Facts; state: DeliveryState; history: Past[]; backHref: string; nextHref: string | null; isAdmin: boolean; move: ReactNode; attempts?: ReactNode }) {
   const [done, setDone] = useState<string | null>(null);
   const at = FLOW.findIndex((f) => f.key === state);
   return (
@@ -22,6 +22,7 @@ export function EvaluateView({ sub, name, person, facts, state, history, backHre
         <div>
           <h2 style={{ margin: 0 }}>{name}</h2>
           <p className="muted" style={{ margin: "2px 0 0" }}>{[person.client, person.role].filter(Boolean).join(" · ") || "—"}</p>
+          {person.cert && <p className="cert-name" style={{ margin: "4px 0 0" }}>Certificación: {person.cert}</p>}
         </div>
         <ol className="ev-flow" aria-label="Paso del flujo">
           {FLOW.map((f, i) => <li key={f.key} className={i < at ? "past" : i === at ? `now ${f.tone}` : ""}>{i + 1}. {f.label}</li>)}

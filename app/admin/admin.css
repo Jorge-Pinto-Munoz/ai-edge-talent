@@ -866,3 +866,6 @@
 .rp-kpis strong { font-size: 1.4rem; line-height: 1.1; }
 .rp-kpis small { color: var(--muted); font-weight: 600; }
 @media (max-width: 620px) { .rp-kpis { grid-template-columns: 1fr; } }
+.cert-name { display: block; font-size: 0.8rem; font-weight: 700; color: var(--deep-teal, var(--brand)); }
+.cert-assign select { min-width: 220px; max-width: 100%; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font: inherit; font-size: 0.86rem; }
+.cert-assign { display: inline-grid; gap: 2px; }

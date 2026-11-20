@@ -10,6 +10,7 @@ import { DownloadButton } from "@/components/journey/SignedLink";
 import { Icon } from "@/components/site/Icon";
 import { fmtYmd } from "@/components/ui";
 import { prettyName } from "@/lib/text/org";
+import { assignedCerts } from "@/lib/aicert/assigned";
 
 /**
  * Role Enablement: las 4 sesiones semanales de la Wave. El AI Coach (o el admin) registra cada una;
@@ -23,6 +24,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
     svc.from("candidates").select("id, full_name, client_name").eq("wave_id", waveId).eq("journey_layer", "ROLE_ENABLEMENT").order("full_name"),
   ]);
   const today = todayChile();
+  const certs = await assignedCerts((people ?? []).map((p) => p.id), svc);
   const group = people ?? [];
   const held = sessions.filter((s) => s.heldOn && s.heldOn <= today);
   const marks = sessions.flatMap((s) => s.attendance.filter((a) => group.some((p) => p.id === a.candidateId)));
@@ -52,7 +54,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
               <tbody>
                 {group.map((p) => (
                   <tr key={p.id}>
-                    <td className="rt-title"><strong>{p.full_name}</strong><small className="muted">{p.client_name ? prettyName(p.client_name) : "—"}</small></td>
+                    <td className="rt-title"><strong>{p.full_name}</strong><small className="muted">{p.client_name ? prettyName(p.client_name) : "—"}</small>{certs.get(p.id) && <small className="cert-name">{certs.get(p.id)}</small>}</td>
                     {sessions.map((s) => {
                       const a = s.attendance.find((x) => x.candidateId === p.id);
                       const m = attendanceMatch(a ? a.attended : null, s.checkins.some((c) => c.candidateId === p.id));
@@ -95,7 +97,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
                   init={{ heldOn: s.heldOn ?? "", startsAt: s.startsAt ?? "", endsAt: s.endsAt ?? "", title: s.title ?? "", studentNotes: s.studentNotes ?? "", nextClass: s.nextClass ?? "", adminComments: s.adminComments ?? "", interventions: s.interventions ?? "", materials: s.materials }}
                   people={group.map((p) => {
                     const a = s.attendance.find((x) => x.candidateId === p.id);
-                    return { id: p.id, name: p.full_name, client: p.client_name ? prettyName(p.client_name) : null, attended: a ? a.attended : null, focus: (a?.focus ?? "OK") as Focus, rating: a?.rating ?? null, note: a?.note ?? "", checkedIn: s.checkins.some((c) => c.candidateId === p.id) };
+                    return { id: p.id, name: p.full_name, client: p.client_name ? prettyName(p.client_name) : null, cert: certs.get(p.id) ?? null, attended: a ? a.attended : null, focus: (a?.focus ?? "OK") as Focus, rating: a?.rating ?? null, note: a?.note ?? "", checkedIn: s.checkins.some((c) => c.candidateId === p.id) };
                   })}
                 />
               ) : (

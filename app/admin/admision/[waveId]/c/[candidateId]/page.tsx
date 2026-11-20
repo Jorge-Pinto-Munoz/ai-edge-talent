@@ -16,6 +16,7 @@ import { TEMPLATE_NAME, type IdentityTemplate } from "@/lib/email/identity";
 import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
 import { shownEmail } from "@/lib/talent/rules";
 import { ReProgress } from "@/components/teacher/ReProgress";
+import { assignedCerts } from "@/lib/aicert/assigned";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
   const db = isAdmin ? await supabaseUser() : supabaseService();
   const { data: c } = await db.from("candidates").select("id, wave_id, full_name, corporate_email, client_name, role_title, specialty, status, journey_layer").eq("id", candidateId).eq("wave_id", waveId).single();
   if (!c) notFound();
+  const cert = (await assignedCerts([c.id])).get(c.id) ?? null;
   const [{ data: app }, { data: events }, { data: emails }, { data: commitments }] = await Promise.all([
     db.from("applications").select("id, answers, questions_snapshot, submitted_at, updated_at").eq("candidate_id", c.id).maybeSingle(),
     db.from("admission_events").select("from_status, to_status, at, actor_label").eq("candidate_id", c.id).order("at"),
@@ -59,6 +61,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
         <div>
           <h1 style={{ margin: 0 }}>{c.full_name}</h1>
           <p className="muted" style={{ margin: "4px 0 0" }}>{shownEmail(c.corporate_email)} · {c.client_name ? prettyName(c.client_name) : "—"} · {c.role_title ? prettyName(c.role_title) : "—"}{c.specialty ? ` · ${c.specialty}` : ""}</p>
+          {cert && <p className="cert-name" style={{ margin: "4px 0 0" }}>Certificación AI CERT: {cert}</p>}
         </div>
         <div className="row">
           {isAdmin && <a className="btn ghost small" href={`/admin/vista/candidato?id=${c.id}`}>Ver su postulación</a>}
