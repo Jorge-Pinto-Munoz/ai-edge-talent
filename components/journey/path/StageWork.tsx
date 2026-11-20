@@ -46,6 +46,9 @@ export function SessionSheet({ v, n }: { v: JourneyView; n: number }) {
           <p className="muted" style={{ margin: 0 }}>Marca que fuiste a la sesión. No reemplaza la asistencia que registra tu AI Coach: se cruzan para tu seguimiento.</p>
         )}
         {s && s.attended !== null && <p style={{ margin: 0 }}><small className="muted">Asistencia registrada por tu AI Coach:</small> <strong>{s.attended ? "Asististe" : "No asististe"}</strong></p>}
+        {v.preview && !s?.checkedInAt && v.path.currentLayer === "ROLE_ENABLEMENT" && (
+          <button type="button" className="jr-cta" disabled title="Vista previa: los envíos están desactivados"><Icon name="check" size={18} /> Fui a la sesión · hacer check-in</button>
+        )}
         {canCheckIn && (
           <button type="button" className="jr-cta" disabled={pending} onClick={() => start(async () => { const r = await checkInSession(n); setMsg(r); if (r.ok) router.refresh(); })}>
             <Icon name="check" size={18} /> {pending ? "Registrando…" : "Fui a la sesión · hacer check-in"}

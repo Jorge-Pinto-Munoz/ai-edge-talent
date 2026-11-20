@@ -131,7 +131,11 @@ export function JourneyApp({ v }: { v: JourneyView }) {
               <button type="button" className="btn small" onClick={() => setPulseOpen(true)} aria-haspopup="dialog">Responder</button>
             </div>
           )}
-          {v.pulseGate ? (
+          {/* Vista previa del admin: el bloqueo por pulso se informa, pero la etapa se ve abierta para revisarla. */}
+          {v.pulseGate && v.preview && (
+            <p className="jr-remind"><Icon name="alert" size={18} /><span><strong>Vista previa:</strong> esta persona aún no responde el pulso de cierre de {v.pulseGate.prevStage}. En su portal, {v.pulseGate.currentStage} está bloqueada hasta que lo responda.</span></p>
+          )}
+          {v.pulseGate && !v.preview ? (
             <PulseGate v={v} onOpen={() => setPulseOpen(true)} />
           ) : v.stageGate && !v.stageGate.open ? (
             <StageGate v={v} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.stageGate!.layer) })} />
@@ -445,7 +449,7 @@ function PathView({ v, stages, onNode, onGuide, mod, onModule, onPlay }: { v: Jo
               </li>
             )}
             {s.nodes.filter((n) => showPast || s.layer !== "ROLE_ENABLEMENT" || !isPast(n)).map((n) => n.kind === "capsule" && n.capsuleId && v.capsules[n.capsuleId] ? (
-              <ModuleItem key={n.id} id={n.capsuleId} m={v.capsules[n.capsuleId]} open={mod === n.capsuleId} locked={n.state === "locked" || (Boolean(v.pulseGate) && s.state === "current")} preview={Boolean(v.preview)} onToggle={() => onModule(n.capsuleId!)} onPlay={onPlay} />
+              <ModuleItem key={n.id} id={n.capsuleId} m={v.capsules[n.capsuleId]} open={mod === n.capsuleId} locked={n.state === "locked" || (Boolean(v.pulseGate) && !v.preview && s.state === "current")} preview={Boolean(v.preview)} onToggle={() => onModule(n.capsuleId!)} onPlay={onPlay} />
             ) : (
               <li key={n.id} className={`jr-step ${n.state}`} ref={n.state === "current" ? currentRef : undefined}>
                 <button type="button" className="jr-step-btn" onClick={() => onNode(n, s)} aria-current={n.state === "current" ? "step" : undefined}>
@@ -474,7 +478,7 @@ function PathView({ v, stages, onNode, onGuide, mod, onModule, onPlay }: { v: Jo
 
 /* ───────── Contenido de cada hito (en la hoja) ───────── */
 function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage: PathStage }) {
-  if (v.pulseGate && stage.layer === v.path.currentLayer) {
+  if (v.pulseGate && !v.preview && stage.layer === v.path.currentLayer) {
     return (
       <div className="jr-sheet-stack">
         <div className="jr-locked"><Icon name="chat" size={22} /><p>Antes de continuar con {v.pulseGate.currentStage}, responde el pulso de cierre de {v.pulseGate.prevStage} (2 minutos). Lo encuentras arriba, en tu camino.</p></div>
