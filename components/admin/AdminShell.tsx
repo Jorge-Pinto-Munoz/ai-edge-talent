@@ -74,12 +74,14 @@ export function AdminShell({ waves, role, email, children }: { waves: ShellWave[
     const target = m ? `/admin/${m[1]}/${id}${m[1] === "journey" && m[2] ? m[2] : ""}` : active?.perWave ? active.href(id) : sections[0].href(id);
     router.push(target);
   };
-  const link = (s: Section) => (
-    <Link key={s.key} href={s.href(wave)} className={active?.key === s.key ? "on" : ""} aria-current={active?.key === s.key ? "page" : undefined}>
-      <Icon name={s.icon} size={20} />
-      <span>{s.label}</span>
-    </Link>
-  );
+  const link = (s: Section) => {
+    const href = s.href(wave);
+    const props = { href, className: active?.key === s.key ? "on" : "", "aria-current": active?.key === s.key ? ("page" as const) : undefined };
+    const body = <><Icon name={s.icon} size={20} /><span>{s.label}</span></>;
+    // Misma página con otros parámetros (p. ej. salir del detalle de una persona): el router cliente de Next descarta
+    // esa navegación y la vista quedaba «pegada». Un enlace normal recarga la página y siempre funciona.
+    return href.split("?")[0] === path ? <a key={s.key} {...props}>{body}</a> : <Link key={s.key} {...props}>{body}</Link>;
+  };
   const adminLinks = sections.filter((s) => s.group === "admin");
   // Celular: el lateral es un panel que se abre con el botón de menú; se cierra al navegar, con Escape o tocando fuera.
   const [menu, setMenu] = useState(false);

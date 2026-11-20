@@ -309,7 +309,8 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
               move={isAdmin ? <MoveStage candidateId={p.id} name={p.full_name} current={p.journey_layer as Layer | null} enrolled /> : null}
               attempts={(() => {
                 // Intentos del desafío: cuántos usó y, si se le acabaron, el admin puede darle uno extra.
-                if (!current || !isAdmin) return null;
+                // Con el desafío ya aprobado no hay intentos que gestionar.
+                if (!current || !isAdmin || own.some((x) => x.capsule_id === current.capsule_id && x.status === "APPROVED")) return null;
                 const max = (current.capsules as unknown as { max_attempts: number | null }).max_attempts;
                 const used = own.filter((x) => x.capsule_id === current.capsule_id && x.status === "NOT_APPROVED").length;
                 const pending = own.some((x) => x.capsule_id === current.capsule_id && ["SUBMITTED", "HUMAN_REVIEW", "APPROVED"].includes(x.status));

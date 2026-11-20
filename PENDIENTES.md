@@ -11,7 +11,7 @@ Lista corta para retomar sin repasar conversaciones. Actualizar al cerrar cada t
 - Cargar en Contenido las cápsulas de video y la cápsula del reto (plantilla + instrucciones) de AI First Mindset.
 - **Grabadora de rescate en celulares reales**: probada solo con cámara simulada; falta probar en iPhone (Safari) y Android (Chrome).
 - **Error React #418 (hidratación)** en páginas dinámicas de producción. Ya existía antes; no bloquea.
-- **Navegación cliente que solo cambia `?tab=`/`?sub=` en la página de etapa** (`/admin/journey/[wave]/[etapa]`): el router de Next la descarta (ya pasaba antes; probado en local). Pestañas, filas y «Detalles» de Mindset usan `<a>` (recarga completa) como arreglo. Quedan con `<Link>` los enlaces internos de `ClassesWorkspace` y `LabWorkspace` embebidos (Role Enablement / AI Lab): revisar si fallan igual.
+- **Navegación cliente que solo cambia `?tab=`/`?sub=` en la página de etapa** (`/admin/journey/[wave]/[etapa]`): el router de Next la descarta (ya pasaba antes; probado en local). Pestañas, filas, «Detalles», el menú lateral y las migas de pan usan `<a>` cuando el destino es la misma ruta (recarga completa) como arreglo; antes, salir del detalle de una persona desde el menú dejaba la vista «pegada». Quedan con `<Link>` los enlaces internos de `ClassesWorkspace` y `LabWorkspace` embebidos (Role Enablement / AI Lab): revisar si fallan igual.
 - **Prueba de navegación intermitente**: a veces lee el menú mientras la página cambia (falso fallo de la prueba, no de la app).
 
 ## Límites conocidos (decisión, no error)
