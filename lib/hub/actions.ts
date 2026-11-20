@@ -7,6 +7,7 @@ import { advanceGate, safeFileName, type Layer } from "@/lib/journey/rules";
 import { LAB_DECISIONS, LAB_STATUS, type LabDecision, type LabMode, type LabStatus } from "./rules";
 import { syncMany } from "@/lib/journey/closure-sync";
 import { errorText } from "@/lib/text/errors";
+import { assertPreviousPulses } from "@/lib/journey/pulse-gate";
 
 /** Integrantes de un proyecto: al presentarse en el Showcase se habilita su pulso de cierre. */
 async function syncProject(projectId: string, actor: string) {
@@ -296,6 +297,7 @@ export async function describeMyProject(input: { title: string; problem: string;
       .maybeSingle();
     if (!c) throw new Error("No encontramos tu participación activa.");
     if (!["AI_LAB_SHOWCASE", "SHOWCASE"].includes(c.journey_layer ?? "")) throw new Error("Describes tu proyecto cuando estás en el AI Lab.");
+    await assertPreviousPulses(c.id, c.journey_layer as Layer, svc);
     const now = new Date().toISOString();
     const { data: m } = await svc.from("lab_project_members").select("project_id").eq("candidate_id", c.id).maybeSingle();
     let id = m?.project_id ?? null;

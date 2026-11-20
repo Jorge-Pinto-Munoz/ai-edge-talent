@@ -320,3 +320,8 @@
 @media (max-width: 560px) { .sr-grid { grid-template-columns: 1fr; } }
 .jr-project .field { display: grid; gap: 4px; font-weight: 600; font-size: 0.9rem; margin: 0; }
 .jr-project .field input, .jr-project .field select, .jr-project .field textarea { font: inherit; font-weight: 400; width: 100%; min-width: 0; }
+.jr-step-chev.up { transform: rotate(180deg); }
+.jr-past-toggle .jr-step-btn { opacity: 0.85; }
+.jr-pulse-gate { border: 2px solid var(--stage-d, var(--brand)); }
+.jr-guide-lead { font-weight: 600; margin: 0; }
+.jr-guide-list { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }

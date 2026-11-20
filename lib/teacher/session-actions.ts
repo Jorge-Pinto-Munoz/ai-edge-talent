@@ -9,6 +9,7 @@ import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 import { errorText } from "@/lib/text/errors";
 import { todayChile } from "./rules";
 import { stageIsOpen } from "@/lib/journey/opening";
+import { assertPreviousPulses } from "@/lib/journey/pulse-gate";
 import { RE_SESSIONS, cleanSelfProgress, cleanSession, type SessionInput, type SessionN } from "./sessions-rules";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
@@ -106,6 +107,7 @@ export async function checkInSession(n: number, note = ""): Promise<Result> {
     if (!(await stageIsOpen(c.wave_id, "ROLE_ENABLEMENT"))) throw new Error("Role Enablement aún no está habilitada para tu Wave.");
     if (!RE_SESSIONS.includes(n as SessionN)) throw new Error("Sesión no válida.");
     const svc = supabaseService();
+    await assertPreviousPulses(c.id, "ROLE_ENABLEMENT", svc);
     const { error } = await svc.from("re_session_checkins").upsert({ wave_id: c.wave_id, n, candidate_id: c.id, note: note.trim().slice(0, 300) || null }, { onConflict: "wave_id,n,candidate_id", ignoreDuplicates: true });
     if (error) throw error;
     await audit("re_session.checkin", { actor: viewer.id, candidateId: c.id, waveId: c.wave_id, details: { n }, eventKey: `re-checkin:${c.id}:${n}` }, svc);
@@ -122,6 +124,7 @@ export async function reportMyAicertProgress(input: { course: string; tramo: num
   try {
     const { viewer, c } = await myCandidate();
     if (c.journey_layer !== "ROLE_ENABLEMENT") throw new Error("El avance AI CERT se reporta durante Role Enablement.");
+    await assertPreviousPulses(c.id, "ROLE_ENABLEMENT");
     const x = cleanSelfProgress(input);
     const now = new Date().toISOString();
     const svc = supabaseService();

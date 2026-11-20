@@ -16,6 +16,7 @@ import { DEMO_READONLY, isDemoEmail } from "@/lib/identity/demo";
 import { errorText } from "@/lib/text/errors";
 import { chileToIso } from "@/lib/time/chile";
 import { maxWithGrant } from "./attempts";
+import { assertPreviousPulses } from "./pulse-gate";
 import { FORMAT_GROUPS, SUBMISSION_MAX_MB, effectiveFormats, fileAllowed, fmtDue, formatsLabel } from "./formats";
 
 export type Result<T = undefined> = { ok: boolean; message: string; data?: T };
@@ -127,6 +128,7 @@ export async function submitTask(capsuleId: string, textAnswer: string, files: {
     const db = await supabaseUser();
     const { data: cap } = await db.from("capsules").select("id, wave_id, task_prompt, max_attempts, resources, submission_formats").eq("id", capsuleId).single();
     if (!cap || cap.wave_id !== candidate.wave_id || !cap.task_prompt) throw new Error("Esta cápsula no tiene una tarea disponible.");
+    await assertPreviousPulses(candidate.id, candidate.journey_layer);
     // Reto con plantilla: se evalúa la plantilla completada, así que el archivo es obligatorio.
     if (Array.isArray(cap.resources) && cap.resources.length > 0 && files.length === 0) throw new Error("Sube la plantilla completada para enviar tu reto.");
     if (!textAnswer.trim() && files.length === 0) throw new Error("Agrega una respuesta o un archivo.");
@@ -158,6 +160,7 @@ export async function submitCertification(input: { result: "PASSED" | "FAILED"; 
   try {
     const { candidate } = await requireParticipant();
     if (candidate.journey_layer !== "ROLE_ENABLEMENT") throw new Error("La certificación se registra durante Role Enablement.");
+    await assertPreviousPulses(candidate.id, "ROLE_ENABLEMENT");
     if (input.filePath && !input.filePath.startsWith(`${candidate.id}/`)) throw new Error("Archivo no válido.");
     if (!input.filePath && !input.credentialUrl.trim()) throw new Error("Sube el certificado o agrega el enlace de la credencial.");
     const db = await supabaseUser();

@@ -19,6 +19,7 @@ export interface PathNode {
   capsuleId?: string;
   labClass?: 1 | 2;
   session?: number; // sesión semanal de Role Enablement (1 a 4)
+  past?: boolean; // sesión ya ocurrida (antes de hoy): no compite por «lo que toca ahora»
   cta?: string; // texto del botón cuando es el siguiente paso
 }
 export interface PathStage {
@@ -48,7 +49,7 @@ export interface PathInput {
   certifications: { result: string; status: string }[];
   lab: { status: string; files: number; described?: boolean; final?: boolean } | null;
   /** Sesiones de Role Enablement: realizada (fecha pasada) y si hizo check-in. */
-  sessions?: { n: number; held: boolean; checkedIn: boolean }[];
+  sessions?: { n: number; held: boolean; checkedIn: boolean; past?: boolean }[];
 }
 
 export const STAGE_META: { layer: Layer; n: number; slug: string; name: string; short: string }[] = [
@@ -102,8 +103,8 @@ function stageNodes(layer: Layer, input: PathInput): PathNode[] {
       const sessions: PathNode[] = [1, 2, 3, 4].map((n) => {
         const x = input.sessions?.find((y) => y.n === n);
         return x?.checkedIn
-          ? { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: "Hiciste check-in", state: "done" }
-          : { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: x?.held ? "Haz tu check-in y revisa el material" : "Material y notas de tu AI Coach", state: "available", cta: "Hacer check-in" };
+          ? { id: `re-s${n}`, kind: "session", session: n, past: x.past, title: `Sesión ${n} · Semana ${n}`, hint: "Hiciste check-in", state: "done" }
+          : { id: `re-s${n}`, kind: "session", session: n, past: x?.past, title: `Sesión ${n} · Semana ${n}`, hint: x?.held ? "Haz tu check-in y revisa el material" : "Material y notas de tu AI Coach", state: "available", cta: "Hacer check-in" };
       });
       return [...sessions, ...caps, cert];
     }
@@ -141,7 +142,9 @@ export function buildJourneyPath(input: PathInput): JourneyPath {
     if (state === "locked") nodes = nodes.map((n) => ({ ...n, state: "locked" as const, cta: undefined }));
     if (state === "current") {
       // Lo que toca ahora: el primer nodo accionable de la etapa.
-      const k = nodes.findIndex((n) => n.state === "available");
+      // Una sesión ya pasada sin check-in no compite con la de esta semana ni con la certificación.
+      const fresh = nodes.findIndex((n) => n.state === "available" && !n.past);
+      const k = fresh >= 0 ? fresh : nodes.findIndex((n) => n.state === "available");
       if (k >= 0) nodes[k] = { ...nodes[k], state: "current" };
     }
     return { ...meta, state, nodes, done: nodes.filter((n) => n.state === "done").length, total: nodes.length };

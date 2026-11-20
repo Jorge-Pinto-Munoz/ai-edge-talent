@@ -53,6 +53,11 @@ describe("camino del profesional", () => {
     expect(ses[1].hint).toMatch(/check-in/);
   });
 
+  it("Role Enablement: una sesión pasada sin check-in no se lleva el foco", () => {
+    const p = buildJourneyPath({ ...base, layer: "ROLE_ENABLEMENT", sessions: [{ n: 1, held: true, checkedIn: false, past: true }, { n: 2, held: true, checkedIn: false, past: false }] });
+    expect(p.next).toMatchObject({ id: "re-s2" });
+  });
+
   it("AI Lab: clase 1, proyecto descrito y clase 2 (sin Showcase)", () => {
     const p = buildJourneyPath({ ...base, layer: "AI_LAB_SHOWCASE", lab: { status: "BUILDING", files: 0 } });
     expect(p.stages[3].nodes.map((n) => n.kind)).toEqual(["lab-class", "project", "lab-class"]);

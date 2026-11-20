@@ -9,10 +9,12 @@ import type { myJourney } from "./queries";
 import { overallProgress, progressLabel } from "@/lib/aicert/progress";
 import { pulseDef } from "@/lib/pulse/definitions";
 import { duePulses } from "@/lib/pulse/rules";
-import { CLOSING_PULSE, STAGE_STATUS, stageRequirements, stageStatus, type StageStatus } from "./closure";
-import { LAYERS } from "./rules";
+import { CLOSING_PULSE, STAGE_STATUS, closingLayerOf, stageRequirements, stageStatus, type StageStatus } from "./closure";
+import { LAYERS, layerIndex } from "./rules";
 import { supabaseService } from "@/lib/supabase/server";
 import { mySessions } from "@/lib/teacher/sessions";
+import { publicStageVideos } from "@/lib/site/stage-videos";
+import { PUBLIC_SLUG } from "@/lib/data/stage-guide";
 import { OPENABLE, stageLabel } from "./opening";
 import { showcaseTemplate } from "@/lib/hub/template";
 import { todayChile } from "@/lib/teacher/rules";
@@ -49,7 +51,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     submissions: j.submissions,
     certifications: j.certifications,
     lab: j.lab ? { status: j.lab.status, files: j.lab.lab_project_files.filter((f) => f.kind !== "FINAL").length, described: labDescribed, final: labFinal } : null,
-    sessions: sessions.map((s) => ({ n: s.n, held: Boolean(s.heldOn && s.heldOn <= today), checkedIn: Boolean(s.checkedInAt) })),
+    sessions: sessions.map((s) => ({ n: s.n, held: Boolean(s.heldOn && s.heldOn <= today), checkedIn: Boolean(s.checkedInAt), past: Boolean(s.heldOn && s.heldOn < today) })),
   });
 
   // Cierre de etapa: requisitos académicos (o excepción) → pulso de cierre → etapa cerrada.
@@ -67,7 +69,10 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
   const dues = duePulses({ layer: j.candidate.journey_layer, layerSince: j.candidate.journey_layer_since, labStatus: j.lab?.status ?? null, answered: j.answeredPulses, requirementsMet: req.met });
   const closingKey = CLOSING_PULSE[layer];
   const closingDue = closingKey && dues.includes(closingKey) && j.candidate.journey_layer === layer ? closingKey : null;
-  const otherDue = dues.find((k) => k !== closingDue) ?? null;
+  // Pulso de cierre de una etapa ya pasada (p. ej. avanzó sin responder el de Mindset): es obligatorio y bloquea la
+  // etapa actual hasta responderlo. Va primero, antes que cualquier otro pulso.
+  const prevClosing = dues.find((k) => { const l = closingLayerOf(k); return l !== null && layerIndex(l) < layerIndex(layer); }) ?? null;
+  const otherDue = prevClosing ?? dues.find((k) => k !== closingDue) ?? null;
   const closureOf = (l: Layer) => j.closures.find((c) => c.layer === l);
   const started = (l: Layer) =>
     j.capsules.some((c) => c.layer === l && (j.completed.has(c.id) || j.submissions.some((s) => s.capsule_id === c.id))) ||
@@ -92,6 +97,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     myId: viewerId,
     waveId: j.candidate.wave_id,
     pulse: otherDue ? pulseDef(otherDue) : null,
+    pulseGate: prevClosing ? { prevStage: stageLabel(closingLayerOf(prevClosing)!), currentStage: stageLabel(layer) } : null,
     closing: closingDue ? { def: pulseDef(closingDue)!, layer } : null,
     stage: {
       layer,
@@ -130,6 +136,11 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
     guides: Object.fromEntries(
       j.guides.map((g) => [g.layer as Layer, { title: g.title, summary: g.summary, whatHappens: g.what_happens, whatWeExpect: g.what_we_expect, videoUrl: g.video_url, videoPath: g.video_path }]),
     ),
+    // Video público de cada etapa (el del sitio del programa), por si la Wave no cargó uno propio.
+    stageVideos: await (async () => {
+      const vids = await publicStageVideos();
+      return Object.fromEntries(Object.entries(PUBLIC_SLUG).filter(([, slug]) => vids[slug!]).map(([l, slug]) => [l, vids[slug!]]));
+    })(),
     certifications: j.certifications.map((c) => ({ id: c.id, attempt: c.attempt, result: c.result, status: c.status, reviewNote: c.review_note, filePath: c.file_path, createdAt: c.created_at })),
     certStat: await certifiedRate(),
     failedCerts: j.certifications.filter((c) => c.result === "FAILED" && c.status === "VERIFIED").length,

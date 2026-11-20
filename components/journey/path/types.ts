@@ -11,6 +11,8 @@ export interface JourneyView {
   waveId: string;
   /** Pulso pendiente (uno a la vez); se activa solo al pasar de etapa. */
   pulse: PulseDef | null;
+  /** El pulso de cierre de la etapa anterior está pendiente: es obligatorio y bloquea la etapa actual. */
+  pulseGate: { prevStage: string; currentStage: string } | null;
   /** Pulso obligatorio que cierra la etapa actual, ya habilitado (requisitos cumplidos). */
   closing: { def: PulseDef; layer: Layer } | null;
   /** Estado de la etapa actual: progreso académico y cierre administrativo por separado. */
@@ -38,6 +40,8 @@ export interface JourneyView {
   delivery: string | null;
   path: JourneyPath;
   capsules: Record<string, ModuleView>;
+  /** Video público de cada etapa (sitio del programa). */
+  stageVideos: Partial<Record<Layer, string>>;
   guides: Partial<Record<Layer, { title: string; summary: string | null; whatHappens: string | null; whatWeExpect: string | null; videoUrl: string | null; videoPath: string | null }>>;
   certifications: { id: string; attempt: number; result: string; status: string; reviewNote: string | null; filePath: string | null; createdAt: string }[];
   failedCerts: number;

@@ -19,6 +19,7 @@ import { AiCertSection } from "@/components/site/AiCertSection";
 import { ShowcaseGuide } from "@/components/site/ShowcaseGuide";
 import { PulseForm } from "@/components/pulse/PulseForm";
 import { AiCertProgressView } from "@/components/journey/AiCertProgressView";
+import { PUBLIC_SLUG, STAGE_GUIDE } from "@/lib/data/stage-guide";
 import { AiCertSelfReport, FinalSheet, ProjectSheet, SessionSheet } from "./StageWork";
 import type { JourneyView } from "./types";
 import { STAGE_STATUS } from "@/lib/journey/closure";
@@ -120,7 +121,7 @@ export function JourneyApp({ v }: { v: JourneyView }) {
 
       {tab === "camino" && (
         <>
-          {v.pulse && (
+          {v.pulse && !v.pulseGate && (
             <div className="pulse-card">
               <Icon name="chat" size={26} />
               <div>
@@ -130,7 +131,9 @@ export function JourneyApp({ v }: { v: JourneyView }) {
               <button type="button" className="btn small" onClick={() => setPulseOpen(true)} aria-haspopup="dialog">Responder</button>
             </div>
           )}
-          {v.stageGate && !v.stageGate.open ? (
+          {v.pulseGate ? (
+            <PulseGate v={v} onOpen={() => setPulseOpen(true)} />
+          ) : v.stageGate && !v.stageGate.open ? (
             <StageGate v={v} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.stageGate!.layer) })} />
           ) : v.closing ? (
             <ClosingCard v={v} onOpen={() => setClosingOpen(true)} />
@@ -202,6 +205,22 @@ function JourneyHero({ v }: { v: JourneyView }) {
         </div>
       </div>
     </header>
+  );
+}
+
+/* ───────── Pulso obligatorio de la etapa anterior ───────── */
+function PulseGate({ v, onOpen }: { v: JourneyView; onOpen: () => void }) {
+  const g = v.pulseGate!;
+  return (
+    <section className="jr-next jr-pulse-gate" style={stageVars(v.path.currentLayer)} aria-labelledby="jr-pg-t">
+      <div className="jr-next-ico"><Icon name="star" size={26} /></div>
+      <div className="jr-next-txt">
+        <span className="jr-next-eyebrow">¡Felicitaciones! Cerraste {g.prevStage}</span>
+        <h2 id="jr-pg-t">Responde el pulso para continuar con {g.currentStage}</h2>
+        <p>Son 2 minutos: cuéntanos cómo te fue en {g.prevStage}. Es obligatorio y es lo único que falta para habilitarte {g.currentStage}.</p>
+      </div>
+      <button type="button" className="jr-cta" onClick={onOpen} aria-haspopup="dialog" data-autofocus>Responder el pulso <Icon name="arrowRight" size={18} /></button>
+    </section>
   );
 }
 
@@ -385,6 +404,10 @@ function StageChips({ stages }: { stages: PathStage[] }) {
 function PathView({ v, stages, onNode, onGuide, mod, onModule, onPlay }: { v: JourneyView; stages: PathStage[]; onNode: (n: PathNode, s: PathStage) => void; onGuide: (s: PathStage) => void; mod: string | null; onModule: (id: string) => void; onPlay: (t: PlayTarget) => void }) {
   const currentRef = useRef<HTMLLIElement>(null);
   const [away, setAway] = useState<"up" | "down" | null>(null);
+  // Sesiones de Role Enablement ya pasadas (fecha anterior a hoy): comprimidas para que el foco sea la de esta semana.
+  const [showPast, setShowPast] = useState(false);
+  const pastSessions = new Set(v.sessions.filter((x) => x.heldOn && x.heldOn < v.today).map((x) => x.n));
+  const isPast = (n: PathNode) => n.kind === "session" && n.session !== undefined && pastSessions.has(n.session);
 
   // Botón "Ir a mi paso" cuando el nodo actual sale de la pantalla.
   useEffect(() => {
@@ -412,8 +435,17 @@ function PathView({ v, stages, onNode, onGuide, mod, onModule, onPlay }: { v: Jo
           </div>
 
           <ol className="jr-steps">
-            {s.nodes.map((n) => n.kind === "capsule" && n.capsuleId && v.capsules[n.capsuleId] ? (
-              <ModuleItem key={n.id} id={n.capsuleId} m={v.capsules[n.capsuleId]} open={mod === n.capsuleId} locked={n.state === "locked"} preview={Boolean(v.preview)} onToggle={() => onModule(n.capsuleId!)} onPlay={onPlay} />
+            {s.layer === "ROLE_ENABLEMENT" && s.nodes.some(isPast) && (
+              <li className="jr-step jr-past-toggle">
+                <button type="button" className="jr-step-btn" aria-expanded={showPast} onClick={() => setShowPast((x) => !x)}>
+                  <span className="jr-dot" aria-hidden="true"><Icon name="calendar" size={18} /></span>
+                  <span className="jr-step-txt"><strong>Sesiones anteriores ({s.nodes.filter(isPast).length})</strong><small>{showPast ? "Ocultar" : "Ver notas, material y tu check-in"}</small></span>
+                  <Icon name="chevronDown" size={18} className={`jr-step-chev${showPast ? " up" : ""}`} />
+                </button>
+              </li>
+            )}
+            {s.nodes.filter((n) => showPast || s.layer !== "ROLE_ENABLEMENT" || !isPast(n)).map((n) => n.kind === "capsule" && n.capsuleId && v.capsules[n.capsuleId] ? (
+              <ModuleItem key={n.id} id={n.capsuleId} m={v.capsules[n.capsuleId]} open={mod === n.capsuleId} locked={n.state === "locked" || (Boolean(v.pulseGate) && s.state === "current")} preview={Boolean(v.preview)} onToggle={() => onModule(n.capsuleId!)} onPlay={onPlay} />
             ) : (
               <li key={n.id} className={`jr-step ${n.state}`} ref={n.state === "current" ? currentRef : undefined}>
                 <button type="button" className="jr-step-btn" onClick={() => onNode(n, s)} aria-current={n.state === "current" ? "step" : undefined}>
@@ -442,6 +474,13 @@ function PathView({ v, stages, onNode, onGuide, mod, onModule, onPlay }: { v: Jo
 
 /* ───────── Contenido de cada hito (en la hoja) ───────── */
 function NodeContent({ v, node, stage }: { v: JourneyView; node: PathNode; stage: PathStage }) {
+  if (v.pulseGate && stage.layer === v.path.currentLayer) {
+    return (
+      <div className="jr-sheet-stack">
+        <div className="jr-locked"><Icon name="chat" size={22} /><p>Antes de continuar con {v.pulseGate.currentStage}, responde el pulso de cierre de {v.pulseGate.prevStage} (2 minutos). Lo encuentras arriba, en tu camino.</p></div>
+      </div>
+    );
+  }
   if (node.state === "locked") {
     return (
       <div className="jr-sheet-stack">
@@ -581,16 +620,22 @@ function LabSummary({ lab }: { lab: NonNullable<JourneyView["lab"]> }) {
 }
 
 function GuideContent({ v, stage }: { v: JourneyView; stage: PathStage }) {
+  // Guía propia de la Wave (si Administración la cargó) o la descripción de la etapa del programa.
   const g = v.guides[stage.layer];
+  const d = STAGE_GUIDE[stage.layer];
+  const video = g && (g.videoUrl || g.videoPath) ? { url: g.videoUrl, path: g.videoPath } : v.stageVideos[stage.layer] ? { url: v.stageVideos[stage.layer]!, path: null } : null;
+  const lines = (txt: string | null | undefined, fallback: string[] | undefined) => (txt ? txt.split(/\n+/).map((x) => x.replace(/^[-•]\s*/, "").trim()).filter(Boolean) : fallback ?? []);
+  const happens = lines(g?.whatHappens, d?.happens);
+  const expect = lines(g?.whatWeExpect, d?.expect);
   return (
     <div className="jr-sheet-stack">
-      {g && (g.videoUrl || g.videoPath) ? <VideoPlayer url={g.videoUrl} path={g.videoPath} title={g.title} /> : <div className="jr-locked"><Icon name="play" size={22} /><p>El video de esta etapa estará disponible pronto.</p></div>}
-      {g?.summary && <p>{g.summary}</p>}
+      {video ? <VideoPlayer url={video.url} path={video.path} title={g?.title ?? stage.name} /> : <div className="jr-locked"><Icon name="play" size={22} /><p>El video de esta etapa estará disponible pronto.</p></div>}
+      {(g?.summary ?? d?.summary) && <p className="jr-guide-lead">{g?.summary ?? d?.summary}</p>}
       <div className="jr-two">
-        <div><span className="jr-k">Qué ocurre</span><p>{g?.whatHappens ?? "Tu Delivery te compartirá los hitos de esta etapa."}</p></div>
-        <div><span className="jr-k">Qué esperamos de ti</span><p>{g?.whatWeExpect ?? "Participar, avanzar en tus hitos y avisar a tiempo si algo te bloquea."}</p></div>
+        <div><span className="jr-k">Qué ocurre</span><ul className="jr-guide-list">{happens.map((x) => <li key={x}>{x}</li>)}</ul></div>
+        <div><span className="jr-k">Qué esperamos de ti</span><ul className="jr-guide-list">{expect.map((x) => <li key={x}>{x}</li>)}</ul></div>
       </div>
-      <Link className="more-link" href={`/programa/${stage.slug}`}>Ver la etapa completa en el programa <Icon name="arrowRight" size={16} /></Link>
+      <Link className="more-link" href={`/programa/${PUBLIC_SLUG[stage.layer] ?? stage.slug}`}>Ver la etapa completa en el programa <Icon name="arrowRight" size={16} /></Link>
     </div>
   );
 }
