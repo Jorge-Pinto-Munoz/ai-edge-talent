@@ -34,14 +34,13 @@ export type PanelRow = {
   files: { name: string; path: string }[];
 };
 
-/** Enlaces <a> a propósito: en la página de etapa, la navegación cliente que solo cambia ?tab=/?sub= no se aplica.
- *  Desafío y entregas: indicadores, flujo de 4 pasos (filtros) y listado de personas con acceso a «Evaluar». */
-export function SubmissionsPanel({ base, rows: allRows, isAdmin, next = null }: { base: string; rows: PanelRow[]; isAdmin: boolean; next?: Layer | null }) {
+/**
+ * Participantes y entregas: barra de avance (que también filtra), selección para pasar de etapa o descargar entregas
+ * en ZIP, y la lista con etapa actual, puntaje y entregable. Clic en la persona: su entrega, la revisión de la IA y la
+ * decisión. Enlaces <a> a propósito: en la página de etapa, la navegación cliente que solo cambia ?tab=/?sub= se pierde.
+ */
+export function SubmissionsPanel({ base, rows, isAdmin, next = null }: { base: string; rows: PanelRow[]; isAdmin: boolean; next?: Layer | null }) {
   const [sel, setSel] = useState<string[]>([]);
-  // Por defecto solo quienes siguen en la etapa; quienes ya avanzaron se ven aparte, con su etapa actual.
-  const [scope, setScope] = useState<"here" | "ahead" | "all">("here");
-  const nAhead = allRows.filter((r) => r.ahead).length;
-  const rows = allRows.filter((r) => (scope === "here" ? !r.ahead : scope === "ahead" ? r.ahead : true));
   const [filter, setFilter] = useState<DeliveryState | "all">("all");
   const [sort, setSort] = useState<"flow" | "done" | "name" | "score">("flow");
   const href = (r: PanelRow) => `${base}?tab=entregas&${r.subId ? `sub=${r.subId}` : `p=${r.id}`}`;
@@ -55,29 +54,41 @@ export function SubmissionsPanel({ base, rows: allRows, isAdmin, next = null }: 
   const count = (k: DeliveryState) => rows.filter((r) => r.state === k).length;
   const pct = (n: number) => (rows.length ? Math.round((n / rows.length) * 100) : 0);
   const shown = rows.filter((r) => filter === "all" || r.state === filter).sort(sorter);
+  const withFiles = sel.filter((id) => rows.find((r) => r.id === id)?.files.length);
+  const canSelect = isAdmin;
   return (
     <div className="stack">
-      <nav className="sp-scope" aria-label="Quiénes mostrar">
-        {([["here", `En esta etapa (${allRows.length - nAhead})`], ["ahead", `Ya avanzaron (${nAhead})`], ["all", `Todos (${allRows.length})`]] as const).map(([k, label]) => (
-          <button key={k} type="button" aria-pressed={scope === k} className={scope === k ? "on" : ""} onClick={() => { setScope(k); setFilter("all"); setSel([]); }}>{label}</button>
-        ))}
-      </nav>
+      <section className="sp-progress" aria-label="Avance de las entregas">
+        <div className="sp-stack" role="group" aria-label="Filtrar por paso del flujo">
+          {FLOW.map((f) => count(f.key) > 0 && (
+            <button key={f.key} type="button" className={`seg ${f.tone}${filter === f.key ? " on" : ""}`} style={{ flexGrow: count(f.key) }} aria-pressed={filter === f.key} title={`${f.label}: ${count(f.key)} (${pct(count(f.key))}%) · ${f.hint}`} onClick={() => setFilter(filter === f.key ? "all" : f.key)}>
+              {pct(count(f.key)) >= 8 ? `${count(f.key)}` : ""}
+            </button>
+          ))}
+          {rows.length === 0 && <span className="seg empty">Sin participantes</span>}
+        </div>
+        <ul className="sp-legend">
+          {FLOW.map((f) => (
+            <li key={f.key}>
+              <button type="button" className={`${f.tone}${filter === f.key ? " on" : ""}`} aria-pressed={filter === f.key} onClick={() => setFilter(filter === f.key ? "all" : f.key)}>
+                <i aria-hidden="true" /> {f.label} <strong>{count(f.key)}</strong> <small>{pct(count(f.key))}%</small>
+              </button>
+            </li>
+          ))}
+          {filter !== "all" && <li><button type="button" className="link-btn" onClick={() => setFilter("all")}>Ver todos ({rows.length})</button></li>}
+        </ul>
+      </section>
 
-      <nav className="sp-flow" aria-label="Flujo de entrega">
-        <button type="button" className={`sp-step all${filter === "all" ? " on" : ""}`} aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
-          <strong>{rows.length}</strong><span>Todos</span>
-        </button>
-        {FLOW.map((f, i) => (
-          <button key={f.key} type="button" className={`sp-step ${f.tone}${filter === f.key ? " on" : ""}`} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
-            <em>{i + 1}</em>
-            <strong>{count(f.key)} <small className="sp-pct">{pct(count(f.key))}%</small></strong>
-            <span>{f.label}</span>
-            <small>{f.hint}</small>
-          </button>
-        ))}
-      </nav>
-
-      {isAdmin && <BulkMoveBar selected={sel} total={shown.length} to={next} onSelectAll={() => setSel(shown.map((r) => r.id))} onClear={() => setSel([])} />}
+      {isAdmin && (
+        <BulkMoveBar
+          selected={sel}
+          total={shown.length}
+          to={next}
+          onSelectAll={() => setSel(shown.map((r) => r.id))}
+          onClear={() => setSel([])}
+          extra={withFiles.length > 0 ? <a className="btn small ghost" href={`${base}/descargar-entregas?ids=${withFiles.join(",")}`} download>Descargar entregas (ZIP · {withFiles.length})</a> : null}
+        />
+      )}
 
       <div className="sp-bar">
         <strong>{shown.length} participante{shown.length === 1 ? "" : "s"}{filter !== "all" ? ` · ${FLOW.find((f) => f.key === filter)?.label}` : ""}</strong>
@@ -93,39 +104,41 @@ export function SubmissionsPanel({ base, rows: allRows, isAdmin, next = null }: 
       <div className="table-wrap" tabIndex={0}>
         <table className="rtable sp-table">
           <thead>
-            <tr>{isAdmin && next && <th className="sp-check"><span className="sr-only">Seleccionar</span></th>}<th>Participante</th>{scope !== "here" && <th>Etapa actual</th>}<th>Paso del flujo</th><th>Intento</th><th>Puntaje</th><th>Enviado</th><th><span className="sr-only">Acción</span></th></tr>
+            <tr>
+              {canSelect && <th className="sp-check"><input type="checkbox" aria-label="Seleccionar a todos" checked={shown.length > 0 && shown.every((r) => sel.includes(r.id))} onChange={(e) => setSel(e.target.checked ? shown.map((r) => r.id) : [])} /></th>}
+              <th>Participante</th><th>Etapa actual</th><th>Paso</th><th>Puntaje</th><th>Entregable</th><th><span className="sr-only">Acción</span></th>
+            </tr>
           </thead>
           <tbody>
             {shown.map((r) => {
               const at = FLOW.findIndex((f) => f.key === r.state);
               return (
                 <tr key={r.id} className="sp-row">
-                  {isAdmin && next && <td className="sp-check"><input type="checkbox" aria-label={`Seleccionar a ${r.name}`} checked={sel.includes(r.id)} onChange={(e) => setSel((x) => (e.target.checked ? [...x, r.id] : x.filter((y) => y !== r.id)))} /></td>}
+                  {canSelect && <td className="sp-check"><input type="checkbox" aria-label={`Seleccionar a ${r.name}`} checked={sel.includes(r.id)} onChange={(e) => setSel((x) => (e.target.checked ? [...x, r.id] : x.filter((y) => y !== r.id)))} /></td>}
                   <td className="rt-title">
                     <a href={href(r)} className="sp-name"><strong>{r.name}</strong></a>
                     <small className="muted">{[r.client, r.role].filter(Boolean).join(" · ") || "—"}</small>
                     {isAdmin && <a className="sp-move" href={`${base}?tab=entregas&p=${r.id}#etapa`}>Mover de etapa</a>}
                   </td>
-                  {scope !== "here" && <td data-label="Etapa actual"><span className={`badge ${r.ahead ? "brand" : ""}`}>{r.stageName}</span></td>}
+                  <td data-label="Etapa actual"><span className={`badge ${r.ahead ? "brand" : ""}`}>{r.stageName}</span></td>
                   <td data-label="Paso">
-                    <span className="sp-dots" aria-hidden="true">{FLOW.map((f, i) => <i key={f.key} className={i < at ? "past" : i === at ? `now ${f.tone}` : ""} />)}</span>
                     <span className={`sp-pill ${FLOW[at].tone}`}>{FLOW[at].label}</span>
-                  </td>
-                  <td data-label="Intento">
-                    {r.attempt ? <>{r.attempt}{r.maxAttempts ? ` de ${r.maxAttempts}` : ""}{r.attempt > 1 && <span className="badge warn" style={{ marginLeft: 6 }}>Reintento</span>}</> : <span className="muted">—</span>}
+                    {r.attempt && r.attempt > 1 ? <small className="muted"> · intento {r.attempt}{r.maxAttempts ? ` de ${r.maxAttempts}` : ""}</small> : null}
                   </td>
                   <td data-label="Puntaje">
                     {r.score != null ? <strong>{Math.round(r.score)}</strong> : r.aiScore != null ? <span className="muted" title="Propuesta de la IA, aún sin tu decisión">IA {Math.round(r.aiScore)}</span> : <span className="muted">—</span>}
                   </td>
-                  <td data-label="Enviado">{r.submittedAt ? <small>{fmtDate(r.submittedAt)}</small> : <span className="muted">—</span>}</td>
+                  <td data-label="Entregable">
+                    {r.files.length > 0 ? <span className="sp-dl">{r.files.map((f) => <SignedLink key={f.path} bucket="submissions" path={f.path}>{f.name}</SignedLink>)}</span> : <span className="muted">—</span>}
+                    {r.submittedAt && <small className="muted sp-when">{fmtDate(r.submittedAt)}</small>}
+                  </td>
                   <td className="sp-act">
-                    {r.files.length > 0 && <span className="sp-dl" title="Descargar su entrega final">{r.files.map((f) => <SignedLink key={f.path} bucket="submissions" path={f.path}>{r.files.length > 1 ? f.name : "Descargar"}</SignedLink>)}</span>}
-                    <a className={`btn small${isAdmin && r.state === "pending" ? "" : " ghost"}`} href={href(r)}>{isAdmin && r.state === "pending" ? "Evaluar" : "Detalles"}</a>
+                    <a className={`btn small${isAdmin && r.state === "pending" ? "" : " ghost"}`} href={href(r)}>{isAdmin && r.state === "pending" ? "Evaluar" : "Ver"}</a>
                   </td>
                 </tr>
               );
             })}
-            {shown.length === 0 && <tr><td colSpan={8} className="muted">{scope === "ahead" ? "Nadie ha avanzado aún a la etapa siguiente." : "Nadie en este paso."}</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={7} className="muted">Nadie en este paso.</td></tr>}
           </tbody>
         </table>
       </div>

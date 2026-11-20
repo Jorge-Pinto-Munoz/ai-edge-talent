@@ -20,13 +20,12 @@ import { GroupProgress } from "@/components/journey-admin/GroupProgress";
 import { stageCoverage } from "@/lib/journey/coverage";
 import { EvaluateView } from "@/components/journey-admin/EvaluateView";
 import { MoveStage } from "@/components/journey-admin/MoveStage";
-import { AiBar } from "@/components/journey-admin/ReviewQueue";
 import { deliveryState } from "@/lib/journey/delivery-status";
 import { prettyName } from "@/lib/text/org";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ReSessions } from "@/components/teacher/ReSessions";
 import { LAYERS } from "@/lib/journey/rules";
-import { PulseStatus } from "@/components/journey-admin/PulseStatus";
+import { overallProgress } from "@/lib/aicert/progress";
 import { ReWelcomeCard } from "@/components/journey-admin/ReWelcomeCard";
 import { pendingReWelcome } from "@/lib/journey/welcome";
 import { GrantAttempt } from "@/components/journey-admin/GrantAttempt";
@@ -135,9 +134,19 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         // Intentos extra por persona (para saber quién agotó sus intentos) y personas dadas de baja del programa en esta Wave.
         const [{ data: ggrants }, { data: drops }] = await Promise.all([
           stage.layer === "AI_MINDSET" && gids.length ? svc.from("attempt_grants").select("candidate_id, capsule_id, extra").in("candidate_id", gids) : Promise.resolve({ data: [] as { candidate_id: string; capsule_id: string; extra: number }[] }),
-          svc.from("audit_log").select("details").eq("action", "candidate.deleted").eq("wave_id", waveId),
+          svc.from("audit_log").select("details, target_email").eq("action", "candidate.deleted").eq("wave_id", waveId),
         ]);
-        const dropped = (drops ?? []).map((d) => d.details as { name?: string; enrolled?: boolean } | null).filter((d) => d?.enrolled && d.name).map((d) => d!.name!);
+        // Las pruebas con cuentas del equipo (admin, Delivery…) no cuentan como bajas del programa.
+        const dropEmails = [...new Set((drops ?? []).map((d) => (d.target_email ?? "").toLowerCase()).filter(Boolean))];
+        const { data: internal } = dropEmails.length ? await svc.from("profiles").select("email").in("email", dropEmails).neq("role", "kiber") : { data: [] as { email: string }[] };
+        const internalSet = new Set((internal ?? []).map((x) => x.email.toLowerCase()));
+        const { data: staffNames } = await svc.from("profiles").select("full_name").in("role", ["admin", "delivery", "profesor", "hub", "mentor", "bp"]);
+        const staffNameSet = new Set((staffNames ?? []).map((x) => (x.full_name ?? "").trim().toLowerCase()).filter(Boolean));
+        const dropped = (drops ?? [])
+          .filter((d) => !internalSet.has((d.target_email ?? "").toLowerCase()))
+          .map((d) => d.details as { name?: string; enrolled?: boolean } | null)
+          .filter((d) => d?.enrolled && d.name && !staffNameSet.has(d.name.trim().toLowerCase()))
+          .map((d) => d!.name!);
         const active = new Set((profs ?? []).filter((x) => x.status === "ACTIVE").map((x) => x.id));
         const LAB: Record<string, string> = { IDEA: "Proyecto: idea", BUILDING: "Proyecto en construcción", READY: "Proyecto listo para el Showcase" };
         const signal = (p: { id: string }): { light: "green" | "yellow" | "red"; reason: string } | null => {
@@ -180,7 +189,6 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         return <GroupProgress cov={cov} stageName={stage.name} doneLabel={DONE[stage.layer] ?? "completaron"} dropped={dropped} />;
       })())}
 
-      {stage.layer !== "ASSESSMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && <PulseStatus waveId={waveId} layer={stage.layer as Layer} />}
 
       {stage.layer === "ROLE_ENABLEMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && (await stageIsOpen(waveId, "ROLE_ENABLEMENT")) && (await (async () => {
         const w = await pendingReWelcome(waveId);
@@ -188,11 +196,12 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
       })())}
 
       {/* Pestañas con <a>: la navegación cliente que solo cambia ?tab= se pierde en esta página. */}
-      <nav className="view-toggle jn-tabs" aria-label={`Secciones de ${stage.name}`}>
+      {/* Ancla: al cambiar de pestaña la página recarga y vuelve aquí, no al principio. */}
+      <nav id="secciones" className="view-toggle jn-tabs" aria-label={`Secciones de ${stage.name}`}>
         {tabs.map((t) => {
           const action = sum.actions.find((a) => a.tab === t.key);
           return (
-            <a key={t.key} href={t.key === tabs[0].key ? base : `${base}?tab=${t.key}`} aria-current={t.key === tab.key ? "true" : undefined}>
+            <a key={t.key} href={`${t.key === tabs[0].key ? base : `${base}?tab=${t.key}`}#secciones`} aria-current={t.key === tab.key ? "true" : undefined}>
               {t.label}{action && <span className="jn-tab-n" aria-label={`${action.count} pendientes`}>{action.count}</span>}
             </a>
           );
@@ -260,7 +269,28 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
       {tab.key === "participantes" && (
         here.length === 0
           ? <section className="adm-card"><div className="empty"><Icon name="users" size={28} /><span>Nadie está en {stage.name} por ahora.</span></div></section>
-          : <ParticipantsBoard waveId={waveId} people={here as never} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} />
+          : await (async () => {
+              // Avance AI CERT (lo reporta el profesional), asistencia a las sesiones y último ingreso de cada persona.
+              const svc = supabaseService();
+              const hids = here.map((p) => p.id);
+              const uids = here.map((p) => p.user_id).filter(Boolean) as string[];
+              const [{ data: prog }, { data: att }, { data: creds }] = await Promise.all([
+                hids.length ? svc.from("aicert_progress").select("candidate_id, course, percent").in("candidate_id", hids) : Promise.resolve({ data: [] as { candidate_id: string; course: "INTRO" | "SPECIALIST"; percent: number }[] }),
+                stage.layer === "ROLE_ENABLEMENT" && hids.length ? svc.from("re_session_attendance").select("candidate_id, attended").eq("wave_id", waveId).in("candidate_id", hids) : Promise.resolve({ data: [] as { candidate_id: string; attended: boolean }[] }),
+                uids.length ? svc.from("user_credentials").select("user_id, last_login_at").in("user_id", uids) : Promise.resolve({ data: [] as { user_id: string; last_login_at: string | null }[] }),
+              ]);
+              const people = here.map((p) => {
+                const pr = (prog ?? []).find((x) => x.candidate_id === p.id);
+                const mine = (att ?? []).filter((x) => x.candidate_id === p.id);
+                return {
+                  ...p,
+                  aicert: pr ? overallProgress(pr as never) : null,
+                  attendance: stage.layer === "ROLE_ENABLEMENT" ? { attended: mine.filter((x) => x.attended).length, recorded: mine.length } : null,
+                  lastLogin: (creds ?? []).find((x) => x.user_id === p.user_id)?.last_login_at ?? null,
+                };
+              });
+              return <ParticipantsBoard waveId={waveId} people={people as never} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} showAicert={stage.layer === "ROLE_ENABLEMENT"} />;
+            })()
       )}
 
       {tab.key === "entregas" && (await (async () => {
@@ -331,16 +361,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             />
           );
         }
-        return <>
-          {isAdmin && (
-            <div className="sp-tools">
-              <AiBar waveId={waveId} subs={mine.map(asSub) as never} />
-              <a className="btn small ghost" href={`${base}/exportar-entregas`} download>Descargar reporte (Excel)</a>
-              <a className="btn small ghost" href={`${base}/descargar-entregas`} download>Descargar todas las entregas (ZIP)</a>
-            </div>
-          )}
-          <SubmissionsPanel base={base} rows={rows} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} />
-        </>;
+        return <SubmissionsPanel base={base} rows={rows} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} />;
       })())}
 
       {tab.key === "aicert" && (await (async () => {

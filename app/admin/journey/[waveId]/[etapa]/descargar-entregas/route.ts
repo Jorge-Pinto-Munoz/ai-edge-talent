@@ -12,20 +12,23 @@ const clean = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").replace
 
 /**
  * Entregas finales de la etapa en un ZIP: por persona, su entrega aprobada (o la última, si aún no aprueba).
- * Una carpeta por persona. Solo admin.
+ * Una carpeta por persona. `?ids=` (separados por coma) limita a las personas seleccionadas. Solo admin.
  */
-export async function GET(_: Request, { params }: { params: Promise<{ waveId: string; etapa: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ waveId: string; etapa: string }> }) {
   const viewer = await getViewer();
   if (!viewer || viewer.role !== "admin") return NextResponse.json({ error: "Solo admin." }, { status: 403 });
   const { waveId, etapa } = await params;
   const stage = stageBySlug(etapa);
   if (!stage || stage.layer === "ASSESSMENT") return NextResponse.json({ error: "Etapa no válida." }, { status: 404 });
+  const ids = (new URL(req.url).searchParams.get("ids") ?? "").split(",").map((x) => x.trim()).filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 200);
   const svc = supabaseService();
-  const { data: subs } = await svc
+  let q = svc
     .from("submissions")
     .select("candidate_id, capsule_id, attempt, status, files, capsules!inner(title, layer, wave_id), candidates!inner(full_name)")
     .eq("capsules.layer", stage.layer)
     .eq("capsules.wave_id", waveId);
+  if (ids.length) q = q.in("candidate_id", ids);
+  const { data: subs } = await q;
   // Por persona y módulo: la aprobada; si no hay, la de mayor intento.
   const best = new Map<string, (typeof subs extends (infer T)[] | null ? T : never)>();
   for (const s of subs ?? []) {

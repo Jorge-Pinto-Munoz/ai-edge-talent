@@ -36,6 +36,18 @@ export function StageOpeningPanel(props: { waveId: string; layer: Layer; stageNa
   const router = useRouter();
   const run = (fn: () => Promise<OpeningResult>) => start(async () => { const r = await fn(); setMsg(r); if (r.ok) { setPicking(false); router.refresh(); } });
 
+  // Ya habilitada: una franja compacta (estado, desde cuándo, primer módulo y aviso), sin repetir conteos.
+  if (status === "open" || status === "finished") {
+    return (
+      <section className={`op-strip st-${status}`} aria-label={`${stageName}: ${OPENING_LABEL[status]}`}>
+        <span className={`op-state st-${status}`}><i aria-hidden="true" /> {OPENING_LABEL[status]}</span>
+        <span className="op-item"><Icon name="calendar" size={16} /> <span><small>Habilitada desde</small>{opensAt ? fmt(opensAt) : "—"}</span></span>
+        <span className="op-item"><Icon name="flag" size={16} /> <span><small>Primer módulo</small>{props.firstChallenge ?? "Sin módulos publicados"}</span></span>
+        {props.pending > 0 && <span className="op-item warn"><Icon name="clock" size={16} /> <span><small>{mindset ? "Por confirmar compromiso" : "Aún en etapas anteriores"}</small>{props.pending}</span></span>}
+        <span className="op-item muted"><Icon name="send" size={16} /> <span><small>Aviso</small>{props.notifiedAt ? `Enviado ${fmt(props.notifiedAt)}` : "Pendiente"}</span></span>
+      </section>
+    );
+  }
   return (
     <section className={`card open-panel st-${status}`} aria-labelledby="op-h">
       <div className="spread">

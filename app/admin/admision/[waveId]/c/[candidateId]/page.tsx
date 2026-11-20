@@ -15,6 +15,7 @@ import { TEMPLATE_LABEL, type EmailTemplate } from "@/lib/email/templates";
 import { TEMPLATE_NAME, type IdentityTemplate } from "@/lib/email/identity";
 import { RescueReview, type RescueRow } from "@/components/admission/RescueReview";
 import { shownEmail } from "@/lib/talent/rules";
+import { ReProgress } from "@/components/teacher/ReProgress";
 
 export const dynamic = "force-dynamic";
 
@@ -162,6 +163,7 @@ export default async function CandidateDetail({ params }: { params: Promise<{ wa
           <ul>{(emails ?? []).map((m, i) => <li key={i}><small>{fmtDate(m.created_at)} · {TEMPLATE_NAME[m.template as IdentityTemplate] ?? TEMPLATE_LABEL[m.template as EmailTemplate] ?? m.template} · {m.status === "sent" ? "enviado" : m.status === "failed" ? "falló" : "en cola"}{m.error ? ` (${m.error})` : ""}</small></li>)}</ul>
         </div>
       </div>
+      {["CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"].includes(c.status) && <ReProgress waveId={waveId} candidateId={c.id} isAdmin={isAdmin} />}
     </div>
   );
 }
