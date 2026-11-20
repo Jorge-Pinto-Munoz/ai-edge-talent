@@ -11,6 +11,7 @@ const ROLES: { perfil: string; crea: string; pasos: string; llega: string }[] = 
   { perfil: "Administración (Líder de producto)", crea: "La cuenta principal ya existe y está protegida: no se puede degradar, pausar ni eliminar. Otras cuentas admin las creas tú.", pasos: "Ingresar → correo → código de 6 dígitos.", llega: "Portal de administración completo." },
   { perfil: "Delivery", crea: "Nadie: los correos de Delivery cargados para la Wave reciben el rol solos en su primer ingreso. Para uno nuevo: Crear usuario con rol Delivery y su Wave.", pasos: "Ingresar → correo → código.", llega: "Equipo: sus postulantes y profesionales." },
   { perfil: "AI Coach", crea: "Tú, en Usuarios y accesos → Crear usuario, rol AI Coach.", pasos: "Le llega una invitación; ingresa con su correo y el código. Hasta su primer ingreso la cuenta queda pendiente y sin permisos.", llega: "Panel de AI Coach." },
+  { perfil: "Profesor/a (Role Enablement)", crea: "Tú, en Usuarios y accesos → Crear usuario, rol Profesor, marcando su Wave. O en Etapas → Role Enablement → Sesiones → «Profesores de la Wave» (si ya tiene cuenta).", pasos: "Le llega la invitación; ingresa con su correo y el código de 6 dígitos.", llega: "Sesiones · Role Enablement: registra las 4 sesiones (notas, material, asistencia y comentarios para el admin)." },
   { perfil: "Líder del Hub AI", crea: "Tú, en Crear usuario, rol Líder Hub AI. Luego súmalo a su Wave en Etapas → AI Lab (equipo del Hub, al final).", pasos: "Igual que AI Coach.", llega: "AI Lab y Showcase de sus Waves." },
   { perfil: "Business Partner", crea: "Tú lo creas, o la persona lo pide en Crear cuenta y tú apruebas en Usuarios y accesos → Solicitudes.", pasos: "Si pidió cuenta, recibe un correo al aprobarse y desde ahí ingresa.", llega: "Equipo." },
   { perfil: "Profesional que postula", crea: "Se crea sola al registrarse en la postulación.", pasos: "Registro → verifica su correo con el código → Assessment (se guarda solo) → enviar.", llega: "Su postulación y luego Mi journey." },
@@ -24,7 +25,6 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   { q: "¿Cómo quito el acceso a alguien?", a: "En su ficha de Usuarios y accesos: Pausar (temporal), Revocar acceso o Dar de baja. \"Cerrar sesiones\" lo saca de todos sus dispositivos. Siempre debe quedar al menos una cuenta admin activa." },
   { q: "¿Cómo cambio el rol de una persona?", a: "En su ficha, elige el rol y \"Aplicar rol\". Sus sesiones abiertas se cierran para que el cambio rija de inmediato." },
   { q: "Un profesional quiere partir de cero", a: <>En <Link href="/admin/admision">Admisión</Link>, menú &quot;···&quot; de su fila → Eliminar. Se borran su postulación, correos y códigos, y puede postular de nuevo. No se puede con personas ya inscritas.</> },
-  { q: "¿Qué pasó con el rol Profesor?", a: "Se eliminó. Las cuentas que lo tenían quedaron como Profesional; las clases las gestionan administración y Delivery en Journey (Clases y asistencia)." },
 ];
 
 const CLAUDE_STEPS = [

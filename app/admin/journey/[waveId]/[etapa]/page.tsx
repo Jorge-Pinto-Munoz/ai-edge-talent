@@ -26,6 +26,8 @@ import { prettyName } from "@/lib/text/org";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ReSessions } from "@/components/teacher/ReSessions";
 import { PulseStatus } from "@/components/journey-admin/PulseStatus";
+import { ReWelcomeCard } from "@/components/journey-admin/ReWelcomeCard";
+import { pendingReWelcome } from "@/lib/journey/welcome";
 import { GrantAttempt } from "@/components/journey-admin/GrantAttempt";
 import { maxWithGrant } from "@/lib/journey/attempts";
 import { LabWorkspace } from "@/components/hub/LabWorkspace";
@@ -164,6 +166,11 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
       })())}
 
       {stage.layer !== "ASSESSMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && <PulseStatus waveId={waveId} layer={stage.layer as Layer} />}
+
+      {stage.layer === "ROLE_ENABLEMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && (await (async () => {
+        const w = await pendingReWelcome(waveId);
+        return <ReWelcomeCard waveId={waveId} total={w.all.length} pending={w.pending.map((p) => p.full_name)} />;
+      })())}
 
       {stage.layer === "AI_MINDSET" && !detailOpen && (await (async () => {
         // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).

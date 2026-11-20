@@ -222,10 +222,10 @@ function CreateUser({ waves, onDone }: { waves: Wave[]; onDone: () => void }) {
           <div className="field"><label htmlFor="cu-r">Rol / cargo</label><input id="cu-r" value={f.roleTitle} onChange={set("roleTitle")} /></div>
           <p className="muted ud-note">Crear la cuenta no aprueba evaluaciones ni salta etapas: en la Wave queda invitado/a a postular, o se vincula a su postulación si ya existe.</p>
         </>
-      ) : f.kind !== "delivery" ? (
+      ) : f.kind !== "delivery" && f.kind !== "profesor" ? (
         <p className="muted ud-note">Sus permisos quedan activos cuando la persona ingresa por primera vez con el código que llega a su correo. Puedes cambiar el rol o pausar la cuenta desde su ficha.</p>
       ) : (
-        <fieldset className="ud-checks"><legend>Waves que acompaña</legend>{open.map((w) => <label key={w.id}><input type="checkbox" checked={ws.includes(w.id)} onChange={(e) => setWs((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>)}</fieldset>
+        <fieldset className="ud-checks"><legend>{f.kind === "profesor" ? "Waves donde dicta Role Enablement" : "Waves que acompaña"}</legend>{open.map((w) => <label key={w.id}><input type="checkbox" checked={ws.includes(w.id)} onChange={(e) => setWs((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>)}</fieldset>
       )}
       {out}
       <div className="ud-actions">

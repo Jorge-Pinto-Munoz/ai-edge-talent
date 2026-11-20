@@ -7,6 +7,7 @@ import { audit, ensureAccount, portalLink, sendIdentityEmail } from "@/lib/ident
 import { errorText } from "@/lib/text/errors";
 import { LAYERS, layerIndex, layerName, type Layer } from "./rules";
 import { CLOSING_PULSE } from "./closure";
+import { sendReWelcome } from "./welcome";
 
 const JOURNEY: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
 const ADMITTED = ["SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
@@ -54,7 +55,9 @@ export async function moveParticipant(candidateId: string, to: Layer, note: stri
       const owed = skipped.filter((l) => !(answered ?? []).some((a) => a.pulse === CLOSING_PULSE[l.id]));
       const pulseLine = owed.length ? `En tu portal tienes pendiente el pulso de experiencia de ${owed.map((l) => l.name).join(" y ")}: son 2 minutos y nos ayuda a mejorar el programa.` : "";
       const extra = [note.trim(), pulseLine].filter(Boolean).join(" ") || undefined;
-      const r = await sendIdentityEmail("STAGE_MOVED", c.corporate_email, { name: c.full_name, stage: LAYERS.find((l) => l.id === to)!.name, extra, link: portalLink("ingresar", c.corporate_email, "/mi-journey") }, { userId: (patch.user_id as string | undefined) ?? c.user_id, candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
+      // A Role Enablement: la bienvenida con las instrucciones de la etapa (una sola vez por persona).
+      const welcome = to === "ROLE_ENABLEMENT" ? await sendReWelcome(c.id, { actor: viewer.id, note: extra, svc }) : null;
+      const r = welcome && welcome !== "skipped" ? { ok: welcome === "sent", error: "error del proveedor" } : await sendIdentityEmail("STAGE_MOVED", c.corporate_email, { name: c.full_name, stage: LAYERS.find((l) => l.id === to)!.name, extra, link: portalLink("ingresar", c.corporate_email, "/mi-journey") }, { userId: (patch.user_id as string | undefined) ?? c.user_id, candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
       email = r.ok ? "sent" : "failed";
       detail = r.ok ? " Correo enviado con copia a su Delivery." : ` El correo no salió (${r.error}).`;
     }

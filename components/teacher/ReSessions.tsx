@@ -5,6 +5,7 @@ import { waveSessions } from "@/lib/teacher/sessions";
 import { MATCH_LABEL, attendanceMatch, type Focus } from "@/lib/teacher/sessions-rules";
 import { todayChile } from "@/lib/teacher/rules";
 import { ReSessionForm } from "./ReSessionForm";
+import { WaveStaffManager } from "@/components/admin/WaveStaffManager";
 import { DownloadButton } from "@/components/journey/SignedLink";
 import { Icon } from "@/components/site/Icon";
 import { fmtYmd } from "@/components/ui";
@@ -29,6 +30,9 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
   const low = new Set(marks.filter((a) => a.focus === "LOW").map((a) => a.candidateId));
   const checkins = sessions.reduce((n, s) => n + s.checkins.filter((c) => group.some((p) => p.id === c.candidateId)).length, 0);
   const current = open ?? (sessions.find((s) => !s.heldOn || s.heldOn > today)?.n ?? 4);
+  // Profesores asignados a la Wave (solo el admin los ve y gestiona).
+  const staffEmails = viewer.role === "admin" ? ((await svc.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "profesor")).data ?? []).map((s) => s.email) : [];
+  const { data: staffProfiles } = staffEmails.length ? await svc.from("profiles").select("email, full_name").in("email", staffEmails) : { data: [] as { email: string; full_name: string | null }[] };
 
   return (
     <div className="stack">
@@ -104,6 +108,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
           );
         })}
       </div>
+      {viewer.role === "admin" && <WaveStaffManager waveId={waveId} role="profesor" people={staffEmails.map((email) => ({ email, name: staffProfiles?.find((p) => p.email === email)?.full_name ?? null }))} />}
     </div>
   );
 }

@@ -63,8 +63,9 @@ export async function createUser(input: { kind: CreatableRole; fullName: string;
     dbCheck(upErr);
     if (existing && existing.role !== input.kind) await revokeSessions(userId, email, svc);
 
-    if (input.kind === "delivery") {
-      for (const w of input.waveIds) await svc.from("wave_staff").upsert({ wave_id: w, email, role: "delivery", added_by: actor.id });
+    if (input.kind === "delivery" || input.kind === "profesor") {
+      // Delivery: Waves que acompaña. Profesor: Waves donde dicta las sesiones de Role Enablement.
+      for (const w of input.waveIds) await svc.from("wave_staff").upsert({ wave_id: w, email, role: input.kind, added_by: actor.id });
     } else if (input.kind === "kiber" && input.waveIds[0]) {
       // Un alta manual NO aprueba evaluaciones: el profesional queda invitado a postular en la Wave (o se vincula a su postulación).
       const w = input.waveIds[0];

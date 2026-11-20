@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseService } from "@/lib/supabase/server";
 import { audit, portalLink, sendIdentityEmail } from "@/lib/identity/service";
 import { applyGrants, type Grant } from "./attempts";
+import { sendReWelcome } from "./welcome";
 import { CLOSING_PULSE, closureDecision, stageRequirements, type RequirementInput } from "./closure";
 import { layerName, type Layer } from "./rules";
 
@@ -99,6 +100,8 @@ export async function syncStageClosure(candidateId: string, actor: string | null
       actor,
     });
     await audit("stage.unlocked", { actor, candidateId: c.id, waveId: c.wave_id, targetUser: c.user_id, details: { from: layer, to: d.next }, eventKey: `unlocked:${c.id}:${d.next}` }, svc);
+    // Al llegar a Role Enablement: correo con lo que hará en la plataforma (una sola vez; un fallo no frena el avance).
+    if (d.next === "ROLE_ENABLEMENT") await sendReWelcome(c.id, { actor, svc }).catch((e) => console.error("[cierre] bienvenida RE", e instanceof Error ? e.message : e));
   }
   revalidatePath("/mi-journey");
   revalidatePath(`/admin/journey/${c.wave_id}`, "layout");

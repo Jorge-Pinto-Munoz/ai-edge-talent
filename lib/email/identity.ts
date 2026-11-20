@@ -5,7 +5,7 @@
 export type IdentityTemplate =
   | "ACTIVATION" | "ACCOUNT_INVITE" | "DELIVERY_INVITE" | "PIN_RESET" | "ADMIN_STEP" | "ACCESS_UPDATED"
   | "PULSE_REMINDER" | "DELIVERY_PULSE_ALERT" | "ACCESS_REQUEST_ADMIN" | "ACCESS_REQUEST_APPROVED" | "ACCESS_REQUEST_REJECTED" | "APPLICATION_RECEIVED" | "DELIVERY_APPLICATION_SUBMITTED" | "LOGIN_CODE" | "CANDIDATE_ACCESS"
-  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED" | "SUBMISSION_APPROVED" | "SUBMISSION_RETRY" | "ATTEMPT_GRANTED";
+  | "SELECTED_WELCOME" | "RESCUE_INVITE" | "RESCUE_SUBMITTED_ADMIN" | "STAGE_OPEN" | "DELIVERY_DECISION" | "RESCUE_RECEIVED" | "PROGRAM_REMOVED" | "STAGE_MOVED" | "SUBMISSION_APPROVED" | "SUBMISSION_RETRY" | "ATTEMPT_GRANTED" | "RE_WELCOME";
 
 export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   ACTIVATION: "Activación del portal",
@@ -34,6 +34,7 @@ export const TEMPLATE_NAME: Record<IdentityTemplate, string> = {
   SUBMISSION_APPROVED: "Entrega aprobada",
   SUBMISSION_RETRY: "Entrega con ajustes (reintento)",
   ATTEMPT_GRANTED: "Intento extra habilitado",
+  RE_WELCOME: "Bienvenida a Role Enablement",
 };
 
 export interface Rendered { subject: string; text: string; html: string }
@@ -161,6 +162,21 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
         "Tu Delivery va en copia de este correo por si necesitas apoyo.",
       ];
       return { subject: canRetry ? `AI Edge Talent | Ajusta tu entrega de «${c.stage ?? "tu reto"}» (nueva oportunidad)` : `AI Edge Talent | Resultado de tu entrega de «${c.stage ?? "tu reto"}»`, text: [...plain(p), "", `Ir al módulo: ${c.link}`].join("\n"), html: layout(canRetry ? "Tu entrega necesita ajustes" : "Resultado de tu entrega", p, canRetry ? { cta: { label: "SUBIR MI NUEVA ENTREGA", href: c.link ?? "" } } : { foot: "Equipo AI Edge Talent · Kibernum" }) };
+    }
+    case "RE_WELCOME": {
+      const p = [
+        hi,
+        "¡Felicitaciones por cerrar AI First Mindset! Desde ahora estás en Role Enablement: la etapa en que te certificas en IA para tu rol con AI CERTs, acompañado/a por tu profesor/a.",
+        ...(c.extra ? [c.extra] : []),
+        "# Lo que harás en la plataforma",
+        "1. Sesiones con tu profesor/a: son 4, una por semana. En Mi journey verás cada sesión con su fecha, tema, notas y material. Después de cada una, marca «Fui a la sesión» (check-in).",
+        "2. Tu avance en AI CERT: estudias en tu plataforma de estudiante AI CERT. Cada semana anota en Mi journey en qué curso vas, el tramo y el porcentaje. Así tu Delivery y el equipo pueden apoyarte a tiempo.",
+        "3. Tu certificación: cuando rindas el examen, registra el resultado y sube tu certificado en Mi journey. Kibernum financia hasta dos intentos de examen.",
+        "4. Cierre de la etapa: cuando verifiquemos tu certificado, responde el pulso de cierre (2 minutos) y se abre el AI Lab.",
+        "# Para que te vaya bien",
+        "Reserva tiempo cada semana para estudiar, asiste a las sesiones y avisa a tu Delivery apenas tengas un bloqueo. Tu Delivery va en copia de este correo.",
+      ];
+      return { subject: "AI Edge Talent | Bienvenido/a a Role Enablement: lo que harás en la plataforma", text: [...plain(p), "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout("Bienvenido/a a Role Enablement", p, { cta: { label: "IR A MI JOURNEY", href: c.link ?? "" } }) };
     }
     case "ATTEMPT_GRANTED": {
       const p = [
