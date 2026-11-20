@@ -25,7 +25,7 @@ export function SessionSheet({ v, n }: { v: JourneyView; n: number }) {
   return (
     <div className="jr-sheet-stack">
       <ul className="jr-meta">
-        <li><Icon name="calendar" size={16} /> Semana {n}{s?.heldOn ? ` · ${fmtYmd(s.heldOn)}` : " · fecha por confirmar"}</li>
+        <li><Icon name="calendar" size={16} /> Semana {n}{s?.heldOn ? ` · ${fmtYmd(s.heldOn)}` : " · fecha por confirmar"}{s?.startsAt ? ` · ${s.startsAt}${s.endsAt ? `–${s.endsAt}` : ""}` : ""}</li>
         {s?.materials.length ? <li><Icon name="download" size={16} /> {s.materials.length} material(es)</li> : null}
       </ul>
       {closed && <div className="jr-feedback"><p>El equipo aún no habilita Role Enablement para tu Wave. Te avisaremos por correo; ahí verás aquí las notas y el material de cada sesión.</p></div>}
@@ -35,6 +35,7 @@ export function SessionSheet({ v, n }: { v: JourneyView; n: number }) {
       ) : (
         <p className="muted">{held ? "El profesor aún no deja notas de esta sesión." : "Después de la sesión, el profesor deja aquí sus notas y el material."}</p>
       )}
+      {s?.nextClass && <div className="jr-feedback"><strong>Para la próxima clase</strong><p style={{ whiteSpace: "pre-line" }}>{s.nextClass}</p></div>}
       {s?.materials.length ? <div className="dl-list">{s.materials.map((m) => <DownloadButton key={m.path} bucket="content" path={m.path} name={m.name} size={m.size} />)}</div> : null}
 
       <div className="jr-project">

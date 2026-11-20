@@ -1,5 +1,5 @@
 import "server-only";
-import { supabaseUser } from "@/lib/supabase/server";
+import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { waveReport } from "@/lib/pulse/report";
 import { attendanceByPerson } from "@/lib/teacher/rules";
 import { JOURNEY_STATUSES as JS } from "@/lib/admission/view-as";
@@ -35,8 +35,9 @@ const effective = (l: string | null): Layer => (l as Layer | null) ?? "AI_MINDSE
 const idx = (l: Layer) => LAYERS.findIndex((x) => x.id === l);
 
 /** Estado de cada etapa de la Wave, desde los datos reales (RLS del usuario). */
-export async function journeyOverview(waveId: string): Promise<{ stages: StageSummary[]; enrolled: number; candidates: number }> {
-  const db = await supabaseUser();
+export async function journeyOverview(waveId: string, reader?: ReturnType<typeof supabaseService>): Promise<{ stages: StageSummary[]; enrolled: number; candidates: number }> {
+  // `reader`: lectura con la llave del servidor para un rol de solo lectura ya autorizado por quien llama (profesor).
+  const db = reader ?? (await supabaseUser());
   const { data: cands } = await db.from("candidates").select("id, status, journey_layer").eq("wave_id", waveId);
   const cs = cands ?? [];
   const people = cs.filter((c) => JOURNEY_STATUSES.includes(c.status));

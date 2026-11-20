@@ -8,8 +8,19 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { DownloadButton } from "@/components/journey/SignedLink";
 import { Icon } from "@/components/site/Icon";
 
-export type FormPerson = { id: string; name: string; client: string | null; attended: boolean | null; focus: Focus; note: string; checkedIn: boolean };
-type Init = { heldOn: string; title: string; studentNotes: string; adminComments: string; materials: SessionFile[] };
+export type FormPerson = { id: string; name: string; client: string | null; attended: boolean | null; focus: Focus; rating: number | null; note: string; checkedIn: boolean };
+type Init = { heldOn: string; startsAt: string; endsAt: string; title: string; studentNotes: string; nextClass: string; adminComments: string; interventions: string; materials: SessionFile[] };
+
+/** 1 a 3 estrellas (clic en la misma estrella la quita). */
+function Stars({ value, onChange, name, disabled }: { value: number | null; onChange: (v: number | null) => void; name: string; disabled: boolean }) {
+  return (
+    <span className="stars" role="radiogroup" aria-label={`Evaluación de ${name} (1 a 3 estrellas)`}>
+      {[1, 2, 3].map((k) => (
+        <button key={k} type="button" role="radio" aria-checked={value === k} aria-label={`${k} estrella${k === 1 ? "" : "s"}`} disabled={disabled} className={value !== null && k <= value ? "on" : ""} onClick={() => onChange(value === k ? null : k)}>★</button>
+      ))}
+    </span>
+  );
+}
 
 /**
  * Registro de una sesión de Role Enablement (profesor o admin): lo que ven los profesionales (fecha, tema, notas, material),
@@ -18,7 +29,7 @@ type Init = { heldOn: string; title: string; studentNotes: string; adminComments
 export function ReSessionForm({ waveId, n, init, people, today }: { waveId: string; n: number; init: Init; people: FormPerson[]; today: string }) {
   const router = useRouter();
   const [f, setF] = useState(init);
-  const [att, setAtt] = useState(() => Object.fromEntries(people.map((p) => [p.id, { attended: p.attended, focus: p.focus, note: p.note }])));
+  const [att, setAtt] = useState(() => Object.fromEntries(people.map((p) => [p.id, { attended: p.attended, focus: p.focus, rating: p.rating, note: p.note }])));
   const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [pending, start] = useTransition();
@@ -44,7 +55,7 @@ export function ReSessionForm({ waveId, n, init, people, today }: { waveId: stri
     start(async () => {
       const attendance = people
         .filter((p) => att[p.id]?.attended !== null && att[p.id]?.attended !== undefined)
-        .map((p) => ({ candidateId: p.id, attended: Boolean(att[p.id].attended), focus: att[p.id].focus, note: att[p.id].note }));
+        .map((p) => ({ candidateId: p.id, attended: Boolean(att[p.id].attended), focus: att[p.id].focus, rating: att[p.id].rating, note: att[p.id].note }));
       const r = await saveReSession({ waveId, n, ...f, attendance });
       setMsg(r);
       if (r.ok) router.refresh();
@@ -62,8 +73,19 @@ export function ReSessionForm({ waveId, n, init, people, today }: { waveId: stri
             <input type="text" maxLength={160} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Ej.: Prompting avanzado para QA" />
           </label>
         </div>
+        <div className="grid grid-2">
+          <label className="field">Hora de inicio
+            <input type="time" value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} />
+          </label>
+          <label className="field">Hora de término
+            <input type="time" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} />
+          </label>
+</div>
         <label className="field">Notas para los profesionales
           <textarea rows={4} maxLength={4000} value={f.studentNotes} onChange={(e) => setF({ ...f, studentNotes: e.target.value })} placeholder="Resumen, tareas para la semana, enlaces útiles. Lo ven en su journey." />
+        </label>
+        <label className="field">Para la próxima clase
+          <textarea rows={2} maxLength={2000} value={f.nextClass} onChange={(e) => setF({ ...f, nextClass: e.target.value })} placeholder="Qué deben traer, practicar o avanzar en AI CERT antes de la próxima sesión" />
         </label>
         <div className="field">
           <span className="label">Material de la sesión</span>
@@ -89,6 +111,9 @@ export function ReSessionForm({ waveId, n, init, people, today }: { waveId: stri
         <label className="field">Cómo fluyó la clase
           <textarea rows={3} maxLength={4000} value={f.adminComments} onChange={(e) => setF({ ...f, adminComments: e.target.value })} placeholder="Participación, ritmo, dudas frecuentes, qué ajustar para la próxima." />
         </label>
+        <label className="field">Intervenciones en los grupos de comunicación
+          <textarea rows={2} maxLength={2000} value={f.interventions} onChange={(e) => setF({ ...f, interventions: e.target.value })} placeholder="Qué publicarás o reforzarás esta semana en los grupos (recordatorios, dudas a resolver, a quién contactar)" />
+        </label>
       </fieldset>
 
       <fieldset className="res-block private">
@@ -110,6 +135,7 @@ export function ReSessionForm({ waveId, n, init, people, today }: { waveId: stri
                     <button type="button" role="radio" aria-checked={a.attended === true} className={`seg-btn ${a.attended === true ? "on" : ""}`} onClick={() => setAtt({ ...att, [p.id]: { ...a, attended: true } })}>Asistió</button>
                     <button type="button" role="radio" aria-checked={a.attended === false} className={`seg-btn ${a.attended === false ? "on" : ""}`} onClick={() => setAtt({ ...att, [p.id]: { ...a, attended: false } })}>No asistió</button>
                   </div>
+                  <Stars name={p.name} value={a.rating} disabled={a.attended !== true} onChange={(v) => setAtt({ ...att, [p.id]: { ...a, rating: v } })} />
                   <select aria-label={`Concentración de ${p.name}`} value={a.focus} disabled={a.attended !== true} onChange={(e) => setAtt({ ...att, [p.id]: { ...a, focus: e.target.value as Focus } })}>
                     {FOCUS.map((x) => <option key={x.id} value={x.id} title={x.hint}>{x.label}</option>)}
                   </select>

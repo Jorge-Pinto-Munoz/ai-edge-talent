@@ -156,13 +156,15 @@ export async function setDeliveryWaves(userId: string, waveIds: string[]): Promi
   try {
     const actor = await admin();
     const t = await target(userId);
-    if (t.role !== "delivery") throw new Error("Solo las cuentas Delivery se asignan a Waves aquí.");
+    // Delivery (Waves que acompaña), Profesor (donde dicta Role Enablement) y Líder Hub AI (AI Lab y Showcase).
+    const role = t.role as "delivery" | "profesor" | "hub";
+    if (!["delivery", "profesor", "hub"].includes(role)) throw new Error("Solo Delivery, Profesor y Líder Hub AI se asignan a Waves aquí.");
     const svc = supabaseService();
-    const { data: cur } = await svc.from("wave_staff").select("wave_id").eq("email", t.email).eq("role", "delivery");
+    const { data: cur } = await svc.from("wave_staff").select("wave_id").eq("email", t.email).eq("role", role);
     const now = new Set((cur ?? []).map((r) => r.wave_id));
-    for (const w of waveIds) if (!now.has(w)) await svc.from("wave_staff").insert({ wave_id: w, email: t.email, role: "delivery", added_by: actor.id });
+    for (const w of waveIds) if (!now.has(w)) await svc.from("wave_staff").insert({ wave_id: w, email: t.email, role, added_by: actor.id });
     const removed = [...now].filter((w) => !waveIds.includes(w));
-    if (removed.length) await svc.from("wave_staff").delete().eq("email", t.email).eq("role", "delivery").in("wave_id", removed);
+    if (removed.length) await svc.from("wave_staff").delete().eq("email", t.email).eq("role", role).in("wave_id", removed);
     await audit("user.waves.changed", { actor: actor.id, actorEmail: actor.email, targetUser: userId, targetEmail: t.email, details: { waves: waveIds, removed } }, svc);
     return done("Waves actualizadas.");
   } catch (e) {

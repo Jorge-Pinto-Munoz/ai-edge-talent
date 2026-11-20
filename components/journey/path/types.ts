@@ -48,7 +48,7 @@ export interface JourneyView {
   /** Tareas de la etapa actual sin entrega o con la última no aprobada (se entregan dentro de su cápsula). */
   pendingTasks: { capsuleId: string; title: string; required: boolean; due: string | null }[];
   /** Role Enablement: las 4 sesiones semanales (lo que publica el profesor + mi check-in y mi asistencia). */
-  sessions: { n: number; heldOn: string | null; title: string | null; studentNotes: string | null; materials: FileRef[]; checkedInAt: string | null; attended: boolean | null }[];
+  sessions: { n: number; heldOn: string | null; startsAt: string | null; endsAt: string | null; title: string | null; studentNotes: string | null; nextClass: string | null; materials: FileRef[]; checkedInAt: string | null; attended: boolean | null }[];
   /** Hoy en Chile (YYYY-MM-DD). */
   today: string;
   /** Plantilla oficial de la presentación del Showcase. */

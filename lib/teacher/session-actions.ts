@@ -57,16 +57,16 @@ export async function saveReSession(raw: SessionInput): Promise<Result> {
     const svc = supabaseService();
     const now = new Date().toISOString();
     const { data: prev } = await svc.from("re_sessions").select("materials").eq("wave_id", x.waveId).eq("n", x.n).maybeSingle();
-    const { error } = await svc.from("re_sessions").upsert({ wave_id: x.waveId, n: x.n, held_on: x.heldOn || null, title: x.title || null, student_notes: x.studentNotes || null, materials: x.materials, updated_by: viewer.id, updated_at: now });
+    const { error } = await svc.from("re_sessions").upsert({ wave_id: x.waveId, n: x.n, held_on: x.heldOn || null, starts_at: x.startsAt || null, ends_at: x.endsAt || null, title: x.title || null, student_notes: x.studentNotes || null, next_class: x.nextClass || null, materials: x.materials, updated_by: viewer.id, updated_at: now });
     if (error) throw error;
-    const { error: e2 } = await svc.from("re_session_private").upsert({ wave_id: x.waveId, n: x.n, admin_comments: x.adminComments || null, updated_by: viewer.id, updated_at: now });
+    const { error: e2 } = await svc.from("re_session_private").upsert({ wave_id: x.waveId, n: x.n, admin_comments: x.adminComments || null, interventions: x.interventions || null, updated_by: viewer.id, updated_at: now });
     if (e2) throw e2;
     if (x.attendance.length) {
       const ids = x.attendance.map((a) => a.candidateId);
       const { data: ok } = await svc.from("candidates").select("id").eq("wave_id", x.waveId).in("id", ids);
       if ((ok ?? []).length !== new Set(ids).size) throw new Error("Hay personas que no son de esta Wave.");
       const { error: e3 } = await svc.from("re_session_attendance").upsert(
-        x.attendance.map((a) => ({ wave_id: x.waveId, n: x.n, candidate_id: a.candidateId, attended: a.attended, focus: a.focus, note: a.note || null, updated_at: now })),
+        x.attendance.map((a) => ({ wave_id: x.waveId, n: x.n, candidate_id: a.candidateId, attended: a.attended, focus: a.focus, rating: a.attended ? a.rating : null, note: a.note || null, updated_at: now })),
       );
       if (e3) throw e3;
     }

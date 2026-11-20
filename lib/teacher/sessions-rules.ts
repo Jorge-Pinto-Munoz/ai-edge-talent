@@ -16,12 +16,21 @@ export interface SessionInput {
   waveId: string;
   n: number;
   heldOn: string;
+  /** Horario (HH:MM, hora de Chile). */
+  startsAt: string;
+  endsAt: string;
   title: string;
   studentNotes: string;
+  /** Lo que se pide para la próxima clase (lo ven los profesionales). */
+  nextClass: string;
   adminComments: string;
+  /** Intervenciones que hará en los grupos de comunicación (solo admin). */
+  interventions: string;
   materials: SessionFile[];
-  attendance: { candidateId: string; attended: boolean; focus: Focus; note: string }[];
+  /** rating: evaluación del profesor de 1 a 3 estrellas (opcional, solo admin). */
+  attendance: { candidateId: string; attended: boolean; focus: Focus; rating: number | null; note: string }[];
 }
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Valida y limpia lo que guarda el profesor. Lanza un error legible si algo no cuadra. */
 export function cleanSession(x: SessionInput, today: string): SessionInput {
@@ -30,12 +39,19 @@ export function cleanSession(x: SessionInput, today: string): SessionInput {
   if (x.attendance.length && !x.heldOn) throw new Error("Indica la fecha de la sesión para registrar la asistencia.");
   if (x.attendance.length && x.heldOn > today) throw new Error("La asistencia se registra el día de la sesión o después.");
   if (x.materials.length > 10) throw new Error("Máximo 10 archivos por sesión.");
-  for (const a of x.attendance) if (!FOCUS.some((f) => f.id === a.focus)) throw new Error("Concentración no válida.");
+  for (const a of x.attendance) {
+    if (!FOCUS.some((f) => f.id === a.focus)) throw new Error("Concentración no válida.");
+    if (a.rating !== null && ![1, 2, 3].includes(a.rating)) throw new Error("La evaluación va de 1 a 3 estrellas.");
+  }
+  if ((x.startsAt && !HHMM.test(x.startsAt)) || (x.endsAt && !HHMM.test(x.endsAt))) throw new Error("Revisa el horario (HH:MM).");
+  if (x.startsAt && x.endsAt && x.endsAt <= x.startsAt) throw new Error("La hora de término debe ser después de la de inicio.");
   return {
     ...x,
     title: x.title.trim().slice(0, 160),
     studentNotes: x.studentNotes.trim().slice(0, 4000),
     adminComments: x.adminComments.trim().slice(0, 4000),
+    nextClass: x.nextClass.trim().slice(0, 2000),
+    interventions: x.interventions.trim().slice(0, 2000),
     materials: x.materials.map((m) => ({ name: m.name.slice(0, 200), path: m.path, size: m.size })),
     attendance: x.attendance.map((a) => ({ ...a, note: a.note.trim().slice(0, 600) })),
   };

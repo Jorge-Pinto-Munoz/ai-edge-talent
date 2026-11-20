@@ -60,6 +60,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
                       return (
                         <td key={s.n} data-label={`Semana ${s.n}`}>
                           <span className={`res-dot ${t.tone}`} title={t.label} aria-label={t.label} />
+                          {a?.rating ? <span className="res-stars" aria-label={`${a.rating} de 3 estrellas`} title={a.note ?? undefined}>{"★".repeat(a.rating)}</span> : null}
                           {a?.focus === "LOW" && <span className="badge warn" title={a.note ?? undefined}>Baja concentración</span>}
                           {a?.focus === "HIGH" && <span className="badge ok">Destacado/a</span>}
                         </td>
@@ -82,7 +83,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
             <details key={s.n} className={`res-card adm-card${s.attendance.length ? " done" : ""}`} open={s.n === current}>
               <summary>
                 <span className="res-n" aria-hidden="true">{s.attendance.length ? <Icon name="check" size={18} /> : s.n}</span>
-                <span className="res-t"><small>Semana {s.n}{s.heldOn ? ` · ${fmtYmd(s.heldOn)}` : ""}</small><strong>{s.title ?? `Sesión ${s.n}`}</strong></span>
+                <span className="res-t"><small>Semana {s.n}{s.heldOn ? ` · ${fmtYmd(s.heldOn)}` : ""}{s.startsAt ? ` · ${s.startsAt}${s.endsAt ? `–${s.endsAt}` : ""}` : ""}</small><strong>{s.title ?? `Sesión ${s.n}`}</strong></span>
                 <span className={`res-state${s.attendance.length ? " ok" : done ? " warn" : ""}`}>{state}</span>
                 <span className="res-meta"><Icon name="check" size={14} /> {s.checkins.length} check-in · <Icon name="download" size={14} /> {s.materials.length}</span>
               </summary>
@@ -91,15 +92,16 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
                   waveId={waveId}
                   n={s.n}
                   today={today}
-                  init={{ heldOn: s.heldOn ?? "", title: s.title ?? "", studentNotes: s.studentNotes ?? "", adminComments: s.adminComments ?? "", materials: s.materials }}
+                  init={{ heldOn: s.heldOn ?? "", startsAt: s.startsAt ?? "", endsAt: s.endsAt ?? "", title: s.title ?? "", studentNotes: s.studentNotes ?? "", nextClass: s.nextClass ?? "", adminComments: s.adminComments ?? "", interventions: s.interventions ?? "", materials: s.materials }}
                   people={group.map((p) => {
                     const a = s.attendance.find((x) => x.candidateId === p.id);
-                    return { id: p.id, name: p.full_name, client: p.client_name ? prettyName(p.client_name) : null, attended: a ? a.attended : null, focus: (a?.focus ?? "OK") as Focus, note: a?.note ?? "", checkedIn: s.checkins.some((c) => c.candidateId === p.id) };
+                    return { id: p.id, name: p.full_name, client: p.client_name ? prettyName(p.client_name) : null, attended: a ? a.attended : null, focus: (a?.focus ?? "OK") as Focus, rating: a?.rating ?? null, note: a?.note ?? "", checkedIn: s.checkins.some((c) => c.candidateId === p.id) };
                   })}
                 />
               ) : (
                 <div className="stack" style={{ gap: 10 }}>
                   {s.studentNotes ? <p style={{ whiteSpace: "pre-line", margin: 0 }}>{s.studentNotes}</p> : <p className="muted" style={{ margin: 0 }}>El profesor aún no deja notas.</p>}
+                  {s.nextClass && <p style={{ whiteSpace: "pre-line", margin: 0 }}><strong>Para la próxima clase:</strong> {s.nextClass}</p>}
                   {s.materials.length > 0 && <div className="dl-list">{s.materials.map((m) => <DownloadButton key={m.path} bucket="content" path={m.path} name={m.name} size={m.size} />)}</div>}
                   <small className="muted">Check-in: {s.checkins.length ? s.checkins.map((c) => group.find((p) => p.id === c.candidateId)?.full_name ?? "—").join(", ") : "nadie aún"}.</small>
                 </div>

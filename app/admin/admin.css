@@ -770,7 +770,7 @@
 .res-files li { display: flex; gap: 6px; align-items: center; }
 .res-files li > :first-child { flex: 1; min-width: 0; }
 .res-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.res-people li { display: grid; grid-template-columns: minmax(0, 1.4fr) auto minmax(130px, 0.7fr) minmax(0, 1.2fr); gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.res-people li { display: grid; grid-template-columns: minmax(0, 1.3fr) auto auto minmax(130px, 0.7fr) minmax(0, 1.2fr); gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
 .res-people li.low { border-color: var(--st-warn, #d9a43a); }
 .res-who { display: grid; gap: 2px; min-width: 0; }
 .res-who .badge { justify-self: start; }
@@ -826,3 +826,9 @@
 .sp-scope button.on { background: var(--surface); color: var(--text); box-shadow: var(--e1, 0 1px 4px rgba(0,0,0,.08)); }
 .sp-scope button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
 .sp-dl { position: relative; z-index: 1; display: inline-flex; flex-direction: column; gap: 2px; margin-right: 10px; font-size: 0.86rem; vertical-align: middle; }
+.stars { display: inline-flex; gap: 2px; }
+.stars button { border: 0; background: transparent; font-size: 1.35rem; line-height: 1; padding: 2px; color: var(--border); cursor: pointer; }
+.stars button.on { color: #e5a823; }
+.stars button:disabled { cursor: not-allowed; opacity: 0.45; }
+.stars button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 1px; border-radius: 4px; }
+.res-stars { color: #e5a823; letter-spacing: 1px; font-size: 0.9rem; margin-left: 4px; }

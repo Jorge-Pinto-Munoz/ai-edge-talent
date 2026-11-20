@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { requireStaffPage } from "@/lib/admission/auth";
+import { myStaffWaves, requireAnyRolePage } from "@/lib/admission/auth";
 import { supabaseService, supabaseUser } from "@/lib/supabase/server";
 import { stageBySlug } from "@/lib/journey/stages";
 import { journeyOverview, STAGE_STATE_LABEL } from "@/lib/journey/overview";
@@ -48,6 +48,8 @@ export async function generateMetadata({ params }: { params: Promise<{ etapa: st
 }
 
 const stageNameOf = (l: string) => ({ AI_MINDSET: "AI First Mindset", ROLE_ENABLEMENT: "Role Enablement", AI_LAB_SHOWCASE: "AI Lab", SHOWCASE: "Showcase", CLOSURE: "Cierre" } as Record<string, string>)[l] ?? l;
+/** Etapas que el profesor ve (solo lectura, salvo sus sesiones). */
+const PROFESOR_STAGES = ["assessment", "mindset", "role-enablement"];
 const TO_DECIDE = ["ASSESSMENT_EVALUATED", "HUMAN_REVIEW", "RESCUE_REQUIRED"];
 
 /** Detalle de una etapa (nivel 3): sus participantes, actividades, evaluaciones, entregables y acciones. */
@@ -56,18 +58,22 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
   const { tab: rawTab, sub: subParam, p: personParam } = await searchParams;
   const stage = stageBySlug(etapa);
   if (!stage) notFound();
-  const viewer = await requireStaffPage(`/admin/journey/${waveId}/${etapa}`);
+  const viewer = await requireAnyRolePage(`/admin/journey/${waveId}/${etapa}`, ["admin", "delivery", "profesor"]);
+  // Profesor: ve en solo lectura Assessment, AI First Mindset y Role Enablement de sus Waves (edita solo sus sesiones).
+  const teacher = viewer.role === "profesor";
+  if (teacher && (!PROFESOR_STAGES.includes(stage.slug) || !(await myStaffWaves(viewer)).includes(waveId))) redirect("/sin-acceso");
   const isAdmin = viewer.role === "admin";
   const tabs = stage.tabs.filter((t) => isAdmin || !t.adminOnly);
   const tab = tabs.find((t) => t.key === rawTab) ?? tabs[0];
   const detailOpen = tab.key === "entregas" && Boolean(subParam || personParam);
   if (rawTab && rawTab !== tab.key) redirect(`/admin/journey/${waveId}/${etapa}`);
 
-  const db = await supabaseUser();
+  // Lectura: con la sesión de la persona; el profesor (ya verificado arriba) lee con la llave del servidor, en solo lectura.
+  const db = teacher ? supabaseService() : await supabaseUser();
   const { data: wave } = await db.from("waves").select("id, name").eq("id", waveId).maybeSingle();
   if (!wave) notFound();
   const waveLabel = wave.name.replace("AI Edge Talent · ", "");
-  const { stages } = await journeyOverview(waveId);
+  const { stages } = await journeyOverview(waveId, teacher ? db : undefined);
   const sum = stages.find((s) => s.stage.slug === stage.slug)!;
   const base = `/admin/journey/${waveId}/${etapa}`;
   const at = stages.findIndex((s) => s.stage.slug === stage.slug);
@@ -338,7 +344,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
       })())}
 
       {tab.key === "aicert" && (await (async () => {
-        const r = await waveReport(waveId);
+        const r = await waveReport(waveId, new Date(), teacher ? (db as ReturnType<typeof supabaseService>) : undefined);
         const people = r.persons.filter((p) => p.layer === "ROLE_ENABLEMENT");
         return <AiCertBoard waveId={waveId} isAdmin={isAdmin} people={people.map(({ id, name, role, layer, progress, overall, attendance, alert }) => ({ id, name, role, layer, progress, overall, attendance, alert }))} />;
       })())}

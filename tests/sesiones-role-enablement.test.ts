@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { attendanceMatch, cleanSelfProgress, cleanSession, type SessionInput } from "@/lib/teacher/sessions-rules";
 
-const base: SessionInput = { waveId: "w", n: 1, heldOn: "2026-11-03", title: " Prompting ", studentNotes: " notas ", adminComments: "", materials: [], attendance: [] };
+const base: SessionInput = { waveId: "w", n: 1, heldOn: "2026-11-03", startsAt: "18:00", endsAt: "19:30", title: " Prompting ", studentNotes: " notas ", nextClass: "", adminComments: "", interventions: "", materials: [], attendance: [] };
 
 describe("sesiones de Role Enablement", () => {
   it("son 4: semana 1 a 4", () => {
@@ -10,10 +10,15 @@ describe("sesiones de Role Enablement", () => {
     expect(cleanSession({ ...base, n: 4 }, "2026-11-05").title).toBe("Prompting");
   });
   it("la asistencia exige fecha y no puede ser futura", () => {
-    const a = [{ candidateId: "c", attended: true, focus: "OK" as const, note: "" }];
+    const a = [{ candidateId: "c", attended: true, focus: "OK" as const, rating: 2, note: "" }];
     expect(() => cleanSession({ ...base, heldOn: "", attendance: a }, "2026-11-05")).toThrow(/fecha/);
     expect(() => cleanSession({ ...base, heldOn: "2026-11-09", attendance: a }, "2026-11-05")).toThrow(/día de la sesión/);
     expect(cleanSession({ ...base, attendance: a }, "2026-11-05").attendance).toHaveLength(1);
+  });
+  it("valida el horario y las estrellas (1 a 3)", () => {
+    expect(() => cleanSession({ ...base, startsAt: "19:00", endsAt: "18:00" }, "2026-11-05")).toThrow(/término/);
+    expect(() => cleanSession({ ...base, startsAt: "25:00" }, "2026-11-05")).toThrow(/horario/);
+    expect(() => cleanSession({ ...base, attendance: [{ candidateId: "c", attended: true, focus: "OK", rating: 4, note: "" }] }, "2026-11-05")).toThrow(/estrellas/);
   });
   it("una sesión futura se puede programar con notas, sin asistencia", () => {
     expect(cleanSession({ ...base, heldOn: "2026-11-20" }, "2026-11-05").heldOn).toBe("2026-11-20");

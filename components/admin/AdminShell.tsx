@@ -38,8 +38,11 @@ const SECTIONS: Section[] = [
   { key: "st-lab", label: "AI Lab", icon: "flask", href: (w) => `/admin/journey/${w}/ai-lab`, match: /^\/admin\/journey\/[^/]+\/ai-lab|^\/admin\/lab/, roles: STAFF, perWave: true, group: "stages" },
   { key: "st-showcase", label: "Showcase", icon: "presentation", href: (w) => `/admin/journey/${w}/showcase`, match: /^\/admin\/journey\/[^/]+\/showcase/, roles: STAFF, perWave: true, group: "stages" },
   { key: "st-cierre", label: "Cierre", icon: "flag", href: (w) => `/admin/journey/${w}/cierre`, match: /^\/admin\/journey\/[^/]+\/cierre/, roles: STAFF, perWave: true, group: "stages" },
-  // El profesor registra las 4 sesiones semanales de Role Enablement de sus Waves.
-  { key: "profesor", label: "Sesiones · Role Enablement", icon: "calendar", href: (w) => `/admin/profesor/${w}`, match: /^\/admin\/profesor/, roles: ["profesor"], perWave: true, group: "wave" },
+  // El profesor registra las 4 sesiones semanales de Role Enablement de sus Waves y ve en solo lectura las etapas previas.
+  { key: "profesor", label: "Mis sesiones", icon: "calendar", href: (w) => `/admin/profesor/${w}`, match: /^\/admin\/profesor/, roles: ["profesor"], perWave: true, group: "wave" },
+  { key: "pr-assessment", label: "Assessment", icon: "target", href: (w) => `/admin/journey/${w}/assessment`, match: /^\/admin\/journey\/[^/]+\/assessment/, roles: ["profesor"], perWave: true, group: "stages" },
+  { key: "pr-mindset", label: "AI First Mindset", icon: "brain", href: (w) => `/admin/journey/${w}/mindset`, match: /^\/admin\/journey\/[^/]+\/mindset/, roles: ["profesor"], perWave: true, group: "stages" },
+  { key: "pr-role", label: "Role Enablement", icon: "badge", href: (w) => `/admin/journey/${w}/role-enablement`, match: /^\/admin\/journey\/[^/]+\/role-enablement/, roles: ["profesor"], perWave: true, group: "stages" },
   // El Líder Hub AI trabaja solo en el AI Lab y el Showcase de sus Waves.
   { key: "lab", label: "AI Lab y Showcase", icon: "flask", href: (w) => `/admin/lab/${w}`, match: /^\/admin\/lab/, roles: ["hub"], perWave: true, group: "wave" },
   { key: "asignaciones", label: "Equipo de la Wave", icon: "user", href: (w) => `/admin/asignaciones/${w}`, match: /^\/admin\/asignaciones/, roles: ADMIN, perWave: true, group: "admin" },

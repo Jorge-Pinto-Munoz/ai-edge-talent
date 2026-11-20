@@ -137,14 +137,14 @@ function UserDrawer({ u, waves, isMe, onClose }: { u: UserRow; waves: Wave[]; is
         </div>
       </section>
 
-      {u.role === "delivery" && (
+      {["delivery", "profesor", "hub"].includes(u.role) && (
         <section className="ud-sec">
-          <h3>Waves de este Delivery</h3>
+          <h3>{u.role === "profesor" ? "Waves donde dicta Role Enablement" : u.role === "hub" ? "Waves de este Líder Hub AI" : "Waves de este Delivery"}</h3>
           <div className="ud-checks">{waves.map((w) => (
             <label key={w.id}><input type="checkbox" checked={dWaves.includes(w.id)} onChange={(e) => setDWaves((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>
           ))}</div>
           <button type="button" className="btn small secondary" disabled={pending} onClick={() => run(() => setDeliveryWaves(u.id, dWaves))}>Guardar Waves</button>
-          <p className="muted ud-note">La asignación de profesionales se hace en cada Wave, en “Equipo y asignaciones”.</p>
+          <p className="muted ud-note">{u.role === "profesor" ? "Ve el journey de esas Waves en solo lectura y registra sus sesiones de Role Enablement." : u.role === "hub" ? "Trabaja en el AI Lab y el Showcase de esas Waves." : "La asignación de profesionales se hace en cada Wave, en “Equipo y asignaciones”."}</p>
         </section>
       )}
 
