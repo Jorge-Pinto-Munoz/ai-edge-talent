@@ -6,6 +6,7 @@ import { cancelSchedule, openStage, scheduleStage, type OpeningResult } from "@/
 import { OPENING_LABEL, type OpeningStatus } from "@/lib/journey/opening-labels";
 import { Callout } from "@/components/ui";
 import { Icon } from "@/components/site/Icon";
+import type { Layer } from "@/lib/journey/rules";
 
 const fmt = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
@@ -25,8 +26,9 @@ function chileToIso(local: string): string {
   return new Date(guess.getTime() - (shown - guess.getTime())).toISOString();
 }
 
-export function StageOpeningPanel(props: { waveId: string; status: OpeningStatus; opensAt: string | null; notifiedAt: string | null; enabled: number; pending: number; firstChallenge: string | null; canEdit: boolean }) {
-  const { waveId, status, opensAt, canEdit } = props;
+export function StageOpeningPanel(props: { waveId: string; layer: Layer; stageName: string; status: OpeningStatus; opensAt: string | null; notifiedAt: string | null; enabled: number; pending: number; firstChallenge: string | null; canEdit: boolean }) {
+  const { waveId, layer, stageName, status, opensAt, canEdit } = props;
+  const mindset = layer === "AI_MINDSET";
   const [msg, setMsg] = useState<OpeningResult | null>(null);
   const [picking, setPicking] = useState(false);
   const [local, setLocal] = useState(defaultLocal);
@@ -38,28 +40,28 @@ export function StageOpeningPanel(props: { waveId: string; status: OpeningStatus
     <section className={`card open-panel st-${status}`} aria-labelledby="op-h">
       <div className="spread">
         <div>
-          <h2 id="op-h" className="h-card" style={{ margin: 0 }}>Apertura de AI First Mindset</h2>
-          <p className="muted" style={{ margin: "4px 0 0" }}>Las personas pueden ingresar al portal antes; el contenido de la etapa se habilita con la apertura.</p>
+          <h2 id="op-h" className="h-card" style={{ margin: 0 }}>Habilitar {stageName}</h2>
+          <p className="muted" style={{ margin: "4px 0 0" }}>{status === "closed" || status === "scheduled" ? "Cuando estén todos, habilita la etapa: se abre su contenido en el portal y a cada persona le llega un correo." : "El contenido de la etapa está disponible en el portal para quienes están en ella."}</p>
         </div>
         <span className={`op-state st-${status}`}><i aria-hidden="true" /> {OPENING_LABEL[status]}</span>
       </div>
       <ul className="op-tiles">
-        <li><span className="op-ico ok"><Icon name="users" size={20} /></span><span><strong>{props.enabled}</strong><small>Habilitados</small></span></li>
-        <li><span className={`op-ico ${props.pending ? "warn" : ""}`}><Icon name="clock" size={20} /></span><span><strong>{props.pending}</strong><small>Pendientes de confirmar</small></span></li>
+        <li><span className="op-ico ok"><Icon name="users" size={20} /></span><span><strong>{props.enabled}</strong><small>{mindset ? "Habilitados" : "En la etapa"}</small></span></li>
+        <li><span className={`op-ico ${props.pending ? "warn" : ""}`}><Icon name="clock" size={20} /></span><span><strong>{props.pending}</strong><small>{mindset ? "Pendientes de confirmar" : "Aún en etapas anteriores"}</small></span></li>
         <li><span className="op-ico"><Icon name="calendar" size={20} /></span><span><strong className="op-date">{opensAt ? fmt(opensAt) : "Sin fecha"}</strong><small>{status === "scheduled" ? "Abre el" : status === "closed" ? "Fecha de apertura" : "Abierta desde"}</small></span></li>
         <li><span className="op-ico"><Icon name="flag" size={20} /></span><span><strong className="op-date">{props.firstChallenge ?? "Sin módulos publicados"}</strong><small>Primer módulo</small></span></li>
       </ul>
-      {status !== "closed" && status !== "scheduled" && <p className="op-note"><Icon name="send" size={14} /> {props.notifiedAt ? `Aviso «primer reto disponible» enviado el ${fmt(props.notifiedAt)}.` : "El aviso de apertura está pendiente."}</p>}
+      {status !== "closed" && status !== "scheduled" && <p className="op-note"><Icon name="send" size={14} /> {props.notifiedAt ? `Aviso de etapa habilitada enviado el ${fmt(props.notifiedAt)}. Quienes lleguen después la ven al entrar.` : "El aviso de apertura está pendiente."}</p>}
       {canEdit && (status === "closed" || status === "scheduled") && (
         <div className="stack" style={{ gap: 10 }}>
           <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-            <button type="button" className="btn" disabled={pending} onClick={() => confirm("¿Abrir AI First Mindset ahora? Se habilita el contenido y se avisa una vez a las personas inscritas.") && run(() => openStage(waveId))}>Abrir etapa</button>
-            <button type="button" className="btn ghost" disabled={pending} onClick={() => run(() => scheduleStage(waveId, "48h"))}>Programar en 48 h</button>
+            <button type="button" className="btn op-go" disabled={pending} onClick={() => confirm(`¿Habilitar ${stageName} ahora? Se abre su contenido y se avisa por correo, una vez, a las ${props.enabled} persona(s) que están en la etapa.`) && run(() => openStage(waveId, layer))}><Icon name="send" size={16} /> Habilitar etapa y avisar</button>
+            <button type="button" className="btn ghost" disabled={pending} onClick={() => run(() => scheduleStage(waveId, "48h", layer))}>Programar en 48 h</button>
             <button type="button" className="btn ghost" disabled={pending} onClick={() => setPicking((x) => !x)} aria-expanded={picking}>Programar fecha…</button>
-            {status === "scheduled" && <button type="button" className="link-btn" disabled={pending} onClick={() => run(() => cancelSchedule(waveId))}>Cancelar programación</button>}
+            {status === "scheduled" && <button type="button" className="link-btn" disabled={pending} onClick={() => run(() => cancelSchedule(waveId, layer))}>Cancelar programación</button>}
           </div>
           {picking && (
-            <form className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "end" }} onSubmit={(e) => { e.preventDefault(); run(() => scheduleStage(waveId, chileToIso(local))); }}>
+            <form className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "end" }} onSubmit={(e) => { e.preventDefault(); run(() => scheduleStage(waveId, chileToIso(local), layer)); }}>
               <div className="field" style={{ margin: 0 }}>
                 <label htmlFor="op-date">Fecha y hora (hora de Chile)</label>
                 <input id="op-date" type="datetime-local" value={local} onChange={(e) => setLocal(e.target.value)} required />
@@ -69,7 +71,7 @@ export function StageOpeningPanel(props: { waveId: string; status: OpeningStatus
           )}
         </div>
       )}
-      {!canEdit && <p className="muted" style={{ margin: 0 }}><small>Solo Administración abre o programa la etapa.</small></p>}
+      {!canEdit && <p className="muted" style={{ margin: 0 }}><small>Solo Administración habilita o programa la etapa.</small></p>}
       {msg && <Callout tone={msg.ok ? "ok" : "bad"} title={msg.message} />}
     </section>
   );

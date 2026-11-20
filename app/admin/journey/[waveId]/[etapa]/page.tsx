@@ -25,6 +25,7 @@ import { deliveryState } from "@/lib/journey/delivery-status";
 import { prettyName } from "@/lib/text/org";
 import { AiCertBoard } from "@/components/journey-admin/AiCertBoard";
 import { ReSessions } from "@/components/teacher/ReSessions";
+import { LAYERS } from "@/lib/journey/rules";
 import { PulseStatus } from "@/components/journey-admin/PulseStatus";
 import { ReWelcomeCard } from "@/components/journey-admin/ReWelcomeCard";
 import { pendingReWelcome } from "@/lib/journey/welcome";
@@ -36,7 +37,7 @@ import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
 import { Icon } from "@/components/site/Icon";
 import { Badge } from "@/components/ui";
 import { StageOpeningPanel } from "@/components/journey-admin/StageOpeningPanel";
-import { mindsetOpening, notifyStageOpen } from "@/lib/journey/opening";
+import { notifyStageOpen, stageIsOpen, stageOpening } from "@/lib/journey/opening";
 
 export const dynamic = "force-dynamic";
 // Margen para las revisiones con IA que corren en segundo plano (after) tras una entrega o al pedirlas.
@@ -103,6 +104,14 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
         <div className="adm-kpi"><span className="ico"><Icon name="target" size={20} /></span><strong>{sum.pct === null ? "—" : `${sum.pct}%`}</strong><small>Avance de la Wave</small></div>
       </section>
 
+      {/* «Habilitar etapa»: arriba y a la vista en todas las etapas del journey (el contenido se ve desde que se habilita). */}
+      {stage.layer !== "ASSESSMENT" && !detailOpen && (await (async () => {
+        // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).
+        await notifyStageOpen(waveId, stage.layer as Layer);
+        const o = await stageOpening(waveId, stage.layer as Layer);
+        return <StageOpeningPanel waveId={waveId} {...o} canEdit={isAdmin} />;
+      })())}
+
       {/* Con una persona abierta, el detalle va arriba: sin el avance del grupo ni la apertura. */}
       {stage.layer !== "ASSESSMENT" && !detailOpen && (await (async () => {
         // Grupo completo: todos los que pasaron el Assessment (seleccionados en adelante) en esta Wave.
@@ -167,16 +176,9 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
 
       {stage.layer !== "ASSESSMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && <PulseStatus waveId={waveId} layer={stage.layer as Layer} />}
 
-      {stage.layer === "ROLE_ENABLEMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && (await (async () => {
+      {stage.layer === "ROLE_ENABLEMENT" && !detailOpen && isAdmin && tab.key === tabs[0].key && (await stageIsOpen(waveId, "ROLE_ENABLEMENT")) && (await (async () => {
         const w = await pendingReWelcome(waveId);
         return <ReWelcomeCard waveId={waveId} total={w.all.length} pending={w.pending.map((p) => p.full_name)} />;
-      })())}
-
-      {stage.layer === "AI_MINDSET" && !detailOpen && (await (async () => {
-        // Si una apertura programada ya venció y el cron aún no pasó, el aviso sale ahora (una sola vez).
-        await notifyStageOpen(waveId);
-        const o = await mindsetOpening(waveId);
-        return <StageOpeningPanel waveId={waveId} {...o} canEdit={isAdmin} />;
       })())}
 
       {/* Pestañas con <a>: la navegación cliente que solo cambia ?tab= se pierde en esta página. */}
@@ -252,7 +254,7 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
       {tab.key === "participantes" && (
         here.length === 0
           ? <section className="adm-card"><div className="empty"><Icon name="users" size={28} /><span>Nadie está en {stage.name} por ahora.</span></div></section>
-          : <ParticipantsBoard waveId={waveId} people={here as never} isAdmin={isAdmin} />
+          : <ParticipantsBoard waveId={waveId} people={here as never} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} />
       )}
 
       {tab.key === "entregas" && (await (async () => {
@@ -281,6 +283,10 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             id: p.id, name: p.full_name, client: p.client_name ? prettyName(p.client_name) : null, role: p.role_title ? prettyName(p.role_title) : null,
             state: deliveryState(own, required), subId: last?.id ?? null, attempt: last?.attempt ?? null, maxAttempts: last ? maxOf(last) : null,
             score: last?.score != null ? Number(last.score) : null, aiScore: ai?.status === "done" && ai.score != null ? Number(ai.score) : null, submittedAt: last?.submitted_at ?? null,
+            stageName: p.journey_layer ? stageNameOf(p.journey_layer) : "AI First Mindset (por iniciar)",
+            ahead: LAYERS.findIndex((l) => l.id === (p.journey_layer ?? "AI_MINDSET")) > LAYERS.findIndex((l) => l.id === stage.layer),
+            // Entrega final: la aprobada; si no hay, la última.
+            files: ((own.find((x) => x.status === "APPROVED") ?? last)?.files ?? []) as { name: string; path: string }[],
           };
         });
         // Detalle de una persona: por su entrega (?sub=) o por la persona (?p=), tenga o no entrega.
@@ -324,9 +330,10 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
             <div className="sp-tools">
               <AiBar waveId={waveId} subs={mine.map(asSub) as never} />
               <a className="btn small ghost" href={`${base}/exportar-entregas`} download>Descargar reporte (Excel)</a>
+              <a className="btn small ghost" href={`${base}/descargar-entregas`} download>Descargar todas las entregas (ZIP)</a>
             </div>
           )}
-          <SubmissionsPanel base={base} rows={rows} isAdmin={isAdmin} />
+          <SubmissionsPanel base={base} rows={rows} isAdmin={isAdmin} next={(next?.layer as Layer | undefined) ?? null} />
         </>;
       })())}
 

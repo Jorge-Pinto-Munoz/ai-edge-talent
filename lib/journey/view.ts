@@ -13,6 +13,7 @@ import { CLOSING_PULSE, STAGE_STATUS, stageRequirements, stageStatus, type Stage
 import { LAYERS } from "./rules";
 import { supabaseService } from "@/lib/supabase/server";
 import { mySessions } from "@/lib/teacher/sessions";
+import { OPENABLE, stageLabel } from "./opening";
 import { showcaseTemplate } from "@/lib/hub/template";
 import { todayChile } from "@/lib/teacher/rules";
 
@@ -21,15 +22,22 @@ type Journey = NonNullable<Awaited<ReturnType<typeof myJourney>>>;
 /** Arma la vista del portal del profesional (la misma para el profesional y para la vista previa del admin). */
 export async function buildJourneyView(j: Journey, viewerId: string, preview: JourneyView["preview"] = null): Promise<JourneyView> {
   // La vista previa del admin lee con la llave del servidor (sin RLS): ocultamos lo mismo que la base le oculta al
-  // profesional. Si AI First Mindset no está abierta para su Wave, no ve esas cápsulas.
-  if (preview && !(await stageOpen(j.candidate.wave_id, "AI_MINDSET"))) {
-    const hidden = j.capsules.filter((c) => c.layer === "AI_MINDSET" && c.published).length;
-    j = { ...j, capsules: j.capsules.filter((c) => c.layer !== "AI_MINDSET") };
-    if (hidden) preview = { ...preview, hiddenNote: `${hidden} cápsula(s) de AI First Mindset no se le muestran: la etapa aún no está abierta para su Wave. Ábrela en Journey → AI First Mindset.` };
+  // profesional: los módulos de las etapas que su Wave aún no habilita.
+  if (preview) {
+    const closed: Layer[] = [];
+    for (const l of OPENABLE) if (!(await stageOpen(j.candidate.wave_id, l))) closed.push(l);
+    const hidden = j.capsules.filter((c) => closed.includes(c.layer as Layer) && c.published);
+    if (hidden.length) {
+      j = { ...j, capsules: j.capsules.filter((c) => !closed.includes(c.layer as Layer)) };
+      const names = [...new Set(hidden.map((c) => stageLabel(c.layer as Layer)))].join(", ");
+      preview = { ...preview, hiddenNote: `${hidden.length} módulo(s) de ${names} no se le muestran: esa etapa aún no está habilitada para su Wave. Habilítala en su etapa.` };
+    }
   }
   // Role Enablement: las 4 sesiones del profesor (material, notas, check-in). AI Lab / Showcase: la plantilla oficial.
   const layerNow = j.candidate.journey_layer as Layer | null;
-  const sessions = layerNow && ["ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"].includes(layerNow) ? await mySessions(j.candidate.wave_id, j.candidate.id) : [];
+  // Sesiones: se ven desde que Role Enablement está habilitada para su Wave.
+  const reOpen = layerNow !== "ROLE_ENABLEMENT" || (await stageOpen(j.candidate.wave_id, "ROLE_ENABLEMENT"));
+  const sessions = reOpen && layerNow && ["ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"].includes(layerNow) ? await mySessions(j.candidate.wave_id, j.candidate.id) : [];
   const template = layerNow && ["AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"].includes(layerNow) ? await showcaseTemplate() : null;
   const today = todayChile();
   const labFinal = Boolean(j.lab?.lab_project_files.some((f) => f.kind === "FINAL"));
@@ -112,7 +120,7 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
         }
       : null,
     preview,
-    mindsetGate: await mindsetGate(j),
+    stageGate: await stageGate(j),
     firstName: j.candidate.full_name.split(" ")[0],
     subtitle: [j.candidate.role_title, j.candidate.client_name].filter(Boolean).join(" · "),
     waveName: j.wave?.name ?? "AI Edge Talent",
@@ -173,14 +181,15 @@ export async function buildJourneyView(j: Journey, viewerId: string, preview: Jo
  * AI First Mindset por Wave: el contenido se habilita en la apertura que decide Administración (la base lo exige con
  * RLS). Antes de eso la persona ve su próxima etapa y la fecha del primer reto, sin poder abrirlo por URL.
  */
-async function mindsetGate(j: Journey): Promise<JourneyView["mindsetGate"]> {
-  if ((j.candidate.journey_layer ?? "AI_MINDSET") !== "AI_MINDSET") return null;
-  const { data } = await supabaseService().from("wave_stage_openings").select("opens_at").eq("wave_id", j.candidate.wave_id).eq("layer", "AI_MINDSET").maybeSingle();
+async function stageGate(j: Journey): Promise<JourneyView["stageGate"]> {
+  const layer = (j.candidate.journey_layer ?? "AI_MINDSET") as Layer;
+  if (!OPENABLE.includes(layer)) return null;
+  const { data } = await supabaseService().from("wave_stage_openings").select("opens_at").eq("wave_id", j.candidate.wave_id).eq("layer", layer).maybeSingle();
   const opensAt = data?.opens_at ?? null;
   const open = Boolean(opensAt && new Date(opensAt).getTime() <= Date.now());
-  const first = j.capsules.filter((c) => c.layer === "AI_MINDSET").sort((a, b) => a.position - b.position)[0];
+  const first = j.capsules.filter((c) => c.layer === layer).sort((a, b) => a.position - b.position)[0];
   const untouched = first ? !j.completed.has(first.id) && !j.submissions.some((s) => s.capsule_id === first.id) : false;
-  return { open, opensAt, firstCapsuleId: open && first && untouched ? first.id : null };
+  return { layer, name: stageLabel(layer), open, opensAt, firstCapsuleId: open && first && untouched && layer === "AI_MINDSET" ? first.id : null };
 }
 
 /** Cápsula → módulo: contenido, plazo, formatos, entregas y estado. */

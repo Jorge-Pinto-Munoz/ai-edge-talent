@@ -807,3 +807,22 @@
 .gp-alert { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bad-soft); border-left: 4px solid #d64545; }
 .gp-alert ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }
 .rew { display: grid; gap: 14px; }
+
+/* ───────── Pasar a la siguiente etapa (selección múltiple) ───────── */
+.bulk-move { position: sticky; top: 8px; z-index: 5; display: grid; gap: 8px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--e1, 0 2px 8px rgba(0,0,0,.06)); }
+.bulk-move.on { border-color: var(--brand); background: var(--brand-soft); }
+.bm-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bm-row input[type="text"] { flex: 1 1 260px; min-width: 0; }
+.bm-spacer { flex: 1; }
+.bm-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); }
+.bm-check { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+.bulk-move ul { margin: 4px 0 0; padding-left: 18px; }
+.sp-check { width: 36px; }
+.sp-row .sp-check input { position: relative; z-index: 1; width: 18px; height: 18px; }
+.sp-pct { font-size: 0.78rem; font-weight: 700; color: var(--muted); margin-left: 4px; }
+.op-go { font-size: 1rem; padding: 12px 22px; display: inline-flex; gap: 8px; align-items: center; }
+.sp-scope { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); justify-self: start; flex-wrap: wrap; }
+.sp-scope button { border: 0; background: transparent; font: inherit; font-weight: 700; padding: 8px 14px; border-radius: 999px; cursor: pointer; color: var(--muted); }
+.sp-scope button.on { background: var(--surface); color: var(--text); box-shadow: var(--e1, 0 1px 4px rgba(0,0,0,.08)); }
+.sp-scope button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.sp-dl { position: relative; z-index: 1; display: inline-flex; flex-direction: column; gap: 2px; margin-right: 10px; font-size: 0.86rem; vertical-align: middle; }

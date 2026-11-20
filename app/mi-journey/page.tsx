@@ -12,6 +12,7 @@ import { isDemoEmail } from "@/lib/identity/demo";
 import { SignOut } from "@/components/admission/SignOut";
 import { after } from "next/server";
 import { notifyStageOpen } from "@/lib/journey/opening";
+import type { Layer } from "@/lib/journey/rules";
 
 export const metadata = { title: "Mi journey · AI Edge Talent" };
 export const dynamic = "force-dynamic";
@@ -92,7 +93,7 @@ export default async function MiJourney() {
   }
 
   // Apertura programada ya vencida y aún sin aviso (el cron es diario): el aviso sale después de responder.
-  after(() => notifyStageOpen(j.candidate.wave_id).catch(() => undefined));
+  after(() => notifyStageOpen(j.candidate.wave_id, (j.candidate.journey_layer ?? "AI_MINDSET") as Layer).catch(() => undefined));
   // Cuentas de demostración: se ven como el profesional, con los envíos desactivados.
   const view = await buildJourneyView(j, viewer.id, isDemoEmail(viewer.email) ? { label: j.candidate.full_name, demo: true } : null);
   return <JourneyApp v={view} />;

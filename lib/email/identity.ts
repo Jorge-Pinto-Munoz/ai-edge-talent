@@ -194,8 +194,13 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
       return { subject: `AI Edge Talent | Ahora estás en ${c.stage ?? "una nueva etapa"}`, text: [...p, "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout(`Ahora estás en ${c.stage ?? "una nueva etapa"}`, p, { cta: { label: "IR A MI JOURNEY", href: c.link ?? "" } }) };
     }
     case "STAGE_OPEN": {
-      const p = [hi, `Tu primer reto de ${c.stage ?? "AI First Mindset"} ya está disponible.`, "Ingresa a tu portal y toca «Comenzar primer reto». Ingresas con tu correo y un código de 6 dígitos de un solo uso."];
-      return { subject: `AI Edge Talent | Tu primer reto de ${c.stage ?? "AI First Mindset"} está disponible`, text: [...p, "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout("Tu primer reto está disponible", p, { cta: { label: "COMENZAR PRIMER RETO", href: c.link ?? "" } }) };
+      const stage = c.stage ?? "AI First Mindset";
+      if (stage === "AI First Mindset") {
+        const p = [hi, `Tu primer reto de ${stage} ya está disponible.`, "Ingresa a tu portal y toca «Comenzar primer reto». Ingresas con tu correo y un código de 6 dígitos de un solo uso."];
+        return { subject: `AI Edge Talent | Tu primer reto de ${stage} está disponible`, text: [...p, "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout("Tu primer reto está disponible", p, { cta: { label: "COMENZAR PRIMER RETO", href: c.link ?? "" } }) };
+      }
+      const p = [hi, `Ya está habilitada la etapa ${stage} en tu portal.`, "Entra a Mi journey para ver sus módulos, materiales y lo que toca hacer. Ingresas con tu correo y un código de 6 dígitos de un solo uso.", "Si tienes dudas, conversa con tu Delivery."];
+      return { subject: `AI Edge Talent | ${stage} ya está habilitada`, text: [...p, "", `Ir a mi journey: ${c.link}`].join("\n"), html: layout(`${stage} ya está habilitada`, p, { cta: { label: "IR A MI JOURNEY", href: c.link ?? "" } }) };
     }
     case "ACTIVATION": {
       const p = [

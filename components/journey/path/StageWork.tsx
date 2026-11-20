@@ -20,13 +20,15 @@ export function SessionSheet({ v, n }: { v: JourneyView; n: number }) {
   const [msg, setMsg] = useState<Msg>(null);
   const [pending, start] = useTransition();
   const held = Boolean(s?.heldOn && s.heldOn <= v.today);
-  const canCheckIn = !v.preview && v.path.currentLayer === "ROLE_ENABLEMENT" && !s?.checkedInAt;
+  const closed = v.stageGate?.layer === "ROLE_ENABLEMENT" && !v.stageGate.open;
+  const canCheckIn = !v.preview && !closed && v.path.currentLayer === "ROLE_ENABLEMENT" && !s?.checkedInAt;
   return (
     <div className="jr-sheet-stack">
       <ul className="jr-meta">
         <li><Icon name="calendar" size={16} /> Semana {n}{s?.heldOn ? ` · ${fmtYmd(s.heldOn)}` : " · fecha por confirmar"}</li>
         {s?.materials.length ? <li><Icon name="download" size={16} /> {s.materials.length} material(es)</li> : null}
       </ul>
+      {closed && <div className="jr-feedback"><p>El equipo aún no habilita Role Enablement para tu Wave. Te avisaremos por correo; ahí verás aquí las notas y el material de cada sesión.</p></div>}
       {s?.title && <h4 style={{ margin: 0 }}>{s.title}</h4>}
       {s?.studentNotes ? (
         <div className="jr-feedback"><strong>Notas del profesor</strong><p style={{ whiteSpace: "pre-line" }}>{s.studentNotes}</p></div>

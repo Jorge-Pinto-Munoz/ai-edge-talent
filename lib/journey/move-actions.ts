@@ -8,6 +8,7 @@ import { errorText } from "@/lib/text/errors";
 import { LAYERS, layerIndex, layerName, type Layer } from "./rules";
 import { CLOSING_PULSE } from "./closure";
 import { sendReWelcome } from "./welcome";
+import { stageIsOpen } from "./opening";
 
 const JOURNEY: Layer[] = ["AI_MINDSET", "ROLE_ENABLEMENT", "AI_LAB_SHOWCASE", "SHOWCASE", "CLOSURE"];
 const ADMITTED = ["SELECTED", "CONDITIONS_PENDING", "CONDITIONS_ACCEPTED", "ENROLLED", "MINDSET_READY"];
@@ -56,7 +57,7 @@ export async function moveParticipant(candidateId: string, to: Layer, note: stri
       const pulseLine = owed.length ? `En tu portal tienes pendiente el pulso de experiencia de ${owed.map((l) => l.name).join(" y ")}: son 2 minutos y nos ayuda a mejorar el programa.` : "";
       const extra = [note.trim(), pulseLine].filter(Boolean).join(" ") || undefined;
       // A Role Enablement: la bienvenida con las instrucciones de la etapa (una sola vez por persona).
-      const welcome = to === "ROLE_ENABLEMENT" ? await sendReWelcome(c.id, { actor: viewer.id, note: extra, svc }) : null;
+      const welcome = to === "ROLE_ENABLEMENT" && (await stageIsOpen(c.wave_id, "ROLE_ENABLEMENT", svc)) ? await sendReWelcome(c.id, { actor: viewer.id, note: extra, svc }) : null;
       const r = welcome && welcome !== "skipped" ? { ok: welcome === "sent", error: "error del proveedor" } : await sendIdentityEmail("STAGE_MOVED", c.corporate_email, { name: c.full_name, stage: LAYERS.find((l) => l.id === to)!.name, extra, link: portalLink("ingresar", c.corporate_email, "/mi-journey") }, { userId: (patch.user_id as string | undefined) ?? c.user_id, candidateId: c.id, waveId: c.wave_id, sentBy: viewer.id }, svc);
       email = r.ok ? "sent" : "failed";
       detail = r.ok ? " Correo enviado con copia a su Delivery." : ` El correo no salió (${r.error}).`;
@@ -65,6 +66,33 @@ export async function moveParticipant(candidateId: string, to: Layer, note: stri
     revalidatePath(`/admin/journey/${c.wave_id}`, "layout");
     revalidatePath("/mi-journey");
     return { ok: true, message: `${c.full_name} quedó en ${layerName(to)}.${detail}`, email };
+  } catch (e) {
+    return { ok: false, message: errorText(e) };
+  }
+}
+
+/** Admin: mueve a varias personas a una etapa (cada una con su registro y, si se pide, su correo). */
+export async function moveMany(candidateIds: string[], to: Layer, note: string, notify: boolean): Promise<MoveResult & { details?: string[] }> {
+  try {
+    await requireRole(["admin"]);
+    const ids = [...new Set(candidateIds)].slice(0, 200);
+    if (!ids.length) throw new Error("Selecciona al menos una persona.");
+    let moved = 0;
+    let mailsFailed = 0;
+    const details: string[] = [];
+    for (const id of ids) {
+      const r = await moveParticipant(id, to, note, notify);
+      if (!r.ok) details.push(r.message);
+      else {
+        moved++;
+        if (r.email === "failed") mailsFailed++;
+      }
+    }
+    return {
+      ok: details.length === 0,
+      message: `${moved} persona(s) quedaron en ${layerName(to)}.${notify ? (mailsFailed ? ` ${mailsFailed} correo(s) no salieron (reintento automático).` : " Correo enviado con copia a su Delivery.") : ""}`,
+      details,
+    };
   } catch (e) {
     return { ok: false, message: errorText(e) };
   }

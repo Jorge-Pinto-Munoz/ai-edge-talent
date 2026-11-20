@@ -130,8 +130,8 @@ export function JourneyApp({ v }: { v: JourneyView }) {
               <button type="button" className="btn small" onClick={() => setPulseOpen(true)} aria-haspopup="dialog">Responder</button>
             </div>
           )}
-          {v.mindsetGate && !v.mindsetGate.open ? (
-            <MindsetGate v={v} onGuide={() => setOpen({ type: "guide", stage: stageOf("AI_MINDSET") })} />
+          {v.stageGate && !v.stageGate.open ? (
+            <StageGate v={v} onGuide={() => setOpen({ type: "guide", stage: stageOf(v.stageGate!.layer) })} />
           ) : v.closing ? (
             <ClosingCard v={v} onOpen={() => setClosingOpen(true)} />
           ) : (
@@ -205,17 +205,22 @@ function JourneyHero({ v }: { v: JourneyView }) {
   );
 }
 
-/* ───────── Antes de la apertura de AI First Mindset ───────── */
-function MindsetGate({ v, onGuide }: { v: JourneyView; onGuide: () => void }) {
-  const at = v.mindsetGate?.opensAt;
+/* ───────── Antes de que su Wave habilite la etapa ───────── */
+function StageGate({ v, onGuide }: { v: JourneyView; onGuide: () => void }) {
+  const g = v.stageGate!;
+  const at = g.opensAt;
   const when = at ? new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(at)) : null;
   return (
-    <section className="jr-next" style={stageVars("AI_MINDSET")} aria-labelledby="jr-gate-t">
+    <section className="jr-next" style={stageVars(g.layer)} aria-labelledby="jr-gate-t">
       <div className="jr-next-ico"><Icon name="clock" size={26} /></div>
       <div className="jr-next-txt">
         <span className="jr-next-eyebrow">Tu próxima etapa</span>
-        <h2 id="jr-gate-t">AI First Mindset</h2>
-        <p>{when ? `Ya eres parte de AI Edge Talent. Tu primer reto estará disponible el ${when} (hora de Chile).` : "Ya eres parte de AI Edge Talent. Te avisaremos por correo apenas tu primer reto esté disponible."}</p>
+        <h2 id="jr-gate-t">{g.name}</h2>
+        <p>
+          {g.layer === "AI_MINDSET"
+            ? when ? `Ya eres parte de AI Edge Talent. Tu primer reto estará disponible el ${when} (hora de Chile).` : "Ya eres parte de AI Edge Talent. Te avisaremos por correo apenas tu primer reto esté disponible."
+            : when ? `Ya estás en ${g.name}. Su contenido se habilita el ${when} (hora de Chile).` : `Ya estás en ${g.name}. Te avisaremos por correo apenas el equipo habilite su contenido.`}
+        </p>
       </div>
       <button type="button" className="jr-cta" onClick={onGuide}>Ver de qué se trata <Icon name="arrowRight" size={18} /></button>
     </section>
@@ -260,7 +265,7 @@ function NextStep({ v, reviewing, onOpen, onGuide }: { v: JourneyView; reviewing
         <p>{n.hint}</p>
       </div>
       {isCapsule ? (
-        <button type="button" className="jr-cta" onClick={() => onOpen(n)}>{n.capsuleId === v.mindsetGate?.firstCapsuleId ? "Comenzar primer reto" : n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></button>
+        <button type="button" className="jr-cta" onClick={() => onOpen(n)}>{n.capsuleId === v.stageGate?.firstCapsuleId ? "Comenzar primer reto" : n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></button>
       ) : (
         <button type="button" className="jr-cta" onClick={() => onOpen(n)}>{n.cta ?? "Abrir"} <Icon name="arrowRight" size={18} /></button>
       )}

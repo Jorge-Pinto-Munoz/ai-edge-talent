@@ -1,45 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { advanceLayer } from "@/lib/journey/actions";
-import { LAYERS, layerName, type Layer } from "@/lib/journey/rules";
-import { Callout, fmtDate } from "@/components/ui";
+import { useState } from "react";
+import { layerName, type Layer } from "@/lib/journey/rules";
+import { fmtDate } from "@/components/ui";
+import { BulkMoveBar } from "./BulkMoveBar";
 
 interface Person { id: string; full_name: string; client_name: string | null; role_title: string | null; specialty: string | null; journey_layer: Layer | null; journey_layer_since: string | null }
 
-export function ParticipantsBoard({ waveId, people, isAdmin }: { waveId: string; people: Person[]; isAdmin: boolean }) {
+export function ParticipantsBoard({ waveId, people, isAdmin, next = null }: { waveId: string; people: Person[]; isAdmin: boolean; next?: Layer | null }) {
   const [sel, setSel] = useState<string[]>([]);
-  const [to, setTo] = useState<Layer>("AI_MINDSET");
-  const [exception, setException] = useState("");
-  const [res, setRes] = useState<{ ok: boolean; message: string; data?: string[] } | null>(null);
-  const [pending, start] = useTransition();
   return (
     <div className="stack">
-      {isAdmin && sel.length > 0 && (
-        <div className="card" style={{ borderColor: "var(--accent)" }}>
-          <strong>{sel.length} seleccionado(s) · avanzar etapa</strong>
-          <div className="row" style={{ marginTop: 8 }}>
-            <select value={to} onChange={(e) => setTo(e.target.value as Layer)} style={{ width: "auto" }} aria-label="Etapa destino">
-              {LAYERS.filter((l) => l.id !== "ASSESSMENT").map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-            <input type="text" value={exception} onChange={(e) => setException(e.target.value)} placeholder="Nota de excepción (solo si no cumple el gate)" style={{ maxWidth: 380 }} />
-            <button className="btn small" disabled={pending} onClick={() => start(async () => { setRes(await advanceLayer(waveId, sel, to, exception)); setSel([]); })}>Avanzar</button>
-          </div>
-          <p className="muted" style={{ margin: "6px 0 0" }}><small>El sistema valida los gates (tareas de Mindset aprobadas, certificación verificada). Sin cumplirlos, solo avanza con una nota de excepción que queda registrada. Para mover a una persona directo a cualquier etapa (con aviso por correo), usa «Mover de etapa» en su fila.</small></p>
-        </div>
-      )}
-      {res && (
-        <Callout tone={res.ok ? "ok" : "bad"} title={res.message}>
-          {res.data && res.data.length > 0 && <ul style={{ margin: 0 }}>{res.data.map((d) => <li key={d}><small>{d}</small></li>)}</ul>}
-        </Callout>
-      )}
+      {isAdmin && <BulkMoveBar selected={sel} total={people.length} to={next} onSelectAll={() => setSel(people.map((p) => p.id))} onClear={() => setSel([])} />}
       <div className="table-wrap" tabIndex={0}>
         <table>
-          <thead><tr>{isAdmin && <th><span className="sr-only">Seleccionar</span></th>}<th>Persona</th><th>Cliente · Rol</th><th>Especialidad</th><th>Etapa</th><th>Desde</th></tr></thead>
+          <thead><tr>{isAdmin && next && <th><input type="checkbox" aria-label="Seleccionar a todos" checked={people.length > 0 && sel.length === people.length} onChange={(e) => setSel(e.target.checked ? people.map((p) => p.id) : [])} /></th>}<th>Persona</th><th>Cliente · Rol</th><th>Especialidad</th><th>Etapa</th><th>Desde</th></tr></thead>
           <tbody>
             {people.map((p) => (
               <tr key={p.id}>
-                {isAdmin && <td><input type="checkbox" aria-label={`Seleccionar ${p.full_name}`} checked={sel.includes(p.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, p.id] : s.filter((x) => x !== p.id)))} /></td>}
+                {isAdmin && next && <td><input type="checkbox" aria-label={`Seleccionar ${p.full_name}`} checked={sel.includes(p.id)} onChange={(e) => setSel((s) => (e.target.checked ? [...s, p.id] : s.filter((x) => x !== p.id)))} /></td>}
                 <td><a href={`/admin/admision/${waveId}/c/${p.id}#etapa`}><strong>{p.full_name}</strong></a>{isAdmin && <><br /><a className="link-context" href={`/admin/admision/${waveId}/c/${p.id}#etapa`}><small>Mover de etapa</small></a></>}</td>
                 <td>{p.client_name ?? "—"}<br /><small className="muted">{p.role_title}</small></td>
                 <td>{p.specialty ?? "—"}</td>
