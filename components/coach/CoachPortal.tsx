@@ -32,7 +32,7 @@ export async function CoachPortal({ coachId, preview }: { coachId: string; previ
         <p className="muted" style={{ margin: "6px 0 0" }}>Semana del {week}. Cuéntanos cómo va cada persona y cómo va el curso. Puedes editarlo hasta el domingo.</p>
       </div>
       {!preview && <a className="btn" href="/admin/profesor" style={{ justifySelf: "start" }}>Ir a mis sesiones de Role Enablement →</a>}
-      {(groups ?? []).length === 0 && <Callout title="Aún no tienes grupos asignados">El equipo AI Edge Talent te asignará uno o más grupos.</Callout>}
+      {(groups ?? []).length === 0 && <Callout title="Sin grupos de feedback semanal">Tu trabajo principal está en «Mis sesiones»: las 4 sesiones de Role Enablement de tus Waves.</Callout>}
       <fieldset className="preview-lock" disabled={Boolean(preview)}>
         {(groups ?? []).map((g) => {
           const members = (people ?? []).filter((p) => (g.group_members as { candidate_id: string }[]).some((m) => m.candidate_id === p.id));
