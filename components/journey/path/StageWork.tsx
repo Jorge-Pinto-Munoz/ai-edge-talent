@@ -31,9 +31,9 @@ export function SessionSheet({ v, n }: { v: JourneyView; n: number }) {
       {closed && <div className="jr-feedback"><p>El equipo aún no habilita Role Enablement para tu Wave. Te avisaremos por correo; ahí verás aquí las notas y el material de cada sesión.</p></div>}
       {s?.title && <h4 style={{ margin: 0 }}>{s.title}</h4>}
       {s?.studentNotes ? (
-        <div className="jr-feedback"><strong>Notas del profesor</strong><p style={{ whiteSpace: "pre-line" }}>{s.studentNotes}</p></div>
+        <div className="jr-feedback"><strong>Notas de tu AI Coach</strong><p style={{ whiteSpace: "pre-line" }}>{s.studentNotes}</p></div>
       ) : (
-        <p className="muted">{held ? "El profesor aún no deja notas de esta sesión." : "Después de la sesión, el profesor deja aquí sus notas y el material."}</p>
+        <p className="muted">{held ? "Tu AI Coach aún no deja notas de esta sesión." : "Después de la sesión, tu AI Coach deja aquí sus notas y el material."}</p>
       )}
       {s?.nextClass && <div className="jr-feedback"><strong>Para la próxima clase</strong><p style={{ whiteSpace: "pre-line" }}>{s.nextClass}</p></div>}
       {s?.materials.length ? <div className="dl-list">{s.materials.map((m) => <DownloadButton key={m.path} bucket="content" path={m.path} name={m.name} size={m.size} />)}</div> : null}
@@ -43,9 +43,9 @@ export function SessionSheet({ v, n }: { v: JourneyView; n: number }) {
         {s?.checkedInAt ? (
           <p style={{ margin: 0 }}><Icon name="check" size={16} /> Hiciste check-in el {fmtDate(s.checkedInAt)}.</p>
         ) : (
-          <p className="muted" style={{ margin: 0 }}>Marca que fuiste a la sesión. No reemplaza la asistencia que registra el profesor: se cruzan para tu seguimiento.</p>
+          <p className="muted" style={{ margin: 0 }}>Marca que fuiste a la sesión. No reemplaza la asistencia que registra tu AI Coach: se cruzan para tu seguimiento.</p>
         )}
-        {s && s.attended !== null && <p style={{ margin: 0 }}><small className="muted">Asistencia registrada por el profesor:</small> <strong>{s.attended ? "Asististe" : "No asististe"}</strong></p>}
+        {s && s.attended !== null && <p style={{ margin: 0 }}><small className="muted">Asistencia registrada por tu AI Coach:</small> <strong>{s.attended ? "Asististe" : "No asististe"}</strong></p>}
         {canCheckIn && (
           <button type="button" className="jr-cta" disabled={pending} onClick={() => start(async () => { const r = await checkInSession(n); setMsg(r); if (r.ok) router.refresh(); })}>
             <Icon name="check" size={18} /> {pending ? "Registrando…" : "Fui a la sesión · hacer check-in"}

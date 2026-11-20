@@ -5,15 +5,15 @@ import { addWaveStaff, removeWaveStaff, type ActionResult } from "@/lib/admissio
 import { Callout } from "@/components/ui";
 
 /** Admin: quién es profesor/a o líder del Hub AI en esta Wave (por correo, aunque aún no haya ingresado). */
-export function WaveStaffManager({ waveId, role, people }: { waveId: string; role: "profesor" | "hub"; people: { email: string; name: string | null }[] }) {
+export function WaveStaffManager({ waveId, role, people }: { waveId: string; role: "mentor" | "hub"; people: { email: string; name: string | null }[] }) {
   const [email, setEmail] = useState("");
   const [r, setR] = useState<ActionResult | null>(null);
   const [pending, start] = useTransition();
-  const label = role === "profesor" ? "profesor/a" : "líder del Hub AI";
+  const label = role === "mentor" ? "AI Coach" : "líder del Hub AI";
   return (
     <section className="adm-card">
       <div className="adm-card-head">
-        <h2>{role === "profesor" ? "Profesores de la Wave" : "Líderes del Hub AI de la Wave"}</h2>
+        <h2>{role === "mentor" ? "AI Coach de la Wave" : "Líderes del Hub AI de la Wave"}</h2>
         <span className="muted">Solo admin</span>
       </div>
       {people.length === 0 ? (

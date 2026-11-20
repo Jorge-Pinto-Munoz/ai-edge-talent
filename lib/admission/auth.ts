@@ -70,7 +70,7 @@ export async function requireAnyRolePage(next: string, roles: AppRole[]): Promis
 
 /** Waves en las que un profesor o líder del Hub trabaja (por correo, tabla wave_staff). */
 export async function myStaffWaves(v: Viewer): Promise<string[]> {
-  if (v.role !== "profesor" && v.role !== "hub") return [];
+  if (v.role !== "profesor" && v.role !== "hub" && v.role !== "mentor") return [];
   const db = await supabaseUser();
   const { data } = await db.from("wave_staff").select("wave_id").eq("email", v.email.toLowerCase()).eq("role", v.role);
   return (data ?? []).map((r) => r.wave_id);

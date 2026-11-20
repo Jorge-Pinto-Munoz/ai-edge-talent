@@ -103,7 +103,7 @@ function stageNodes(layer: Layer, input: PathInput): PathNode[] {
         const x = input.sessions?.find((y) => y.n === n);
         return x?.checkedIn
           ? { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: "Hiciste check-in", state: "done" }
-          : { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: x?.held ? "Haz tu check-in y revisa el material" : "Material y notas del profesor", state: "available", cta: "Hacer check-in" };
+          : { id: `re-s${n}`, kind: "session", session: n, title: `Sesión ${n} · Semana ${n}`, hint: x?.held ? "Haz tu check-in y revisa el material" : "Material y notas de tu AI Coach", state: "available", cta: "Hacer check-in" };
       });
       return [...sessions, ...caps, cert];
     }

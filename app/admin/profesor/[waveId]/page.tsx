@@ -10,18 +10,18 @@ export const dynamic = "force-dynamic";
 export default async function ProfesorWave({ params, searchParams }: { params: Promise<{ waveId: string }>; searchParams: Promise<{ s?: string }> }) {
   const { waveId } = await params;
   const { s } = await searchParams;
-  const viewer = await requireAnyRolePage(`/admin/profesor/${waveId}`, ["admin", "delivery", "profesor"]);
-  if (viewer.role !== "profesor") redirect(`/admin/journey/${waveId}/role-enablement?tab=clases`);
+  const viewer = await requireAnyRolePage(`/admin/profesor/${waveId}`, ["admin", "delivery", "mentor", "profesor"]);
+  if (viewer.role !== "mentor" && viewer.role !== "profesor") redirect(`/admin/journey/${waveId}/role-enablement?tab=clases`);
   const { data: wave } = await supabaseService().from("waves").select("name").eq("id", waveId).maybeSingle();
   return (
     <div className="adm">
       <header className="adm-head">
         <div>
-          <div className="eyebrow">{wave?.name ?? waveId} · Profesor/a</div>
+          <div className="eyebrow">{wave?.name ?? waveId} · AI Coach</div>
           <h1>Sesiones de Role Enablement</h1>
           <p className="muted" style={{ maxWidth: 760 }}>
-            Son 4 sesiones, una por semana. Después de cada una deja la fecha, el tema, tus notas y el material para los profesionales;
-            marca la asistencia y, si quieres, un comentario sobre cada persona. Lo marcado con candado solo lo ve el admin.
+            Son 4 sesiones, una por semana. Después de cada una deja la fecha y el horario, el tema, tus notas, el material y lo que pides para la próxima clase;
+            marca la asistencia, evalúa de 1 a 3 estrellas y anota las intervenciones que harás en los grupos. Lo marcado con candado solo lo ve el admin.
           </p>
         </div>
       </header>

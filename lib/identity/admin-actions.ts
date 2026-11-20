@@ -63,8 +63,8 @@ export async function createUser(input: { kind: CreatableRole; fullName: string;
     dbCheck(upErr);
     if (existing && existing.role !== input.kind) await revokeSessions(userId, email, svc);
 
-    if (input.kind === "delivery" || input.kind === "profesor") {
-      // Delivery: Waves que acompaña. Profesor: Waves donde dicta las sesiones de Role Enablement.
+    if (input.kind === "delivery" || input.kind === "mentor" || input.kind === "hub") {
+      // Delivery: Waves que acompaña. AI Coach: Waves donde dicta Role Enablement. Hub: AI Lab y Showcase.
       for (const w of input.waveIds) await svc.from("wave_staff").upsert({ wave_id: w, email, role: input.kind, added_by: actor.id });
     } else if (input.kind === "kiber" && input.waveIds[0]) {
       // Un alta manual NO aprueba evaluaciones: el profesional queda invitado a postular en la Wave (o se vincula a su postulación).
@@ -156,9 +156,9 @@ export async function setDeliveryWaves(userId: string, waveIds: string[]): Promi
   try {
     const actor = await admin();
     const t = await target(userId);
-    // Delivery (Waves que acompaña), Profesor (donde dicta Role Enablement) y Líder Hub AI (AI Lab y Showcase).
-    const role = t.role as "delivery" | "profesor" | "hub";
-    if (!["delivery", "profesor", "hub"].includes(role)) throw new Error("Solo Delivery, Profesor y Líder Hub AI se asignan a Waves aquí.");
+    // Delivery (Waves que acompaña), AI Coach (donde dicta Role Enablement) y Líder Hub AI (AI Lab y Showcase).
+    const role = t.role as "delivery" | "mentor" | "hub";
+    if (!["delivery", "mentor", "hub"].includes(role)) throw new Error("Solo Delivery, AI Coach y Líder Hub AI se asignan a Waves aquí.");
     const svc = supabaseService();
     const { data: cur } = await svc.from("wave_staff").select("wave_id").eq("email", t.email).eq("role", role);
     const now = new Set((cur ?? []).map((r) => r.wave_id));

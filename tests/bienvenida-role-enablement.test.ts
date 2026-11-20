@@ -14,7 +14,8 @@ describe("bienvenida a Role Enablement", () => {
     expect(r.text).toMatch(/pulso de cierre/);
     expect(r.text).not.toMatch(/40 h/);
   });
-  it("el rol Profesor se puede crear de nuevo", () => {
-    expect(CREATABLE_ROLES).toContain("profesor");
+  it("el AI Coach dicta Role Enablement: Profesor ya no se crea", () => {
+    expect(CREATABLE_ROLES).toContain("mentor");
+    expect(CREATABLE_ROLES).not.toContain("profesor");
   });
 });

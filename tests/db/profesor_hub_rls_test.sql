@@ -98,3 +98,15 @@ select 'AVANCE propio queda como SELF', count(*) >= 1 from aicert_progress_histo
 select 'ENUM tiene SHOWCASE después del Lab', array_position(enum_range(null::journey_layer), 'SHOWCASE'::journey_layer) = array_position(enum_range(null::journey_layer), 'AI_LAB_SHOWCASE'::journey_layer) + 1;
 insert into lab_project_files (project_id, path, name, kind) select id, id || '/final.pptx', 'final.pptx', 'FINAL' from lab_projects limit 1;
 select 'ARCHIVO FINAL registrado', count(*) = 1 from lab_project_files where kind = 'FINAL';
+
+-- ───── AI Coach de la Wave = quien dicta Role Enablement ─────
+reset role;
+insert into role_grants (email, role) values ('coach@kibernum.cl', 'mentor') on conflict do nothing;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000f4', 'coach@kibernum.cl') on conflict do nothing;
+update profiles set status = 'ACTIVE', role = 'mentor' where email = 'coach@kibernum.cl';
+insert into wave_staff (wave_id, email, role) values ('wave-3', 'coach@kibernum.cl', 'mentor') on conflict do nothing;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f4';
+select 'AI COACH ve comentarios y asistencia de su Wave', (select count(*) from re_session_private) = 1 and (select count(*) from re_session_attendance) = 1;
+select 'AI COACH ve participantes de su Wave', count(*) > 0 from candidates where wave_id = 'wave-3';
+reset role;

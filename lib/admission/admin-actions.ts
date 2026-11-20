@@ -173,7 +173,7 @@ export async function grantRole(email: string, role: "admin" | "delivery" | "cli
 const ROLE_NAME: Record<string, string> = { admin: "Admin", delivery: "Delivery", client: "Cliente", kiber: "Kiber", mentor: "AI Coach", profesor: "Profesor", hub: "Líder Hub AI" };
 
 /* ───────── Equipo por Wave: profesor/a y líder del Hub AI ───────── */
-export async function addWaveStaff(waveId: string, email: string, role: "profesor" | "hub"): Promise<ActionResult> {
+export async function addWaveStaff(waveId: string, email: string, role: "mentor" | "hub"): Promise<ActionResult> {
   try {
     const viewer = await requireRole(["admin"]);
     const e = email.trim().toLowerCase();
@@ -197,7 +197,7 @@ export async function addWaveStaff(waveId: string, email: string, role: "profeso
   }
 }
 
-export async function removeWaveStaff(waveId: string, email: string, role: "profesor" | "hub"): Promise<ActionResult> {
+export async function removeWaveStaff(waveId: string, email: string, role: "mentor" | "hub"): Promise<ActionResult> {
   try {
     await requireRole(["admin"]);
     const db = await supabaseUser();

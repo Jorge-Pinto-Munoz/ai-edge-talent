@@ -20,8 +20,8 @@ async function requireTeacher(waveId: string): Promise<Viewer> {
   const v = await getViewer();
   if (!v) throw new Error(SESSION_EXPIRED);
   if (v.role === "admin") return v;
-  if (v.role === "profesor" && (await myStaffWaves(v)).includes(waveId)) return v;
-  throw new Error("Solo el profesor de esta Wave (o un admin) registra las sesiones.");
+  if ((v.role === "mentor" || v.role === "profesor") && (await myStaffWaves(v)).includes(waveId)) return v;
+  throw new Error("Solo el AI Coach de esta Wave (o un admin) registra las sesiones.");
 }
 
 const refresh = (waveId: string) => {

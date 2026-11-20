@@ -6,7 +6,7 @@ import { fmtDate, fmtYmd } from "@/components/ui";
 
 /**
  * Seguimiento de Role Enablement en la ficha de una persona: participación en las 4 sesiones, check-in, avance
- * AI CERT y lo que anotó el profesor (estrellas, concentración y comentario; esto último solo lo ve el admin).
+ * AI CERT y lo que anotó el AI Coach (estrellas, concentración y comentario; esto último solo lo ve el admin).
  */
 export async function ReProgress({ waveId, candidateId, isAdmin }: { waveId: string; candidateId: string; isAdmin: boolean }) {
   const svc = supabaseService();
@@ -31,7 +31,7 @@ export async function ReProgress({ waveId, candidateId, isAdmin }: { waveId: str
       </div>
       <div className="table-wrap" tabIndex={0}>
         <table className="rtable">
-          <thead><tr><th>Sesión</th><th>Asistencia</th>{isAdmin && <><th>Evaluación</th><th>Comentario del profesor</th></>}</tr></thead>
+          <thead><tr><th>Sesión</th><th>Asistencia</th>{isAdmin && <><th>Evaluación</th><th>Comentario del AI Coach</th></>}</tr></thead>
           <tbody>
             {RE_SESSIONS.map((n) => {
               const s = (sessions ?? []).find((x) => x.n === n);
@@ -50,7 +50,7 @@ export async function ReProgress({ waveId, candidateId, isAdmin }: { waveId: str
           </tbody>
         </table>
       </div>
-      {!isAdmin && <p className="muted" style={{ margin: 0 }}><small>La evaluación y los comentarios del profesor solo los ve Administración.</small></p>}
+      {!isAdmin && <p className="muted" style={{ margin: 0 }}><small>La evaluación y los comentarios del AI Coach solo los ve Administración.</small></p>}
     </section>
   );
 }

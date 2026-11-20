@@ -67,8 +67,8 @@ export function attendanceMatch(attended: boolean | null, checkedIn: boolean): M
 export const MATCH_LABEL: Record<Match, { label: string; tone: "ok" | "warn" | "bad" | "muted" }> = {
   ok: { label: "Asistió · con check-in", tone: "ok" },
   "attended-no-checkin": { label: "Asistió · sin check-in", tone: "ok" },
-  "checkin-only": { label: "Check-in · falta asistencia del profesor", tone: "muted" },
-  "absent-checkin": { label: "Hizo check-in, pero el profesor lo marcó ausente", tone: "warn" },
+  "checkin-only": { label: "Check-in · falta asistencia del AI Coach", tone: "muted" },
+  "absent-checkin": { label: "Hizo check-in, pero el AI Coach lo marcó ausente", tone: "warn" },
   absent: { label: "No asistió", tone: "bad" },
   pending: { label: "Sin registro", tone: "muted" },
 };

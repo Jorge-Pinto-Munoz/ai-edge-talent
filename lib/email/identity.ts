@@ -166,10 +166,10 @@ export function renderIdentity(t: IdentityTemplate, c: { name?: string; code?: s
     case "RE_WELCOME": {
       const p = [
         hi,
-        "¡Felicitaciones por cerrar AI First Mindset! Desde ahora estás en Role Enablement: la etapa en que te certificas en IA para tu rol con AI CERTs, acompañado/a por tu profesor/a.",
+        "¡Felicitaciones por cerrar AI First Mindset! Desde ahora estás en Role Enablement: la etapa en que te certificas en IA para tu rol con AI CERTs, acompañado/a por tu AI Coach.",
         ...(c.extra ? [c.extra] : []),
         "# Lo que harás en la plataforma",
-        "1. Sesiones con tu profesor/a: son 4, una por semana. En Mi journey verás cada sesión con su fecha, tema, notas y material. Después de cada una, marca «Fui a la sesión» (check-in).",
+        "1. Sesiones con tu AI Coach: son 4, una por semana. En Mi journey verás cada sesión con su fecha, tema, notas y material. Después de cada una, marca «Fui a la sesión» (check-in).",
         "2. Tu avance en AI CERT: estudias en tu plataforma de estudiante AI CERT. Cada semana anota en Mi journey en qué curso vas, el tramo y el porcentaje. Así tu Delivery y el equipo pueden apoyarte a tiempo.",
         "3. Tu certificación: cuando rindas el examen, registra el resultado y sube tu certificado en Mi journey. Kibernum financia hasta dos intentos de examen.",
         "4. Cierre de la etapa: cuando verifiquemos tu certificado, responde el pulso de cierre (2 minutos) y se abre el AI Lab.",

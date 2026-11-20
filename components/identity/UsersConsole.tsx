@@ -137,14 +137,14 @@ function UserDrawer({ u, waves, isMe, onClose }: { u: UserRow; waves: Wave[]; is
         </div>
       </section>
 
-      {["delivery", "profesor", "hub"].includes(u.role) && (
+      {["delivery", "mentor", "hub"].includes(u.role) && (
         <section className="ud-sec">
-          <h3>{u.role === "profesor" ? "Waves donde dicta Role Enablement" : u.role === "hub" ? "Waves de este Líder Hub AI" : "Waves de este Delivery"}</h3>
+          <h3>{u.role === "mentor" ? "Waves que acompaña como AI Coach" : u.role === "hub" ? "Waves de este Líder Hub AI" : "Waves de este Delivery"}</h3>
           <div className="ud-checks">{waves.map((w) => (
             <label key={w.id}><input type="checkbox" checked={dWaves.includes(w.id)} onChange={(e) => setDWaves((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>
           ))}</div>
           <button type="button" className="btn small secondary" disabled={pending} onClick={() => run(() => setDeliveryWaves(u.id, dWaves))}>Guardar Waves</button>
-          <p className="muted ud-note">{u.role === "profesor" ? "Ve el journey de esas Waves en solo lectura y registra sus sesiones de Role Enablement." : u.role === "hub" ? "Trabaja en el AI Lab y el Showcase de esas Waves." : "La asignación de profesionales se hace en cada Wave, en “Equipo y asignaciones”."}</p>
+          <p className="muted ud-note">{u.role === "mentor" ? "Registra las 4 sesiones de Role Enablement de esas Waves y ve su journey en solo lectura." : u.role === "hub" ? "Trabaja en el AI Lab y el Showcase de esas Waves." : "La asignación de profesionales se hace en cada Wave, en “Equipo y asignaciones”."}</p>
         </section>
       )}
 
@@ -222,10 +222,10 @@ function CreateUser({ waves, onDone }: { waves: Wave[]; onDone: () => void }) {
           <div className="field"><label htmlFor="cu-r">Rol / cargo</label><input id="cu-r" value={f.roleTitle} onChange={set("roleTitle")} /></div>
           <p className="muted ud-note">Crear la cuenta no aprueba evaluaciones ni salta etapas: en la Wave queda invitado/a a postular, o se vincula a su postulación si ya existe.</p>
         </>
-      ) : f.kind !== "delivery" && f.kind !== "profesor" ? (
+      ) : !["delivery", "mentor", "hub"].includes(f.kind) ? (
         <p className="muted ud-note">Sus permisos quedan activos cuando la persona ingresa por primera vez con el código que llega a su correo. Puedes cambiar el rol o pausar la cuenta desde su ficha.</p>
       ) : (
-        <fieldset className="ud-checks"><legend>{f.kind === "profesor" ? "Waves donde dicta Role Enablement" : "Waves que acompaña"}</legend>{open.map((w) => <label key={w.id}><input type="checkbox" checked={ws.includes(w.id)} onChange={(e) => setWs((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>)}</fieldset>
+        <fieldset className="ud-checks"><legend>{f.kind === "mentor" ? "Waves que acompaña como AI Coach (Role Enablement)" : f.kind === "hub" ? "Waves del Hub AI (AI Lab y Showcase)" : "Waves que acompaña"}</legend>{open.map((w) => <label key={w.id}><input type="checkbox" checked={ws.includes(w.id)} onChange={(e) => setWs((x) => (e.target.checked ? [...x, w.id] : x.filter((y) => y !== w.id)))} /> {w.name}</label>)}</fieldset>
       )}
       {out}
       <div className="ud-actions">

@@ -57,9 +57,9 @@ export default async function StageDetail({ params, searchParams }: { params: Pr
   const { tab: rawTab, sub: subParam, p: personParam } = await searchParams;
   const stage = stageBySlug(etapa);
   if (!stage) notFound();
-  const viewer = await requireAnyRolePage(`/admin/journey/${waveId}/${etapa}`, ["admin", "delivery", "profesor"]);
-  // Profesor: ve en solo lectura Assessment, AI First Mindset y Role Enablement de sus Waves (edita solo sus sesiones).
-  const teacher = viewer.role === "profesor";
+  const viewer = await requireAnyRolePage(`/admin/journey/${waveId}/${etapa}`, ["admin", "delivery", "mentor", "profesor"]);
+  // AI Coach: ve en solo lectura Assessment, AI First Mindset y Role Enablement de sus Waves (edita solo sus sesiones).
+  const teacher = viewer.role === "mentor" || viewer.role === "profesor";
   if (teacher && (!PROFESOR_STAGES.includes(stage.slug) || !(await myStaffWaves(viewer)).includes(waveId))) redirect("/sin-acceso");
   const isAdmin = viewer.role === "admin";
   const tabs = stage.tabs.filter((t) => isAdmin || !t.adminOnly);

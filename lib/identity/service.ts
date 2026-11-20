@@ -170,7 +170,7 @@ export async function deliveryCc(svc: Svc, candidateId: string | null, to: strin
 export const portalLink = (mode: "activar" | "ingresar" | "restablecer", email?: string, next?: string) =>
   `${env.appUrl}/ingresar?modo=${mode}${email ? `&email=${encodeURIComponent(email)}` : ""}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
 
-export const HOME_BY_ROLE: Record<string, string> = { admin: "/admin", delivery: "/equipo", bp: "/equipo", mentor: "/ai-coach", client: "/cliente", kiber: "/mi-journey", profesor: "/admin/profesor", hub: "/admin/lab" };
+export const HOME_BY_ROLE: Record<string, string> = { admin: "/admin", delivery: "/equipo", bp: "/equipo", mentor: "/admin/profesor", client: "/cliente", kiber: "/mi-journey", profesor: "/admin/profesor", hub: "/admin/lab" };
 
 /**
  * Envía un código de ingreso de 6 dígitos (un solo uso, 10 minutos) a una cuenta existente.

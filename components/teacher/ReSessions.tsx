@@ -12,11 +12,11 @@ import { fmtYmd } from "@/components/ui";
 import { prettyName } from "@/lib/text/org";
 
 /**
- * Role Enablement: las 4 sesiones semanales de la Wave. El profesor (o el admin) registra cada una;
+ * Role Enablement: las 4 sesiones semanales de la Wave. El AI Coach (o el admin) registra cada una;
  * Delivery ve lo público y los check-in; los comentarios de clase y la concentración por persona son solo del admin.
  */
 export async function ReSessions({ waveId, viewer, open }: { waveId: string; viewer: Viewer; open?: number }) {
-  const canEdit = viewer.role === "admin" || (viewer.role === "profesor" && (await myStaffWaves(viewer)).includes(waveId));
+  const canEdit = viewer.role === "admin" || ((viewer.role === "mentor" || viewer.role === "profesor") && (await myStaffWaves(viewer)).includes(waveId));
   const svc = supabaseService();
   const [sessions, { data: people }] = await Promise.all([
     waveSessions(waveId, { private: canEdit }),
@@ -31,7 +31,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
   const checkins = sessions.reduce((n, s) => n + s.checkins.filter((c) => group.some((p) => p.id === c.candidateId)).length, 0);
   const current = open ?? (sessions.find((s) => !s.heldOn || s.heldOn > today)?.n ?? 4);
   // Profesores asignados a la Wave (solo el admin los ve y gestiona).
-  const staffEmails = viewer.role === "admin" ? ((await svc.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "profesor")).data ?? []).map((s) => s.email) : [];
+  const staffEmails = viewer.role === "admin" ? ((await svc.from("wave_staff").select("email").eq("wave_id", waveId).eq("role", "mentor")).data ?? []).map((s) => s.email) : [];
   const { data: staffProfiles } = staffEmails.length ? await svc.from("profiles").select("email, full_name").in("email", staffEmails) : { data: [] as { email: string; full_name: string | null }[] };
 
   return (
@@ -45,7 +45,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
 
       {canEdit && group.length > 0 && (
         <section className="adm-card">
-          <div className="adm-card-head"><h2>Asistencia por persona</h2><span className="muted">Profesor + check-in del profesional · solo admin</span></div>
+          <div className="adm-card-head"><h2>Asistencia por persona</h2><span className="muted">AI Coach + check-in del profesional · solo admin</span></div>
           <div className="table-wrap" tabIndex={0}>
             <table className="rtable res-matrix">
               <thead><tr><th>Profesional</th>{sessions.map((s) => <th key={s.n}>Semana {s.n}</th>)}</tr></thead>
@@ -100,7 +100,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
                 />
               ) : (
                 <div className="stack" style={{ gap: 10 }}>
-                  {s.studentNotes ? <p style={{ whiteSpace: "pre-line", margin: 0 }}>{s.studentNotes}</p> : <p className="muted" style={{ margin: 0 }}>El profesor aún no deja notas.</p>}
+                  {s.studentNotes ? <p style={{ whiteSpace: "pre-line", margin: 0 }}>{s.studentNotes}</p> : <p className="muted" style={{ margin: 0 }}>El AI Coach aún no deja notas.</p>}
                   {s.nextClass && <p style={{ whiteSpace: "pre-line", margin: 0 }}><strong>Para la próxima clase:</strong> {s.nextClass}</p>}
                   {s.materials.length > 0 && <div className="dl-list">{s.materials.map((m) => <DownloadButton key={m.path} bucket="content" path={m.path} name={m.name} size={m.size} />)}</div>}
                   <small className="muted">Check-in: {s.checkins.length ? s.checkins.map((c) => group.find((p) => p.id === c.candidateId)?.full_name ?? "—").join(", ") : "nadie aún"}.</small>
@@ -110,7 +110,7 @@ export async function ReSessions({ waveId, viewer, open }: { waveId: string; vie
           );
         })}
       </div>
-      {viewer.role === "admin" && <WaveStaffManager waveId={waveId} role="profesor" people={staffEmails.map((email) => ({ email, name: staffProfiles?.find((p) => p.email === email)?.full_name ?? null }))} />}
+      {viewer.role === "admin" && <WaveStaffManager waveId={waveId} role="mentor" people={staffEmails.map((email) => ({ email, name: staffProfiles?.find((p) => p.email === email)?.full_name ?? null }))} />}
     </div>
   );
 }
